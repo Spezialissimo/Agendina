@@ -1,0 +1,15 @@
+{
+  "name": "@agendina/core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "date-fns": "^4.4.0",
+    "fast-check": "^4.10.2"
+  }
+}
