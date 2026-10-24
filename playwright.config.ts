@@ -1,0 +1,30 @@
+import { defineConfig, devices } from '@playwright/test'
+
+const port = 4173
+
+export default defineConfig({
+  testDir: 'e2e',
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  reporter: process.env.CI ? 'github' : 'list',
+  use: {
+    baseURL: `http://localhost:${port}`,
+    trace: 'on-first-retry',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
+  // Runs the production build, the same way the Docker image does.
+  webServer: {
+    command: 'pnpm build && pnpm start',
+    url: `http://localhost:${port}/api/health`,
+    reuseExistingServer: !process.env.CI,
+    env: {
+      PORT: String(port),
+      AGENDINA_WEB_DIR: 'apps/web/dist',
+      AGENDINA_VERSION: 'e2e',
+    },
+  },
+})
