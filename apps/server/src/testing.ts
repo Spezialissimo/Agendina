@@ -14,10 +14,10 @@ interface RequestOptions {
 export function createTestServer(handle: DatabaseHandle, options: { now?: () => Date } = {}) {
   const app = createApp({ version: 'test', db: handle.db, ...options })
 
-  const request = (
+  const request = async (
     path: string,
     { method = 'GET', body, cookie, headers = {} }: RequestOptions = {},
-  ) =>
+  ): Promise<Response> =>
     app.request(path, {
       method,
       headers: {

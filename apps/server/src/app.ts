@@ -3,10 +3,12 @@ import { join, normalize, relative, sep } from 'node:path'
 import type { ApiErrorBody, HealthResponse } from '@agendina/contract'
 import type { Database } from '@agendina/db'
 import { Hono } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
 import { authRoutes, loadSession } from './auth/routes.ts'
 import { ApiError, type AppEnv } from './http.ts'
+import { notesRoutes } from './notes/routes.ts'
 
 export interface AppOptions {
   version: string
@@ -22,6 +24,13 @@ export function createApp({ version, db, webDir, now = () => new Date() }: AppOp
 
   const api = new Hono<AppEnv>()
   api.use(csrf())
+  // Notes are capped at 1 MB of text; refuse anything far larger before reading it.
+  api.use(
+    bodyLimit({
+      maxSize: 4 * 1024 * 1024,
+      onError: (c) => c.json({ error: 'payload_too_large' } satisfies ApiErrorBody, 413),
+    }),
+  )
   api.use(async (c, next) => {
     c.set('db', db)
     c.set('now', now)
@@ -30,6 +39,7 @@ export function createApp({ version, db, webDir, now = () => new Date() }: AppOp
   api.use(loadSession)
   api.get('/health', (c) => c.json({ status: 'ok', version } satisfies HealthResponse))
   api.route('/', authRoutes(now))
+  api.route('/', notesRoutes())
   api.all('*', (c) => c.json({ error: 'not_found' } satisfies ApiErrorBody, 404))
   api.onError((error, c) => {
     if (error instanceof ApiError) {
