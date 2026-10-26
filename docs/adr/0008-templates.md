@@ -14,7 +14,10 @@ created from a template records `templateId + templateRevision`. An "Edit templa
 every page saves a new template revision, then runs a three-way merge (base = old template,
 theirs = new template, mine = page) on the current page and every future page that already
 exists. Past pages are never touched. Clean merges apply silently; conflicts are collected into
-one resolve list. Later: a table-aware, per-cell merge to avoid conflicts on table rows.
+one resolve list. Pages already on the new revision, and pages not created from a template, are
+skipped (merging into the latter would paste the whole template in). Implemented as
+`propagateTemplate` in `packages/core/src/templates.ts`. Later: a table-aware, per-cell merge to
+avoid conflicts on table rows.
 
 ## Consequences
 
