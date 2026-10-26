@@ -13,3 +13,4 @@ One file per decision: context, decision, consequences. Superseded ADRs stay, ma
 | 0007 | [Command registry and cmd-based shortcuts](0007-shortcuts.md)     | Accepted |
 | 0008 | [Templates as versioned notes](0008-templates.md)                 | Accepted |
 | 0009 | [AI-driven test-driven development](0009-testing.md)              | Accepted |
+| 0010 | [Kysely on node:sqlite and Postgres](0010-database-layer.md)      | Accepted |
