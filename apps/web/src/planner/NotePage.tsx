@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
 import { format, formatRange } from './weeks.ts'
+import { PageEditor } from '../editor/PageEditor.tsx'
+import { useNoteDocument, type SaveStatus } from '../editor/useNoteDocument.ts'
 import { addDays, weekNumber } from '@agendina/core'
 
 /** One page of the planner: a day or a week. Read-only neighbours open their day when clicked. */
@@ -37,7 +39,11 @@ export function NotePage({ view }: { view: NoteView }) {
           <p className="page-subtitle">{formatRange(view.key, addDays(view.key, 6), locale)}</p>
         )}
       </header>
-      <div className="page-content">{note.data?.content ?? ''}</div>
+      {view.editable ? (
+        <EditablePage key={`${view.kind}/${view.key}`} view={view} label={title} />
+      ) : (
+        <div className="page-content">{note.data?.content ?? ''}</div>
+      )}
       {view.focusOnClick !== undefined && (
         <button
           type="button"
@@ -47,5 +53,26 @@ export function NotePage({ view }: { view: NoteView }) {
         />
       )}
     </section>
+  )
+}
+
+const STATUS_TEXT: Record<SaveStatus, string> = {
+  loading: '',
+  saved: 'Saved',
+  dirty: 'Unsaved changes',
+  saving: 'Saving…',
+  offline: 'Offline, will retry',
+  conflict: 'Conflict: this page changed elsewhere',
+}
+
+function EditablePage({ view, label }: { view: NoteView; label: string }) {
+  const document = useNoteDocument(view.kind, view.key)
+  return (
+    <>
+      <PageEditor label={label} value={document.text} onChange={document.edit} />
+      <p className="save-status" role="status" data-status={document.status}>
+        {STATUS_TEXT[document.status]}
+      </p>
+    </>
   )
 }
