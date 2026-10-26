@@ -16,6 +16,13 @@ is stale, the server runs a line-based three-way merge (base, mine, theirs). Non
 merge automatically; overlapping edits keep both versions and the user resolves them. The app
 never invents text.
 
+Refinement over plain diff3: diff3 (like git) reports edits to _adjacent_ lines as one
+conflict, which would make ticking two neighbouring checkbox rows on two devices a conflict.
+When both sides kept the same number of lines in such a block, it is resolved line by line: each
+line is taken whole from the side that changed it, and only lines changed differently on both
+sides remain a conflict. Text within a line is never combined. Implemented as
+`merge3(base, mine, theirs)` in `packages/core` on top of `node-diff3`.
+
 Built from day 1: stable note identity `(user, kind, periodKey)`, revisions + history, tombstones,
 a sync-shaped API (`PUT` with `baseRevision`, `GET /changes?since=`), and a pure
 `merge(base, mine, theirs)` in `packages/core` so clients can merge too.

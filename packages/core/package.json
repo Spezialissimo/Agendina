@@ -11,5 +11,8 @@
   "devDependencies": {
     "date-fns": "^4.4.0",
     "fast-check": "^4.10.2"
+  },
+  "dependencies": {
+    "node-diff3": "^3.2.1"
   }
 }
