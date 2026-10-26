@@ -37,7 +37,11 @@ export function PageEditor({ label, value, onChange }: Props) {
         doc: value,
         extensions: [
           history(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          // ⌘↩ is the app's "toggle to-do" command (see commands/registry.ts), not "insert blank line".
+          keymap.of([
+            ...defaultKeymap.filter((binding) => binding.key !== 'Mod-Enter'),
+            ...historyKeymap,
+          ]),
           markdown({ base: markdownLanguage }),
           livePreviewExtension,
           EditorView.lineWrapping,

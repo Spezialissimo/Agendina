@@ -34,3 +34,12 @@ export function replaceText(editor: HTMLElement, text: string): void {
     })
   })
 }
+
+/** Focuses the editor with the cursor at `position`. */
+export function placeCursor(editor: HTMLElement, position: number): void {
+  const v = view(editor)
+  act(() => {
+    v.focus()
+    v.dispatch({ selection: { anchor: position } })
+  })
+}
