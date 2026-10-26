@@ -17,6 +17,13 @@ Combos the browser/OS reserves (cmd+T/W/N/Q/H) cannot be bound; risky ones (cmd+
 show a warning. Defaults are verified by Playwright in Chromium, Firefox and WebKit. The shortcut
 editor UI comes right after the MVP.
 
+Bindings are stored as canonical strings, `Mod+Ctrl+Alt+Shift+<KeyboardEvent.code>` (e.g.
+`Mod+Shift+KeyJ`), where `Mod` is Cmd on Mac and Ctrl elsewhere. A binding is classified as
+`ok`, `reserved`, `risky` or `types-text`. `types-text` covers keys without a command modifier,
+and on Mac also Option+key, because Option types characters on many layouts (`@ # [ ]` on
+Italian keyboards). Pure logic lives in `packages/core/src/keymap.ts`; handlers and the recorder
+UI live in the web app.
+
 ## Consequences
 
 - Matching on physical keys means bindings follow key position, not the printed character, on
