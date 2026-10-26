@@ -3,6 +3,7 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { Annotation, EditorState } from '@codemirror/state'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { livePreviewExtension } from './livePreview.ts'
 import { minimalChange } from './textChange.ts'
 
 interface Props {
@@ -38,6 +39,7 @@ export function PageEditor({ label, value, onChange }: Props) {
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           markdown({ base: markdownLanguage }),
+          livePreviewExtension,
           EditorView.lineWrapping,
           placeholder('Write here…'),
           EditorView.contentAttributes.of({ 'aria-label': label }),
