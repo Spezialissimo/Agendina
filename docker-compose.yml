@@ -1,0 +1,14 @@
+# Self-hosting Agendina: `docker compose up -d`, then open http://localhost:3000.
+# The first account you create becomes the admin. Notes live in the `agendina-data` volume.
+services:
+  agendina:
+    build: .
+    ports:
+      - '3000:3000'
+    volumes:
+      - agendina-data:/data
+    restart: unless-stopped
+    # Behind an HTTPS reverse proxy, make sure it sends X-Forwarded-Proto: https.
+
+volumes:
+  agendina-data:

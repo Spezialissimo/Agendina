@@ -18,8 +18,13 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
 
 ## Layout
 
-- `apps/server`: Hono API. `createApp(options)` builds the app (tests use `app.request`);
-  `main.ts` is the only file that touches `process`. Also serves the built web app.
+- `apps/server`: Hono API. `createApp(options)` builds the app (tests use `createTestServer` from
+  `src/testing.ts`, which calls it like a browser); `main.ts` is the only file that touches
+  `process`. Also serves the built web app. One folder per feature (`auth/`, `notes/`,
+  `settings/`, `export/`) with `routes.ts`, repository code and tests. Handlers throw
+  `ApiError(status, code)`; every error response is `{ error: code }`.
+- Server tests that touch the database use `describe.each(testDatabases())`, so they run on
+  SQLite and Postgres. Inject the clock (`now`) instead of reading the time.
 - `apps/web`: React + Vite SPA. API calls go through `src/api.ts` and are validated with the
   contract schemas.
 - `packages/contract`: Zod schemas + inferred types for every API request/response. Each schema
@@ -28,7 +33,7 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
   `testDatabases()` for running a suite on both engines (ADR 0010).
 - `packages/core`: pure domain logic used by web and server. No I/O, no DOM, no clock
   or randomness except via parameters.
-- `e2e/`: Playwright specs.
+- `e2e/`: Playwright specs. `*.api.spec.ts` run once (not per browser) against the shared server.
 
 ## How we work: test-driven
 
