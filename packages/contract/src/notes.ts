@@ -61,3 +61,24 @@ export const NoteConflict = z.object({
   chunks: z.array(MergeChunkSchema),
 })
 export type NoteConflict = z.infer<typeof NoteConflict>
+
+export const DeleteNoteQuery = z.object({ baseRevision: z.coerce.number().int().positive() })
+export type DeleteNoteQuery = z.infer<typeof DeleteNoteQuery>
+
+/** A note's latest state in the changes feed. Deleted notes have `deleted: true` and no content. */
+export const NoteChange = Note.extend({ deleted: z.boolean() })
+export type NoteChange = z.infer<typeof NoteChange>
+
+export const ChangesQuery = z.object({
+  since: z.coerce.number().int().nonnegative(),
+  limit: z.coerce.number().int().min(1).max(1000).default(500),
+})
+export type ChangesQuery = z.infer<typeof ChangesQuery>
+
+export const ChangesResponse = z.object({
+  changes: z.array(NoteChange),
+  /** Pass as `since` next time. */
+  cursor: z.number().int().nonnegative(),
+  hasMore: z.boolean(),
+})
+export type ChangesResponse = z.infer<typeof ChangesResponse>

@@ -27,6 +27,11 @@ Built from day 1: stable note identity `(user, kind, periodKey)`, revisions + hi
 a sync-shaped API (`PUT` with `baseRevision`, `GET /changes?since=`), and a pure
 `merge(base, mine, theirs)` in `packages/core` so clients can merge too.
 
+Deletion (Phase 2): deleting a note clears its content and history and leaves a tombstone
+revision, so the deletion syncs through the changes feed. Deleting from a stale revision is
+refused (`409 stale_revision`). An edit based on a revision from before a deletion revives the
+note with that edit: the edit wins over the delete, so offline text is never silently dropped.
+
 ## Consequences
 
 - Occasional conflict prompts instead of silent corruption.

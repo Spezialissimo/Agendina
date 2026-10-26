@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { merge3, type DayKey, type MergeChunk } from '@agendina/core'
-import type { Note, NoteKind } from '@agendina/contract'
+import type { Note, NoteChange, NoteKind } from '@agendina/contract'
 import type { Database, NotesTable } from '@agendina/db'
 import type { Selectable, Transaction } from 'kysely'
 import type { DB } from '@agendina/db'
@@ -69,7 +69,7 @@ export async function saveNote(
   try {
     return await db.transaction().execute(async (trx) => {
       const changeSeq = await nextChangeSeq(trx, userId)
-      const current = await findRow(trx, userId, kind, key)
+      const current = await findRow(trx, userId, kind, key, { includeDeleted: true })
 
       if (current === undefined) {
         if (baseRevision !== 0) throw new ApiError(400, 'invalid_base_revision')
@@ -115,7 +115,13 @@ export async function saveNote(
       const updatedAt = now.toISOString()
       await trx
         .updateTable('notes')
-        .set({ content: next, revision, change_seq: changeSeq, updated_at: updatedAt })
+        .set({
+          content: next,
+          revision,
+          change_seq: changeSeq,
+          updated_at: updatedAt,
+          deleted_at: null,
+        })
         .where('id', '=', current.id)
         .execute()
       await addRevision(trx, current.id, revision, next, now)
@@ -125,6 +131,7 @@ export async function saveNote(
         revision,
         change_seq: changeSeq,
         updated_at: updatedAt,
+        deleted_at: null,
       }
       return { status: 'saved', note: toNote(row), merged }
     })
@@ -134,11 +141,70 @@ export async function saveNote(
   }
 }
 
+/**
+ * Deletes a note: its text and history are removed, and a tombstone revision remains so the
+ * deletion syncs. Refuses if the note changed since `baseRevision`.
+ */
+export async function deleteNote(
+  db: Database,
+  userId: string,
+  kind: NoteKind,
+  key: string,
+  baseRevision: number,
+  now: Date,
+): Promise<void> {
+  await db.transaction().execute(async (trx) => {
+    const changeSeq = await nextChangeSeq(trx, userId)
+    const current = await findRow(trx, userId, kind, key)
+    if (current === undefined) throw new ApiError(404, 'not_found')
+    if (baseRevision !== current.revision) throw new ApiError(409, 'stale_revision')
+
+    const revision = current.revision + 1
+    await trx
+      .updateTable('notes')
+      .set({
+        content: '',
+        revision,
+        change_seq: changeSeq,
+        updated_at: now.toISOString(),
+        deleted_at: now.toISOString(),
+      })
+      .where('id', '=', current.id)
+      .execute()
+    await trx.deleteFrom('note_revisions').where('note_id', '=', current.id).execute()
+    await addRevision(trx, current.id, revision, '', now)
+  })
+}
+
+/** The latest state of every note changed after `since`, in change order. */
+export async function listChanges(
+  db: Database,
+  userId: string,
+  since: number,
+  limit: number,
+): Promise<{ changes: NoteChange[]; cursor: number; hasMore: boolean }> {
+  const rows = await db
+    .selectFrom('notes')
+    .selectAll()
+    .where('user_id', '=', userId)
+    .where('change_seq', '>', since)
+    .orderBy('change_seq')
+    .limit(limit + 1)
+    .execute()
+  const page = rows.slice(0, limit)
+  return {
+    changes: page.map((row) => ({ ...toNote(row), deleted: row.deleted_at !== null })),
+    cursor: page.at(-1)?.change_seq ?? since,
+    hasMore: rows.length > limit,
+  }
+}
+
 function findRow(
   db: Database | Transaction<DB>,
   userId: string,
   kind: NoteKind,
   key: string,
+  { includeDeleted = false } = {},
 ): Promise<NoteRow | undefined> {
   return db
     .selectFrom('notes')
@@ -146,7 +212,7 @@ function findRow(
     .where('user_id', '=', userId)
     .where('kind', '=', kind)
     .where('key', '=', key)
-    .where('deleted_at', 'is', null)
+    .$if(!includeDeleted, (qb) => qb.where('deleted_at', 'is', null))
     .executeTakeFirst()
 }
 
@@ -161,8 +227,10 @@ async function revisionContent(
     .select('content')
     .where('note_id', '=', noteId)
     .where('revision', '=', revision)
-    .executeTakeFirstOrThrow()
-  return row.content
+    .executeTakeFirst()
+  // Deleting a note removes its history: an edit based on a revision from before the deletion
+  // merges against an empty page, so the edit wins over the deletion.
+  return row?.content ?? ''
 }
 
 /** Hands out the user's next change sequence number; the row lock orders concurrent saves. */
