@@ -8,6 +8,7 @@ import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
 import { authRoutes, loadSession } from './auth/routes.ts'
 import { everythingEnabled, type EntitlementPolicy } from './entitlements.ts'
+import { exportRoutes } from './export/routes.ts'
 import { ApiError, type AppEnv } from './http.ts'
 import { notesRoutes } from './notes/routes.ts'
 import { settingsRoutes } from './settings/routes.ts'
@@ -52,6 +53,7 @@ export function createApp({
   api.route('/', authRoutes(now))
   api.route('/', notesRoutes())
   api.route('/', settingsRoutes())
+  api.route('/', exportRoutes())
   api.all('*', (c) => c.json({ error: 'not_found' } satisfies ApiErrorBody, 404))
   api.onError((error, c) => {
     if (error instanceof ApiError) {
