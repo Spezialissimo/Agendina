@@ -27,3 +27,10 @@ export type AuthState = z.infer<typeof AuthState>
 
 export const InstanceSettings = z.object({ signupOpen: z.boolean() })
 export type InstanceSettings = z.infer<typeof InstanceSettings>
+
+export const MeResponse = z.object({
+  user: User,
+  /** Features enabled for this user (all of them on self-hosted instances). */
+  features: z.array(z.string()),
+})
+export type MeResponse = z.infer<typeof MeResponse>

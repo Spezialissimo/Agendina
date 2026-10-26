@@ -7,8 +7,10 @@ import { bodyLimit } from 'hono/body-limit'
 import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
 import { authRoutes, loadSession } from './auth/routes.ts'
+import { everythingEnabled, type EntitlementPolicy } from './entitlements.ts'
 import { ApiError, type AppEnv } from './http.ts'
 import { notesRoutes } from './notes/routes.ts'
+import { settingsRoutes } from './settings/routes.ts'
 
 export interface AppOptions {
   version: string
@@ -17,9 +19,17 @@ export interface AppOptions {
   webDir?: string | undefined
   /** The clock; injectable for tests. */
   now?: () => Date
+  /** Which features each user may use; everything by default (self-hosting). */
+  entitlements?: EntitlementPolicy
 }
 
-export function createApp({ version, db, webDir, now = () => new Date() }: AppOptions) {
+export function createApp({
+  version,
+  db,
+  webDir,
+  now = () => new Date(),
+  entitlements = everythingEnabled,
+}: AppOptions) {
   const app = new Hono()
 
   const api = new Hono<AppEnv>()
@@ -34,12 +44,14 @@ export function createApp({ version, db, webDir, now = () => new Date() }: AppOp
   api.use(async (c, next) => {
     c.set('db', db)
     c.set('now', now)
+    c.set('entitlements', entitlements)
     await next()
   })
   api.use(loadSession)
   api.get('/health', (c) => c.json({ status: 'ok', version } satisfies HealthResponse))
   api.route('/', authRoutes(now))
   api.route('/', notesRoutes())
+  api.route('/', settingsRoutes())
   api.all('*', (c) => c.json({ error: 'not_found' } satisfies ApiErrorBody, 404))
   api.onError((error, c) => {
     if (error instanceof ApiError) {
