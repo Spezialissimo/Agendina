@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
+import { editorText, replaceText } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
@@ -26,11 +27,10 @@ describe('resolving a conflict', () => {
     const view = renderApp(server, '/day/2026-10-26')
     const textbox = await screen.findByRole('textbox', { name: TODAY })
     await waitFor(() => {
-      expect(textbox).toHaveValue(base)
+      expect(editorText(textbox)).toBe(base)
     })
     await api.saveNote('day', '2026-10-26', theirs, 1)
-    await view.user.clear(textbox)
-    await view.user.type(textbox, mine.replaceAll('[', '[['))
+    replaceText(textbox, mine)
     const resolver = await screen.findByRole(
       'group',
       { name: 'This page changed elsewhere' },
@@ -64,7 +64,7 @@ describe('resolving a conflict', () => {
     await user.click(within(resolver).getByRole('radio', { name: new RegExp(option) }))
     await user.click(within(resolver).getByRole('button', { name: 'Save' }))
 
-    expect(await editor()).toHaveValue(expected)
+    expect(editorText(await editor())).toBe(expected)
     await waitFor(async () => {
       expect(await stored()).toBe(expected)
     })
@@ -108,7 +108,7 @@ describe('resolving a conflict', () => {
 
     await user.click(within(resolver).getByRole('button', { name: 'Discard my version' }))
 
-    expect(await editor()).toHaveValue('Run 10km')
+    expect(editorText(await editor())).toBe('Run 10km')
     expect(await stored()).toBe('Run 10km')
   })
 

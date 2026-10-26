@@ -12,6 +12,7 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
 - Postgres tests: `docker run -d --name agendina-test-pg -e POSTGRES_PASSWORD=test -p 54329:5432 postgres:17-alpine`
   then `TEST_POSTGRES_URL=postgres://postgres:test@localhost:54329/postgres pnpm test`. Without
   the variable, database tests run on SQLite only (CI always runs both).
+- `pnpm test:browser`: editor component tests in real Chromium
 - `pnpm e2e`: Playwright against the production build in Chromium, Firefox and WebKit
 - `pnpm check`: format check + lint + typecheck + unit tests. **Must pass before work is done.**
 - `pnpm format`: Prettier write
@@ -41,6 +42,11 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
 - `e2e/`: Playwright specs; each project (api, chromium, firefox, webkit) gets its own server
   and in-memory database, so every journey starts on a fresh instance. Wait for autosave by
   polling the API (`savedOnServer`), not for a "Saved" label that may already be showing.
+- The editor (CodeMirror) is tested in three layers: pure functions on `EditorState` (Node);
+  real typing and clicking in `*.browser.test.tsx` (Vitest browser mode, Chromium:
+  `pnpm test:browser`); app tests in jsdom drive it through CodeMirror's API with
+  `src/test/editor.ts` (`typeInto`, `replaceText`, `editorText`), as jsdom cannot type into a
+  contenteditable.
 - user-event quirks: type a literal `[` as `[[`; press `.`/`,` by code (`[Period]`, `[Comma]`).
 
 ## How we work: test-driven

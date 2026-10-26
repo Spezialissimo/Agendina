@@ -23,3 +23,12 @@ if (!('PointerEvent' in window)) {
 if (!('setPointerCapture' in Element.prototype)) {
   Object.defineProperty(Element.prototype, 'setPointerCapture', { value: () => undefined })
 }
+
+// CodeMirror measures text with Range geometry, which jsdom does not implement.
+for (const method of ['getClientRects', 'getBoundingClientRect'] as const) {
+  if (!(method in Range.prototype)) {
+    Object.defineProperty(Range.prototype, method, {
+      value: method === 'getClientRects' ? () => [] : () => new DOMRect(),
+    })
+  }
+}

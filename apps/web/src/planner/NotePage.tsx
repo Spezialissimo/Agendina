@@ -70,7 +70,11 @@ function EditablePage({ view, label }: { view: NoteView; label: string }) {
   const document = useNoteDocument(view.kind, view.key)
   return (
     <>
-      {document.conflict === undefined ? (
+      {document.isError && document.status === 'loading' && (
+        <p role="alert">This page could not be loaded. It will be retried when you come back.</p>
+      )}
+      {/* Only once loaded: text typed into an editor that is still loading would be overwritten. */}
+      {document.status === 'loading' ? null : document.conflict === undefined ? (
         <PageEditor label={label} value={document.text} onChange={document.edit} />
       ) : (
         <ConflictResolver

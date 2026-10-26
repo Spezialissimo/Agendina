@@ -3,6 +3,7 @@ import { US_WEEK, type Layout } from '@agendina/core'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
+import { editorText } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
@@ -31,11 +32,11 @@ describe('planner', () => {
 
       renderApp(server, '/day/2026-10-26')
 
-      expect(await screen.findByText('| Squat | [x] |')).toBeInTheDocument()
-      expect(within(page('Week 44')).getByText('| Squat | [x] |')).toBeInTheDocument()
-      expect(
-        within(page('Monday, 26 October 2026')).getByText('- [ ] Finish report'),
-      ).toBeInTheDocument()
+      const week = await screen.findByRole('textbox', { name: 'Week 44' })
+      const day = await screen.findByRole('textbox', { name: 'Monday, 26 October 2026' })
+      expect(page('Week 44')).toContainElement(week)
+      expect(editorText(week)).toBe('| Squat | [x] |')
+      expect(editorText(day)).toBe('- [ ] Finish report')
     })
 
     it('shows empty pages for days nobody wrote yet', async () => {
@@ -53,7 +54,7 @@ describe('planner', () => {
 
       renderApp(server, '/day/2026-10-26')
 
-      expect(await screen.findByText('US week')).toBeInTheDocument()
+      expect(editorText(await screen.findByRole('textbox', { name: 'Week 44' }))).toBe('US week')
       const days = within(await screen.findByRole('navigation', { name: 'Week' })).getAllByRole(
         'link',
       )

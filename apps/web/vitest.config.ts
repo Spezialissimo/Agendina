@@ -7,5 +7,7 @@ export default defineProject({
     name: 'web',
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
+    // Real-browser tests run separately (vitest.browser.config.ts).
+    exclude: ['**/node_modules/**', 'src/**/*.browser.test.tsx'],
   },
 })
