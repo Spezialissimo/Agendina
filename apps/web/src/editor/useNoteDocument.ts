@@ -1,5 +1,5 @@
 import type { Note, NoteKind } from '@agendina/contract'
-import type { MergeChunk } from '@agendina/core'
+import { merge3, type MergeChunk } from '@agendina/core'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApi } from '../app/AppProviders.tsx'
@@ -76,6 +76,15 @@ export function useNoteDocument(kind: NoteKind, key: string) {
   // Retries and follow-up saves call the latest `save` through this ref.
   const saveLater = useRef<() => void>(() => undefined)
 
+  /** Takes `note` as the new base: the user's text now builds on top of it. */
+  const adopt = (current: Note) => {
+    const s = sync.current
+    s.base = current.revision
+    s.saved = current.content
+    s.retries = 0
+    queryClient.setQueryData(queryKey, current)
+  }
+
   const save = useCallback(
     async ({ keepalive = false }: { keepalive?: boolean } = {}): Promise<void> => {
       const s = sync.current
@@ -87,18 +96,26 @@ export function useNoteDocument(kind: NoteKind, key: string) {
       try {
         const result = await api.saveNote(kind, key, sent, s.base, { keepalive })
         if (result.status === 'conflict') {
-          s.conflicted = true
-          setConflict({ current: result.current, chunks: result.chunks })
-          setStatus('conflict')
-          return
+          // Re-merge against what is on screen now (the user may have typed since sending).
+          const merged = merge3(s.saved, s.text, result.current.content)
+          adopt(result.current)
+          if (merged.status === 'clean') {
+            show(merged.text)
+          } else {
+            s.conflicted = true
+            setConflict({ current: result.current, chunks: merged.chunks })
+            setStatus('conflict')
+            return
+          }
+        } else {
+          s.base = result.note.revision
+          s.saved = result.note.content
+          s.retries = 0
+          queryClient.setQueryData(queryKey, result.note)
+          if (kind === 'day') void queryClient.invalidateQueries({ queryKey: ['notes'] })
+          // Merged with changes from elsewhere: show them, unless the user typed meanwhile.
+          if (s.text === sent && result.note.content !== sent) show(result.note.content)
         }
-        s.base = result.note.revision
-        s.saved = result.note.content
-        s.retries = 0
-        queryClient.setQueryData(queryKey, result.note)
-        if (kind === 'day') void queryClient.invalidateQueries({ queryKey: ['notes'] })
-        // Merged with changes from elsewhere: show them, unless the user typed meanwhile.
-        if (s.text === sent && result.note.content !== sent) show(result.note.content)
       } catch {
         setStatus('offline')
         const delay = RETRY_DELAYS_MS[Math.min(s.retries, RETRY_DELAYS_MS.length - 1)]
@@ -153,5 +170,28 @@ export function useNoteDocument(kind: NoteKind, key: string) {
     }
   }, [save])
 
-  return { text, status, conflict, edit, isError: note.isError }
+  /** Ends a conflict with `resolved` as the page text (saved on top of the other version). */
+  const resolve = useCallback((resolved: string) => {
+    const s = sync.current
+    s.conflicted = false
+    setConflict(undefined)
+    show(resolved)
+    if (resolved === s.saved) {
+      setStatus('saved')
+    } else {
+      setStatus('dirty')
+      saveLater.current()
+    }
+  }, [])
+
+  /** Ends a conflict by taking the other version as it is. */
+  const discard = useCallback(() => {
+    const s = sync.current
+    s.conflicted = false
+    setConflict(undefined)
+    show(s.saved)
+    setStatus('saved')
+  }, [])
+
+  return { text, status, conflict, edit, resolve, discard, isError: note.isError }
 }

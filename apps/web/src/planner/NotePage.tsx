@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
 import { format, formatRange } from './weeks.ts'
+import { ConflictResolver } from '../editor/ConflictResolver.tsx'
 import { PageEditor } from '../editor/PageEditor.tsx'
 import { useNoteDocument, type SaveStatus } from '../editor/useNoteDocument.ts'
 import { addDays, weekNumber } from '@agendina/core'
@@ -69,7 +70,15 @@ function EditablePage({ view, label }: { view: NoteView; label: string }) {
   const document = useNoteDocument(view.kind, view.key)
   return (
     <>
-      <PageEditor label={label} value={document.text} onChange={document.edit} />
+      {document.conflict === undefined ? (
+        <PageEditor label={label} value={document.text} onChange={document.edit} />
+      ) : (
+        <ConflictResolver
+          chunks={document.conflict.chunks}
+          onResolve={document.resolve}
+          onDiscard={document.discard}
+        />
+      )}
       <p className="save-status" role="status" data-status={document.status}>
         {STATUS_TEXT[document.status]}
       </p>

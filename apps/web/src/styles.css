@@ -16,6 +16,7 @@
   --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: light;
+  accent-color: var(--accent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -537,4 +538,69 @@ button {
 .save-status[data-status='offline'],
 .save-status[data-status='conflict'] {
   color: var(--danger);
+}
+
+/* Conflict resolution */
+
+.conflict {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.conflict h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--danger);
+}
+
+.conflict .hint {
+  margin: 0;
+}
+
+.conflict pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font: 0.85rem/1.5 var(--font-mono);
+}
+
+.conflict-context {
+  color: var(--ink-soft);
+  opacity: 0.7;
+}
+
+.clash {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px dashed var(--danger);
+  border-radius: 8px;
+}
+
+.clash-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.clash-option[data-checked] {
+  background: var(--rule);
+}
+
+.clash-option span {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.clash-option pre {
+  grid-column: 2;
+}
+
+.conflict-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }
