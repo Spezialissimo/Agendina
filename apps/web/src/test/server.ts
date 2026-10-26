@@ -8,6 +8,8 @@ export interface TestServer {
   /** A fetch that calls the real server in-process and keeps its session cookie, like a browser. */
   fetch: FetchFn
   db: Database
+  /** Simulates losing the connection: fetches fail like a browser's would. */
+  setOffline(offline: boolean): void
   /** Signs up through the API (the first account becomes the admin) and keeps the session. */
   signup(email?: string): Promise<void>
   close(): Promise<void>
@@ -19,12 +21,17 @@ export async function startTestServer(options: { now?: () => Date } = {}): Promi
   await migrateToLatest(handle.db)
   const app = createApp({ version: 'test', db: handle.db, ...options })
   let cookie: string | undefined
+  let offline = false
 
   const fetchFn: FetchFn = async (input, init = {}) => {
+    if (offline) throw new TypeError('Failed to fetch')
     const headers = new Headers(init.headers)
     if (cookie !== undefined) headers.set('cookie', cookie)
     if ((init.method ?? 'GET') !== 'GET') headers.set('origin', 'http://localhost')
-    const res = await app.request(input, { ...init, headers })
+    // Like a network hop: the server never sees browser-only options such as keepalive.
+    const forwarded = { ...init, headers }
+    delete forwarded.keepalive
+    const res = await app.request(input, forwarded)
     const session = /agendina_session=([^;]*)/.exec(res.headers.get('set-cookie') ?? '')
     if (session !== null) cookie = session[1] === '' ? undefined : `agendina_session=${session[1]}`
     return res
@@ -33,6 +40,9 @@ export async function startTestServer(options: { now?: () => Date } = {}): Promi
   return {
     fetch: fetchFn,
     db: handle.db,
+    setOffline(value) {
+      offline = value
+    },
     async signup(email = 'me@example.com') {
       const res = await fetchFn('/api/auth/signup', {
         method: 'POST',

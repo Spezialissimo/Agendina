@@ -74,18 +74,23 @@ export class Api {
     return (await this.call('GET', `/api/notes?${query.toString()}`, NotesResponse)).notes
   }
 
-  /** Saves on top of `baseRevision`; a conflict is a normal result, not an error. */
+  /**
+   * Saves on top of `baseRevision`; a conflict is a normal result, not an error. `keepalive` lets
+   * the request finish even if the page is being closed.
+   */
   async saveNote(
     kind: NoteKind,
     key: string,
     content: string,
     baseRevision: number,
+    { keepalive = false }: { keepalive?: boolean } = {},
   ): Promise<SaveResult> {
     const res = await this.send(
       'PUT',
       `/api/notes/${kind}/${key}`,
       { content, baseRevision },
       [409],
+      keepalive,
     )
     if (res.status === 409) {
       const { current, chunks } = NoteConflict.parse(await res.json())
@@ -121,9 +126,11 @@ export class Api {
     path: string,
     body?: unknown,
     allowed: number[] = [],
+    keepalive = false,
   ): Promise<Response> {
     const res = await this.fetchFn(path, {
       method,
+      ...(keepalive ? { keepalive } : {}),
       ...(body === undefined
         ? {}
         : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
