@@ -28,7 +28,9 @@ export interface DatabaseOptions {
 export function createDatabase(
   url: string,
   {
-    onConnectionError = (error) => console.error('Postgres connection error:', error.message),
+    onConnectionError = (error) => {
+      console.error('Postgres connection error:', error.message)
+    },
   }: DatabaseOptions = {},
 ): DatabaseHandle {
   if (url.startsWith('sqlite:')) {
