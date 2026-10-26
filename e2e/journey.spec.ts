@@ -1,51 +1,5 @@
-import { NoteResponse } from '@agendina/contract'
-import { expect, test, type Page } from '@playwright/test'
-
-const EMAIL = 'journal@example.com'
-const PASSWORD = 'correct horse battery staple'
-
-/** Today in the browser's (= this machine's) time zone, as the app computes it. */
-function localToday(): string {
-  const now = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-}
-
-/** Waits until the server holds `content` for a page (autosave is debounced); returns its revision. */
-async function savedOnServer(page: Page, path: string, content: string): Promise<number> {
-  let revision = 0
-  await expect(async () => {
-    const res = await page.request.get(`/api/notes/${path}`)
-    expect(res.status()).toBe(200)
-    const { note } = NoteResponse.parse(await res.json())
-    expect(note.content).toBe(content)
-    revision = note.revision
-  }).toPass()
-  return revision
-}
-
-/** A checkbox inside a page editor, by its label ("Finish report", or "Squat, Mo" in a table). */
-function checkbox(page: Page, label: string) {
-  return page.locator(`input.cm-checkbox[aria-label="${label}"]`)
-}
-
-async function enter(page: Page) {
-  await page.goto('/')
-  const welcome = page.getByRole('heading', { name: 'Welcome to Agendina' })
-  const signIn = page.getByRole('button', { name: 'Sign in' })
-  await expect(welcome.or(signIn)).toBeVisible()
-  await page.getByLabel('Email').fill(EMAIL)
-  if (await welcome.isVisible()) {
-    await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
-    await page.getByLabel('Repeat password').fill(PASSWORD)
-    await page.getByRole('button', { name: 'Create account' }).click()
-  } else {
-    // A retry on the same server: the account exists already.
-    await page.getByLabel('Password').fill(PASSWORD)
-    await signIn.click()
-  }
-  await expect(page.getByRole('navigation', { name: 'Week' })).toBeVisible()
-}
+import { expect, test } from '@playwright/test'
+import { checkbox, enter, localToday, savedOnServer } from './helpers.ts'
 
 test('a week of journaling', async ({ page }) => {
   const week = page.getByRole('textbox', { name: 'Week 44' })
