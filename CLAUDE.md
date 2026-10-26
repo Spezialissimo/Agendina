@@ -52,6 +52,7 @@ routes')`, not `it('calls readWebFile twice')`.
 - Validate all external input (HTTP bodies, env, stored JSON) with Zod at the boundary.
 - Comments only for the non-obvious "why".
 - TypeScript is pinned to 6.x until typescript-eslint supports 7 (ADR 0003).
+- When upgrading `@playwright/test`, update the Playwright container tag in `.github/workflows/ci.yml`.
 
 ## Product guardrails
 
