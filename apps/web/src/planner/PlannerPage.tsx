@@ -15,6 +15,7 @@ import { COMMANDS, type CommandId } from '../commands/registry.ts'
 import { useShortcuts } from '../commands/useShortcuts.ts'
 import { toggleAtCursor } from '../editor/checkboxes.ts'
 import { applyToFocusedEditor } from '../editor/focusedEditor.ts'
+import { addColumn, addRow } from '../editor/tables.ts'
 import { LayoutView } from './LayoutView.tsx'
 import { PlannerContext } from './PlannerContext.tsx'
 import { WeekStrip } from './WeekStrip.tsx'
@@ -69,6 +70,12 @@ function Planner({ focus }: { focus: DayKey }) {
           break
         case 'editor.toggleCheckbox':
           applyToFocusedEditor(toggleAtCursor)
+          break
+        case 'editor.addTableRow':
+          applyToFocusedEditor(addRow)
+          break
+        case 'editor.addTableColumn':
+          applyToFocusedEditor(addColumn)
           break
       }
     },

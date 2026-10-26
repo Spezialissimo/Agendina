@@ -22,26 +22,30 @@ function state(docWithCursor: string, extraCursors: number[] = []): EditorState 
 }
 
 /** What the reader sees on a line: the text with hidden ranges removed and replacements shown. */
+/** What the reader sees: hidden ranges removed, widgets shown as symbols (▦ for a table grid). */
 function rendered(s: EditorState, items: PreviewItem[]): string {
-  const doc = s.doc.toString()
+  const symbol = (item: PreviewItem): string | undefined => {
+    switch (item.kind) {
+      case 'hide':
+        return ''
+      case 'bullet':
+        return '•'
+      case 'rule':
+        return '———'
+      case 'checkbox':
+        return item.checked ? '☑' : '☐'
+      case 'table':
+        return '▦'
+      default:
+        return undefined
+    }
+  }
+  let text = s.doc.toString()
   const edits = items
-    .filter(
-      (i) => i.kind === 'hide' || i.kind === 'bullet' || i.kind === 'rule' || i.kind === 'checkbox',
-    )
+    .filter((i) => symbol(i) !== undefined && 'to' in i)
     .sort((a, b) => b.from - a.from)
-  let text = doc
   for (const item of edits) {
-    const replacement =
-      item.kind === 'bullet'
-        ? '•'
-        : item.kind === 'rule'
-          ? '———'
-          : item.kind === 'checkbox'
-            ? item.checked
-              ? '☑'
-              : '☐'
-            : ''
-    text = text.slice(0, item.from) + replacement + text.slice(item.to)
+    if ('to' in item) text = text.slice(0, item.from) + (symbol(item) ?? '') + text.slice(item.to)
   }
   return text
 }
@@ -137,10 +141,28 @@ describe('livePreview', () => {
     expect(rendered(s, livePreview(s))).toBe('- [ ] call dentist')
   })
 
-  it('turns checkbox cells of tables into checkboxes, leaving the rest of the table alone', () => {
-    const s = state('| Exercise | Mo |\n|---|---|\n| **Squat** | [x] |\n‸')
+  it('renders a table as a grid when the cursor is elsewhere', () => {
+    const s = state('intro\n\n| Exercise | Mo |\n|---|---|\n| **Squat** | [x] |\n\nout‸')
 
-    expect(rendered(s, livePreview(s))).toBe('| Exercise | Mo |\n|---|---|\n| **Squat** | ☑ |\n')
+    const items = livePreview(s)
+
+    expect(rendered(s, items)).toBe('intro\n\n▦\n\nout')
+    expect(items.filter((i) => i.kind === 'checkbox')).toEqual([])
+  })
+
+  it('shows a table as aligned text with checkboxes while the cursor is in it', () => {
+    const s = state('| Exercise | Mo |\n|---|---|\n| **Squat**‸ | [x] |')
+
+    const items = livePreview(s)
+
+    expect(rendered(s, items)).toBe('| Exercise | Mo |\n|---|---|\n| **Squat** | ☑ |')
+    expect(lineClasses(items, s)).toEqual(['1:cm-table-line', '2:cm-table-line', '3:cm-table-line'])
+  })
+
+  it('renders every table as a grid in an unfocused editor', () => {
+    const s = state('| a |\n|---|\n| [‸ ] |')
+
+    expect(rendered(s, livePreview(s, { focused: false }))).toBe('▦')
   })
 
   it('renders quotes and horizontal rules', () => {
@@ -150,12 +172,6 @@ describe('livePreview', () => {
 
     expect(rendered(s, items)).toBe('stay curious\n\n———\n')
     expect(lineClasses(items, s)).toEqual(['1:cm-quote'])
-  })
-
-  it('leaves tables untouched (they get their own rendering)', () => {
-    const s = state('| a | b |\n|---|---|\n| **x** | y |\n‸')
-
-    expect(rendered(s, livePreview(s))).toBe('| a | b |\n|---|---|\n| **x** | y |\n')
   })
 
   it('keeps every line with a cursor raw', () => {

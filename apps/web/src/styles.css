@@ -715,3 +715,40 @@ button {
   text-decoration: line-through;
   text-decoration-color: color-mix(in srgb, var(--ink-soft) 60%, transparent);
 }
+
+/* Tables */
+
+.editor .cm-table-line {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  white-space: pre;
+}
+
+.editor .cm-table-widget {
+  padding: 0.25rem 0;
+}
+
+.editor .cm-table-widget table {
+  border-collapse: collapse;
+}
+
+.editor .cm-table-widget th,
+.editor .cm-table-widget td {
+  border: 1px solid var(--rule);
+  padding: 0.3rem 0.75rem;
+  text-align: left;
+  cursor: text;
+}
+
+.editor .cm-table-widget th {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--rule) 45%, transparent);
+}
+
+.editor .cm-table-widget td:has(.cm-checkbox) {
+  text-align: center;
+}
+
+.editor .cm-table-widget .cm-checkbox {
+  margin: 0;
+}
