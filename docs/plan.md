@@ -14,11 +14,12 @@ by layout A below).
 
 ## Decisions
 - **Storage**: the database is the source of truth; note content is stored verbatim as markdown.
-  SQLite for self-host, Postgres for hosted, behind one Drizzle schema.
+  SQLite (built-in `node:sqlite`) for self-host, Postgres for hosted, behind one Kysely schema
+  (ADR 0010).
 - **Merging / offline**: revisions + line-based three-way merge (git-like). No CRDT.
   Edits in different places merge automatically; overlapping edits keep both versions and show a
   resolve UI — the app never invents text.
-- **Stack**: full TypeScript pnpm monorepo. React + Vite frontend, Node + Hono backend, Drizzle,
+- **Stack**: full TypeScript pnpm monorepo. React + Vite frontend, Node + Hono backend, Kysely (ADR 0010),
   Zod-typed API contract shared by client and server, Vitest + Playwright.
 - **Editor**: CodeMirror 6 live preview (markdown rendered inline; raw syntax only on the cursor
   line). Built in steps: inline rendering → clickable checkboxes (lists + table cells) → table
@@ -56,7 +57,7 @@ apps/server     Hono API, auth, sync endpoints, export, serves the built web app
 packages/core   pure domain: periods/week math, focus navigation, merge (diff3), layout tree
                 resolver, keymap matching, template propagation — no I/O, used by web + server
 packages/contract  Zod schemas + types for every API request/response
-packages/db     Drizzle schema, migrations, repositories (SQLite + Postgres)
+packages/db     Kysely table types, migrations, test databases (node:sqlite + Postgres)
 e2e/            Playwright tests (Chromium, WebKit, Firefox)
 docs/adr/       one ADR per decision above
 ```
@@ -92,11 +93,11 @@ or a merge result, or `409 {conflict: base/mine/theirs}` · `GET /changes?since=
   ADRs; keep `core` pure.
 
 ## Roadmap
-**Phase 0 — Foundation**: monorepo, tooling, CI, CLAUDE.md, ADRs for the decisions above, health
+**Phase 0 — Foundation** ✅: monorepo, tooling, CI, CLAUDE.md, ADRs for the decisions above, health
 endpoint, a Playwright smoke test, Dockerfile skeleton.
-**Phase 1 — Core domain**: period keys and week math (configurable week start), focus navigation,
+**Phase 1 — Core domain** ✅: period keys and week math (configurable week start), focus navigation,
 diff3 merge, layout tree + resolver, keymap matching + reserved combos, template propagation logic.
-**Phase 2 — Server**: schema + migrations (SQLite + PG), auth (first user = admin, signup toggle),
+**Phase 2 — Server** ✅ (PRs #9–#15): schema + migrations (SQLite + PG), auth (first user = admin, signup toggle),
 notes API with revisions/merge/409, changes feed, settings, entitlements stub, export as a .md zip.
 **Phase 3 — Web shell**: login, layout A renderer, week strip + month popover, command registry
 + default cmd shortcuts + palette, autosave (debounced) with revision handling, conflict resolve UI.
