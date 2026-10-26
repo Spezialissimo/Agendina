@@ -1,9 +1,12 @@
 import { compareDays } from '@agendina/core'
 import {
+  ChangesQuery,
+  DeleteNoteQuery,
   NoteKey,
   NoteKind,
   NotesQuery,
   SaveNoteRequest,
+  type ChangesResponse,
   type NoteConflict,
   type NoteResponse,
   type NotesResponse,
@@ -12,7 +15,7 @@ import {
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import { ApiError, readJson, requireUser, type AppEnv } from '../http.ts'
-import { getNote, listNotes, saveNote } from './repository.ts'
+import { deleteNote, getNote, listChanges, listNotes, saveNote } from './repository.ts'
 
 /** The week strip and a year view are the largest ranges the app needs. */
 const MAX_RANGE_DAYS = 366
@@ -64,6 +67,20 @@ export function notesRoutes() {
       )
     }
     return c.json({ note: result.note, merged: result.merged } satisfies SaveNoteResponse)
+  })
+
+  routes.delete('/notes/:kind/:key', async (c) => {
+    const user = requireUser(c)
+    const { kind, key } = notePath(c)
+    const { baseRevision } = parse(DeleteNoteQuery, c.req.query())
+    await deleteNote(c.get('db'), user.id, kind, key, baseRevision, c.get('now')())
+    return c.body(null, 204)
+  })
+
+  routes.get('/changes', async (c) => {
+    const user = requireUser(c)
+    const { since, limit } = parse(ChangesQuery, c.req.query())
+    return c.json((await listChanges(c.get('db'), user.id, since, limit)) satisfies ChangesResponse)
   })
 
   return routes
