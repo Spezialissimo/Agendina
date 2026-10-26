@@ -47,12 +47,24 @@ importers:
       '@agendina/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@agendina/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@agendina/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@hono/node-server':
         specifier: ^2.1.5
         version: 2.1.5(hono@4.13.13)
       hono:
         specifier: ^4.13.13
         version: 4.13.13
+      kysely:
+        specifier: ^0.29.7
+        version: 0.29.7
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@types/node':
         specifier: ^26.6.5

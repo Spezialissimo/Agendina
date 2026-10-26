@@ -18,6 +18,7 @@ ARG AGENDINA_VERSION=0.0.0-dev
 ENV NODE_ENV=production \
     AGENDINA_VERSION=${AGENDINA_VERSION} \
     AGENDINA_WEB_DIR=/app/web \
+    AGENDINA_DATABASE_URL=sqlite:/data/agendina.db \
     PORT=3000
 WORKDIR /app
 COPY --from=build /src/apps/server/dist/ ./server/

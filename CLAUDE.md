@@ -43,8 +43,11 @@ Rules:
 
 - Never delete, skip or weaken a test to make it pass. If a test is wrong, say so explicitly
   and explain why before changing it.
-- When adding a guard (security, validation), prove the test catches the bug by temporarily
-  removing the guard.
+- When adding a guard (security, validation, concurrency), prove the test catches the bug by
+  temporarily removing the guard. Vitest hides console output of passing tests; log to a file
+  when debugging.
+- Concurrency tests on Postgres: warm the pool first (one query per concurrent task), or the
+  transactions will not actually overlap.
 - Property-based tests (fast-check) for algorithmic code in `core` (merge, date math).
 - Tests describe behaviour, not implementation: `it('falls back to index.html for client-side
 routes')`, not `it('calls readWebFile twice')`.

@@ -7,6 +7,7 @@ describe('loadConfig', () => {
       host: '0.0.0.0',
       port: 3000,
       version: '0.0.0-dev',
+      databaseUrl: 'sqlite:./data/agendina.db',
     })
   })
 
@@ -17,8 +18,15 @@ describe('loadConfig', () => {
         PORT: '8080',
         AGENDINA_VERSION: '1.0.0',
         AGENDINA_WEB_DIR: '/app/web',
+        AGENDINA_DATABASE_URL: 'postgres://db/agendina',
       }),
-    ).toEqual({ host: '127.0.0.1', port: 8080, version: '1.0.0', webDir: '/app/web' })
+    ).toEqual({
+      host: '127.0.0.1',
+      port: 8080,
+      version: '1.0.0',
+      webDir: '/app/web',
+      databaseUrl: 'postgres://db/agendina',
+    })
   })
 
   it.each(['abc', '0', '70000', '80.5'])('rejects invalid PORT %s', (port) => {

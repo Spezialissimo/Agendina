@@ -14,3 +14,4 @@ One file per decision: context, decision, consequences. Superseded ADRs stay, ma
 | 0008 | [Templates as versioned notes](0008-templates.md)                 | Accepted |
 | 0009 | [AI-driven test-driven development](0009-testing.md)              | Accepted |
 | 0010 | [Kysely on node:sqlite and Postgres](0010-database-layer.md)      | Accepted |
+| 0011 | [Accounts and sessions](0011-authentication.md)                   | Accepted |

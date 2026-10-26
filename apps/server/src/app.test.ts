@@ -2,12 +2,16 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { HealthResponse } from '@agendina/contract'
+import { createDatabase } from '@agendina/db'
 import { describe, expect, it } from 'vitest'
 import { createApp } from './app.ts'
 
+// These endpoints never touch the database, so an empty one is enough.
+const { db } = createDatabase('sqlite::memory:')
+
 describe('GET /api/health', () => {
   it('reports ok with the running version', async () => {
-    const app = createApp({ version: '1.2.3' })
+    const app = createApp({ version: '1.2.3', db })
 
     const res = await app.request('/api/health')
 
@@ -18,7 +22,7 @@ describe('GET /api/health', () => {
 
 describe('unknown API routes', () => {
   it('return a JSON 404 instead of the web app', async () => {
-    const app = createApp({ version: '1.2.3', webDir: makeWebDir() })
+    const app = createApp({ version: '1.2.3', db, webDir: makeWebDir() })
 
     const res = await app.request('/api/does-not-exist')
 
@@ -29,7 +33,7 @@ describe('unknown API routes', () => {
 
 describe('serving the web app', () => {
   it('serves built static assets', async () => {
-    const app = createApp({ version: '1.2.3', webDir: makeWebDir() })
+    const app = createApp({ version: '1.2.3', db, webDir: makeWebDir() })
 
     const res = await app.request('/assets/app.js')
 
@@ -38,7 +42,7 @@ describe('serving the web app', () => {
   })
 
   it('falls back to index.html for client-side routes', async () => {
-    const app = createApp({ version: '1.2.3', webDir: makeWebDir() })
+    const app = createApp({ version: '1.2.3', db, webDir: makeWebDir() })
 
     const res = await app.request('/week/2026-W43')
 
@@ -50,7 +54,7 @@ describe('serving the web app', () => {
   it('never serves files outside the web directory', async () => {
     const webDir = makeWebDir()
     writeFileSync(join(webDir, '..', 'agendina-secret.txt'), 'secret')
-    const app = createApp({ version: '1.2.3', webDir })
+    const app = createApp({ version: '1.2.3', db, webDir })
 
     const res = await app.request('/..%2Fagendina-secret.txt')
 
@@ -58,7 +62,7 @@ describe('serving the web app', () => {
   })
 
   it('is disabled when no web directory is configured', async () => {
-    const app = createApp({ version: '1.2.3' })
+    const app = createApp({ version: '1.2.3', db })
 
     const res = await app.request('/')
 

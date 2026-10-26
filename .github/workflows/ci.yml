@@ -69,6 +69,8 @@ jobs:
       - name: Smoke test the image
         run: |
           docker run -d --name agendina -p 3000:3000 agendina:ci
-          for i in $(seq 1 20); do curl -sf localhost:3000/api/health && exit 0; sleep 1; done
-          docker logs agendina
-          exit 1
+          for i in $(seq 1 20); do curl -sf localhost:3000/api/health && break; sleep 1; done
+          # Signing up exercises the bundled database drivers, migrations and password hashing.
+          curl -sf -H 'content-type: application/json' -H 'origin: http://localhost:3000' \
+            -d '{"email":"ci@example.com","password":"correct horse battery"}' \
+            localhost:3000/api/auth/signup || { docker logs agendina; exit 1; }

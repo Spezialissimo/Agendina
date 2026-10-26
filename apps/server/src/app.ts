@@ -1,20 +1,50 @@
 import { readFile } from 'node:fs/promises'
 import { join, normalize, relative, sep } from 'node:path'
-import type { HealthResponse } from '@agendina/contract'
+import type { ApiErrorBody, HealthResponse } from '@agendina/contract'
+import type { Database } from '@agendina/db'
 import { Hono } from 'hono'
+import { csrf } from 'hono/csrf'
+import { HTTPException } from 'hono/http-exception'
+import { authRoutes, loadSession } from './auth/routes.ts'
+import { ApiError, type AppEnv } from './http.ts'
 
 export interface AppOptions {
   version: string
+  db: Database
   /** Directory with the built web app. When omitted, only the API is served. */
-  webDir?: string
+  webDir?: string | undefined
+  /** The clock; injectable for tests. */
+  now?: () => Date
 }
 
-export function createApp({ version, webDir }: AppOptions) {
+export function createApp({ version, db, webDir, now = () => new Date() }: AppOptions) {
   const app = new Hono()
 
-  const api = new Hono()
+  const api = new Hono<AppEnv>()
+  api.use(csrf())
+  api.use(async (c, next) => {
+    c.set('db', db)
+    c.set('now', now)
+    await next()
+  })
+  api.use(loadSession)
   api.get('/health', (c) => c.json({ status: 'ok', version } satisfies HealthResponse))
-  api.all('*', (c) => c.json({ error: 'not_found' }, 404))
+  api.route('/', authRoutes(now))
+  api.all('*', (c) => c.json({ error: 'not_found' } satisfies ApiErrorBody, 404))
+  api.onError((error, c) => {
+    if (error instanceof ApiError) {
+      const body: ApiErrorBody & { details?: unknown } = { error: error.code }
+      if (error.details !== undefined && error.status === 400) body.details = error.details
+      return c.json(body, error.status)
+    }
+    if (error instanceof HTTPException) {
+      // Raised by Hono middleware, e.g. the CSRF origin check (403).
+      const code = error.status === 403 ? 'forbidden' : 'http_error'
+      return c.json({ error: code } satisfies ApiErrorBody, error.status)
+    }
+    console.error(error)
+    return c.json({ error: 'internal_error' } satisfies ApiErrorBody, 500)
+  })
   app.route('/api', api)
 
   if (webDir !== undefined) {
