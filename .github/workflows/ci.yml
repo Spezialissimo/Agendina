@@ -24,6 +24,12 @@ jobs:
     name: End-to-end (Chromium, Firefox, WebKit)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Browsers and their system packages are preinstalled in this image, so the job does not
+    # depend on the (sometimes very slow) Ubuntu package mirror. Keep the tag equal to the
+    # installed @playwright/test version; the "Check the container" step enforces it.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --user 1001
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -32,7 +38,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Check the container matches @playwright/test
+        run: test "$(pnpm exec playwright --version)" = "Version 1.64.1"
       - run: pnpm e2e
       - uses: actions/upload-artifact@v4
         if: failure()
