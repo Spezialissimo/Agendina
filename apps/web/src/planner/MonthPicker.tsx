@@ -10,8 +10,13 @@ interface Props {
 }
 
 /** The calendar button: a month calendar to jump to any day. */
-export function MonthPicker({ focus, rule, onPick }: Props) {
-  const [open, setOpen] = useState(false)
+export function MonthPicker({
+  focus,
+  rule,
+  onPick,
+  open,
+  setOpen,
+}: Props & { open: boolean; setOpen: (open: boolean) => void }) {
   return (
     <div className="month-picker">
       <button
@@ -20,7 +25,7 @@ export function MonthPicker({ focus, rule, onPick }: Props) {
         aria-label="Choose a day"
         aria-expanded={open}
         onClick={() => {
-          setOpen((o) => !o)
+          setOpen(!open)
         }}
       >
         <CalendarIcon />
