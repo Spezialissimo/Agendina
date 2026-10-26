@@ -105,7 +105,7 @@ describe('writing on a page', () => {
     expect(await stored('day', '2026-10-26')).toBe('- [x] Call dentist\n- [ ] Run 5km\nFelt good')
   })
 
-  it('stops and keeps your text when the same line was changed elsewhere', async () => {
+  it('stops and asks how to resolve when the same line was changed elsewhere', async () => {
     await api.saveNote('day', '2026-10-26', 'Run 5km', 0)
     const { user } = renderApp(server, '/day/2026-10-26')
     const textbox = await editor(TODAY)
@@ -120,7 +120,11 @@ describe('writing on a page', () => {
     await waitFor(() => {
       expect(status(TODAY)).toHaveTextContent('Conflict')
     })
-    expect(textbox).toHaveValue('Run 8km')
+    // Your text is kept in the resolve panel (see conflicts.test.tsx), never overwritten.
+    const resolver = screen.getByRole('group', { name: 'This page changed elsewhere' })
+    expect(within(resolver).getByRole('radio', { name: /Keep mine/ })).toHaveAccessibleDescription(
+      'Run 8km',
+    )
     expect(await stored('day', '2026-10-26')).toBe('Run 10km')
   })
 
