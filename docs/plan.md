@@ -99,7 +99,7 @@ endpoint, a Playwright smoke test, Dockerfile skeleton.
 diff3 merge, layout tree + resolver, keymap matching + reserved combos, template propagation logic.
 **Phase 2 — Server** ✅ (PRs #9–#15): schema + migrations (SQLite + PG), auth (first user = admin, signup toggle),
 notes API with revisions/merge/409, changes feed, settings, entitlements stub, export as a .md zip.
-**Phase 3 — Web shell**: login, layout A renderer, week strip + month popover, command registry
+**Phase 3 — Web shell** ✅ (PRs #16–#21): login, layout A renderer, week strip + month popover, command registry
 + default cmd shortcuts + palette, autosave (debounced) with revision handling, conflict resolve UI.
 **Phase 4 — Editor**: CodeMirror live-preview steps (see Decisions).
 **Phase 5 — Templates**: day/week templates, auto-apply on new pages, "Edit template" button +

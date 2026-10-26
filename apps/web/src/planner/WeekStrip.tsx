@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
 import { useApi, useLocale, useToday } from '../app/AppProviders.tsx'
 import { MonthPicker } from './MonthPicker.tsx'
+import { useCurrentDay } from './useCurrentDay.ts'
 import { format, formatRange } from './weeks.ts'
 
 interface Props {
@@ -27,6 +28,7 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
     },
   })
   const go = (day: DayKey) => void navigate(`/day/${day}`)
+  const currentDay = useCurrentDay(focus)
 
   return (
     <nav className="week-strip" aria-label="Week">
@@ -35,7 +37,7 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
         className="icon"
         aria-label="Previous week"
         onClick={() => {
-          go(addDays(focus, -7))
+          go(addDays(currentDay(), -7))
         }}
       >
         ‹
@@ -74,7 +76,7 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
         className="icon"
         aria-label="Next week"
         onClick={() => {
-          go(addDays(focus, 7))
+          go(addDays(currentDay(), 7))
         }}
       >
         ›

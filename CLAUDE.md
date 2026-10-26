@@ -25,15 +25,23 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
   `ApiError(status, code)`; every error response is `{ error: code }`.
 - Server tests that touch the database use `describe.each(testDatabases())`, so they run on
   SQLite and Postgres. Inject the clock (`now`) instead of reading the time.
-- `apps/web`: React + Vite SPA. API calls go through `src/api.ts` and are validated with the
-  contract schemas.
+- `apps/web`: React + Vite SPA. API calls go through `src/api/client.ts` (validated with the
+  contract). Tests render the whole app against the **real server in-process**
+  (`src/test/server.ts`, `src/test/render.tsx`): no API mocks. `setOffline(true)` simulates a lost
+  connection. Clock, locale, platform and current path are injected via `AppProviders`.
+- Handlers that run on key presses or clicks must read the current day with `useCurrentDay`
+  (the router's location at call time), not from rendered props: React renders a navigation
+  slightly later, so a shortcut pressed right after a click would act on the previous day.
 - `packages/contract`: Zod schemas + inferred types for every API request/response. Each schema
   and its type share one name (`export const X = z.object(...)`, `export type X = z.infer<...>`).
 - `packages/db`: Kysely database layer (node:sqlite + Postgres), table types, migrations, and
   `testDatabases()` for running a suite on both engines (ADR 0010).
 - `packages/core`: pure domain logic used by web and server. No I/O, no DOM, no clock
   or randomness except via parameters.
-- `e2e/`: Playwright specs. `*.api.spec.ts` run once (not per browser) against the shared server.
+- `e2e/`: Playwright specs; each project (api, chromium, firefox, webkit) gets its own server
+  and in-memory database, so every journey starts on a fresh instance. Wait for autosave by
+  polling the API (`savedOnServer`), not for a "Saved" label that may already be showing.
+- user-event quirks: type a literal `[` as `[[`; press `.`/`,` by code (`[Period]`, `[Comma]`).
 
 ## How we work: test-driven
 

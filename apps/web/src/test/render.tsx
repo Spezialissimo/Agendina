@@ -20,7 +20,13 @@ export function renderApp(
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   const user = userEvent.setup()
   const view = render(
-    <AppProviders api={new Api(server.fetch)} now={() => now} locale={locale} platform={platform}>
+    <AppProviders
+      api={new Api(server.fetch)}
+      now={() => now}
+      locale={locale}
+      platform={platform}
+      currentPath={() => router.state.location.pathname}
+    >
       <RouterProvider router={router} />
     </AppProviders>,
   )

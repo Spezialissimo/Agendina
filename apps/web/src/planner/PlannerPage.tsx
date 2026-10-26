@@ -16,6 +16,7 @@ import { useShortcuts } from '../commands/useShortcuts.ts'
 import { LayoutView } from './LayoutView.tsx'
 import { PlannerContext } from './PlannerContext.tsx'
 import { WeekStrip } from './WeekStrip.tsx'
+import { useCurrentDay } from './useCurrentDay.ts'
 import { useSettings } from './useSettings.ts'
 
 export function PlannerPage() {
@@ -33,6 +34,7 @@ function Planner({ focus }: { focus: DayKey }) {
   const { settings, isError, update } = useSettings()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
 
   const run = useCallback(
@@ -40,16 +42,16 @@ function Planner({ focus }: { focus: DayKey }) {
       const go = (day: DayKey) => void navigate(`/day/${day}`)
       switch (id) {
         case 'focus.previousDay':
-          go(addDays(focus, -1))
+          go(addDays(currentDay(), -1))
           break
         case 'focus.nextDay':
-          go(addDays(focus, 1))
+          go(addDays(currentDay(), 1))
           break
         case 'focus.previousWeek':
-          go(addDays(focus, -7))
+          go(addDays(currentDay(), -7))
           break
         case 'focus.nextWeek':
-          go(addDays(focus, 7))
+          go(addDays(currentDay(), 7))
           break
         case 'focus.today':
           go(today)
@@ -65,7 +67,7 @@ function Planner({ focus }: { focus: DayKey }) {
           break
       }
     },
-    [focus, today, navigate, api, queryClient],
+    [currentDay, today, navigate, api, queryClient],
   )
 
   useShortcuts(keymap, run, !paletteOpen)

@@ -11,6 +11,12 @@ interface Environment {
   locale: string
   /** Decides whether `Mod` means Cmd or Ctrl. */
   platform: Platform
+  /**
+   * The router's current path, read at call time. React renders a navigation slightly later, so
+   * handlers that run right after one (e.g. a shortcut pressed just after clicking a day) must
+   * read this instead of rendered props.
+   */
+  currentPath: () => string
 }
 
 const EnvironmentContext = createContext<Environment | undefined>(undefined)
@@ -20,6 +26,7 @@ export function AppProviders({
   now = () => new Date(),
   locale = navigator.language,
   platform = detectPlatform(),
+  currentPath = () => window.location.pathname,
   children,
 }: Partial<Environment> & { children: ReactNode }) {
   const [queryClient] = useState(
@@ -28,7 +35,7 @@ export function AppProviders({
         defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
       }),
   )
-  const [environment] = useState<Environment>(() => ({ api, now, locale, platform }))
+  const [environment] = useState<Environment>(() => ({ api, now, locale, platform, currentPath }))
   return (
     <EnvironmentContext value={environment}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -46,6 +53,7 @@ export const useApi = () => useEnvironment().api
 export const useLocale = () => useEnvironment().locale
 export const useToday = () => dayKeyFromDate(useEnvironment().now())
 export const usePlatform = () => useEnvironment().platform
+export const useCurrentPath = () => useEnvironment().currentPath
 
 function detectPlatform(): Platform {
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent) ? 'mac' : 'other'
