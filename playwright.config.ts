@@ -25,6 +25,8 @@ export default defineConfig({
       PORT: String(port),
       AGENDINA_WEB_DIR: 'apps/web/dist',
       AGENDINA_VERSION: 'e2e',
+      // A fresh database per run, so tests never see state from earlier runs.
+      AGENDINA_DATABASE_URL: 'sqlite::memory:',
     },
   },
 })
