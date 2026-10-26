@@ -45,6 +45,11 @@ export function formatTable(text: string): string {
   return layout(text.split('\n').map((line) => splitCells(line).map((c) => c.text))).text
 }
 
+/** Lays out a table given as rows of cell texts (the delimiter row as `---` cells). */
+export function formatRows(rows: string[][]): FormattedTable {
+  return layout(rows)
+}
+
 function layout(rows: string[][]): FormattedTable {
   const delimiter = delimiterIndex(rows)
   const columns = Math.max(...rows.map((r) => r.length))

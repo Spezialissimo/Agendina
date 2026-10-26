@@ -1,3 +1,5 @@
+import { ISO_WEEK, type WeekRule } from '@agendina/core'
+import { autocompletion } from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { Annotation, EditorState, type TransactionSpec } from '@codemirror/state'
@@ -5,6 +7,7 @@ import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { livePreviewExtension } from './livePreview.ts'
 import { rememberFocus } from './focusedEditor.ts'
+import { slashSource } from './slashMenu.ts'
 import { moveToCell } from './tables.ts'
 import { minimalChange } from './textChange.ts'
 
@@ -13,6 +16,8 @@ interface Props {
   label: string
   value: string
   onChange: (value: string) => void
+  /** For the slash menu's week tracker; ISO weeks if not given. */
+  weekRule?: WeekRule
 }
 
 /** Applies an editor command if it applies here; false lets the key do its usual job. */
@@ -29,14 +34,16 @@ const External = Annotation.define<boolean>()
  * The editing surface of a page: CodeMirror 6 on the page's markdown (ADR 0004). The text is the
  * markdown exactly as stored. `data-editor` tells the shortcut handler that editor commands apply.
  */
-export function PageEditor({ label, value, onChange }: Props) {
+export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | undefined>(undefined)
   const latestOnChange = useRef(onChange)
+  const latestWeekRule = useRef(weekRule)
 
   useLayoutEffect(() => {
     latestOnChange.current = onChange
-  }, [onChange])
+    latestWeekRule.current = weekRule
+  }, [onChange, weekRule])
 
   useEffect(() => {
     if (host.current === null) return
@@ -63,6 +70,7 @@ export function PageEditor({ label, value, onChange }: Props) {
           livePreviewExtension,
           EditorView.lineWrapping,
           placeholder('Write here…'),
+          autocompletion({ override: [slashSource(() => latestWeekRule.current)], icons: false }),
           EditorView.contentAttributes.of({ 'aria-label': label }),
           EditorView.updateListener.of((update) => {
             const fromUser = update.transactions.some(

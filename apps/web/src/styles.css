@@ -752,3 +752,44 @@ button {
 .editor .cm-table-widget .cm-checkbox {
   margin: 0;
 }
+
+/* Slash menu */
+
+.cm-tooltip.cm-tooltip-autocomplete {
+  background: var(--page);
+  border: 0;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 0.25rem;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul {
+  font-family: var(--font-body);
+  max-height: 18rem;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  color: var(--ink);
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--rule);
+  color: var(--ink);
+}
+
+.cm-tooltip-autocomplete .cm-completionDetail {
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: 0.8em;
+  color: var(--ink-soft);
+}
+
+.cm-tooltip-autocomplete .cm-completionMatchedText {
+  text-decoration: none;
+  font-weight: 600;
+}
