@@ -41,6 +41,13 @@ describe('slash menu', () => {
     expect(complete(doc)).toBeNull()
   })
 
+  it('keeps its own order (most used first) rather than alphabetical', () => {
+    const options = complete('/‸')?.options ?? []
+    const boosts = options.map((o) => o.boost ?? 0)
+    expect(boosts).toEqual([...boosts].sort((a, b) => b - a))
+    expect(new Set(boosts).size).toBe(options.length)
+  })
+
   it('filters on what is typed after "/"', () => {
     // CodeMirror matches the options against the text from `from`: it must not include the "/".
     expect(complete('notes\n/to‸')?.from).toBe('notes\n/'.length)
@@ -71,13 +78,13 @@ describe('slash menu', () => {
   it('inserts a week tracker following the week rule', () => {
     expect(apply('/‸', 'Week tracker')).toBe(
       [
-        '| ‸    | Mo  | Tu  | We  | Th  | Fr  | Sa  | Su  |',
+        '|     | Mo  | Tu  | We  | Th  | Fr  | Sa  | Su  |',
         '| --- | --- | --- | --- | --- | --- | --- | --- |',
-        '|     | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |',
+        '| ‸    | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |',
       ].join('\n'),
     )
     expect(apply('/‸', 'Week tracker', US_WEEK).split('\n')[0]).toBe(
-      '| ‸    | Su  | Mo  | Tu  | We  | Th  | Fr  | Sa  |',
+      '|     | Su  | Mo  | Tu  | We  | Th  | Fr  | Sa  |',
     )
   })
 })

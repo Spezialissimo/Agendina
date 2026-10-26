@@ -27,6 +27,40 @@ function apply(view: EditorView, spec: TransactionSpec | undefined): boolean {
   return true
 }
 
+/** The slash menu in the paper style (a CodeMirror theme, so it wins over the default theme). */
+const menuTheme = EditorView.theme({
+  '.cm-tooltip.cm-tooltip-autocomplete': {
+    background: 'var(--page)',
+    border: 'none',
+    borderRadius: '8px',
+    boxShadow: 'var(--shadow)',
+    padding: '0.25rem',
+  },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul': {
+    fontFamily: 'var(--font-body)',
+    maxHeight: '18rem',
+  },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul > li': {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '1.5rem',
+    padding: '0.35rem 0.6rem',
+    borderRadius: '6px',
+    color: 'var(--ink)',
+  },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]': {
+    background: 'var(--rule)',
+    color: 'var(--ink)',
+  },
+  '.cm-completionDetail': {
+    fontFamily: 'var(--font-mono)',
+    fontStyle: 'normal',
+    fontSize: '0.8em',
+    color: 'var(--ink-soft)',
+  },
+  '.cm-completionMatchedText': { textDecoration: 'none', fontWeight: '600' },
+})
+
 /** Marks changes that came from `value` (not from the user), so they are not reported back. */
 const External = Annotation.define<boolean>()
 
@@ -71,6 +105,7 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
           EditorView.lineWrapping,
           placeholder('Write here…'),
           autocompletion({ override: [slashSource(() => latestWeekRule.current)], icons: false }),
+          menuTheme,
           EditorView.contentAttributes.of({ 'aria-label': label }),
           EditorView.updateListener.of((update) => {
             const fromUser = update.transactions.some(
