@@ -1,5 +1,6 @@
 import type { User } from '@agendina/contract'
 import type { Database } from '@agendina/db'
+import type { EntitlementPolicy } from './entitlements.ts'
 import type { Context } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { z } from 'zod'
@@ -8,6 +9,7 @@ export interface AppEnv {
   Variables: {
     db: Database
     now: () => Date
+    entitlements: EntitlementPolicy
     /** Set when the request carries a valid session. */
     user: User | undefined
     sessionToken: string | undefined

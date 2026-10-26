@@ -2,10 +2,12 @@ import {
   Credentials,
   InstanceSettings,
   type AuthState,
+  type MeResponse,
   type UserResponse,
 } from '@agendina/contract'
 import { Hono, type Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
+import { enabledFeatures } from '../entitlements.ts'
 import { ApiError, readJson, requireUser, type AppEnv } from '../http.ts'
 import { hashPassword, verifyPassword } from './password.ts'
 import { FailureLimiter } from './rate-limit.ts'
@@ -70,7 +72,13 @@ export function authRoutes(now: () => Date) {
     return c.body(null, 204)
   })
 
-  routes.get('/me', (c) => c.json({ user: requireUser(c) } satisfies UserResponse))
+  routes.get('/me', (c) => {
+    const user = requireUser(c)
+    return c.json({
+      user,
+      features: enabledFeatures(c.get('entitlements'), user),
+    } satisfies MeResponse)
+  })
 
   routes.get('/admin/settings', async (c) => {
     requireAdmin(c)
