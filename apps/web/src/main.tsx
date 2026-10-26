@@ -12,7 +12,7 @@ const router = createBrowserRouter(routes)
 
 createRoot(root).render(
   <StrictMode>
-    <AppProviders>
+    <AppProviders currentPath={() => router.state.location.pathname}>
       <RouterProvider router={router} />
     </AppProviders>
   </StrictMode>,
