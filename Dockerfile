@@ -8,6 +8,7 @@ COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
 COPY packages/contract/package.json packages/contract/
 COPY packages/core/package.json packages/core/
+COPY packages/db/package.json packages/db/
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build

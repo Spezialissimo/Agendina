@@ -9,6 +9,9 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
 - `pnpm dev`: server (http://localhost:3000) + Vite dev server with `/api` proxied
 - `pnpm test`: all unit/integration tests (Vitest projects); `pnpm vitest run --project server`
   for one project
+- Postgres tests: `docker run -d --name agendina-test-pg -e POSTGRES_PASSWORD=test -p 54329:5432 postgres:17-alpine`
+  then `TEST_POSTGRES_URL=postgres://postgres:test@localhost:54329/postgres pnpm test`. Without
+  the variable, database tests run on SQLite only (CI always runs both).
 - `pnpm e2e`: Playwright against the production build in Chromium, Firefox and WebKit
 - `pnpm check`: format check + lint + typecheck + unit tests. **Must pass before work is done.**
 - `pnpm format`: Prettier write
@@ -21,7 +24,9 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
   contract schemas.
 - `packages/contract`: Zod schemas + inferred types for every API request/response. Each schema
   and its type share one name (`export const X = z.object(...)`, `export type X = z.infer<...>`).
-- `packages/core` (Phase 1): pure domain logic used by web and server. No I/O, no DOM, no clock
+- `packages/db`: Kysely database layer (node:sqlite + Postgres), table types, migrations, and
+  `testDatabases()` for running a suite on both engines (ADR 0010).
+- `packages/core`: pure domain logic used by web and server. No I/O, no DOM, no clock
   or randomness except via parameters.
 - `e2e/`: Playwright specs.
 
