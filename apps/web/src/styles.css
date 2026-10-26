@@ -1,0 +1,180 @@
+/* Agendina: a paper journal. Warm paper, dark ink, one accent. System fonts only (no third-party
+   requests from a self-hosted instance). */
+
+:root {
+  --paper: #f4efe4;
+  --page: #fffdf8;
+  --ink: #2b2925;
+  --ink-soft: #6b665c;
+  --rule: #e2dacb;
+  --accent: #3d5a80;
+  --accent-ink: #ffffff;
+  --danger: #a23b2a;
+  --shadow: 0 1px 2px rgb(60 50 30 / 8%), 0 8px 24px rgb(60 50 30 / 6%);
+  --radius: 10px;
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1c1a17;
+    --page: #24221e;
+    --ink: #ece6da;
+    --ink-soft: #a39c8e;
+    --rule: #3a362f;
+    --accent: #8fb0d8;
+    --accent-ink: #1c1a17;
+    --danger: #e08a7a;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.5 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+}
+
+.primary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.link {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  padding: 0.25rem;
+}
+
+.splash {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-serif);
+  color: var(--ink-soft);
+}
+
+/* Sign-in and setup */
+
+.auth {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 1.5rem;
+}
+
+.auth-card {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 24rem);
+  background: var(--page);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+}
+
+.auth-card h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.hint {
+  margin: -0.5rem 0 0;
+  color: var(--ink-soft);
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.field label {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.field input {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+.field input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.field-error,
+[role='alert'] {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.875rem;
+}
+
+/* Planner */
+
+.planner {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+}
+
+.brand {
+  font-family: var(--font-serif);
+  font-weight: 600;
+}
