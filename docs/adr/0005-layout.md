@@ -14,9 +14,15 @@ Default layout "Open planner": a week strip on top (‹ week › and Mo–Su wit
 to open a day, hover to peek; a month popover), the week page on the left, the focused day on the
 right, both editable, with a draggable splitter whose size is remembered.
 
-Layouts are data: a JSON tree of row/column splits whose panels are relative to the focus
-`(date, granularity)`, e.g. `note(day, 0)`, `note(week, containing)`. Non-focused neighbour panels
-are read-only; clicking one moves the focus. Later: more presets (weekly spread, the original
+Layouts are data: a JSON tree of row/column splits whose panels are relative to the focused
+day, e.g. `note(day, 0)` (the focused day), `note(day, -1)` (the day before), `note(week, 0)` (the
+week containing the focused day), `note(week, 1)` (the next week). Offset 0 is editable; other
+panels are read-only and clicking one moves the focus there. Split sizes are fractions, at least
+`MIN_PANE_SIZE` each, addressed by split id when the user drags a splitter. The week strip is
+fixed chrome above the tree, not a panel. Implemented in `packages/core/src/layout.ts`.
+
+Refinement (Phase 1): the focus is just a day. The day/week "granularity swap" of the first
+mockup is not needed for the Open planner; it can return as a preset later. Later: more presets (weekly spread, the original
 mockup), a user layout editor, and a mobile journal-scroll view (week header ↔ day footer).
 
 Week start and numbering are a user setting (default Monday, ISO weeks), modelled as a
