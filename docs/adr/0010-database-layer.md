@@ -22,6 +22,24 @@ modules such as better-sqlite3.
 - Tests touching the database run on both engines (`testDatabases()` from `@agendina/db/testing`);
   CI provides Postgres and fails if it is missing.
 
+## Roles of the two engines (confirmed 2026-10-26)
+
+- **SQLite is the self-hosted database**: one container, the data is one file, backups are a file
+  copy or the markdown export, low memory. A personal or family instance never reaches its limits.
+- **Postgres is the hosted database**: needed once the hosted service runs on more than one server
+  (redundancy, zero-downtime deploys). SQLite's real ceiling is "one server, one writer at a
+  time", not user count.
+- Both stay first-class: every database test runs on both engines in CI, so queries stay portable
+  and switching a deployment between them stays cheap. Nothing engine-specific in queries unless
+  it is behind a dialect check with tests on both.
+
+## Search
+
+SQLite's FTS5 is available in Node's built-in SQLite (checked on Node 24 and 26) and covers
+journal search: ranking, prefixes, phrases, accent-insensitive matching (`citta` finds `città`)
+and highlighted snippets. Postgres needs its own full-text setup per language. With end-to-end
+encryption (ADR 0006) search moves to the client in either case.
+
 ## Consequences
 
 - No ORM-level relations; queries are explicit SQL-shaped builder calls.
