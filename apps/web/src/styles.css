@@ -170,11 +170,274 @@ button {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 1rem;
   padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--rule);
 }
 
 .brand {
   font-family: var(--font-serif);
   font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.topbar > .link:last-child {
+  margin-left: auto;
+}
+
+.icon {
+  background: none;
+  border: 0;
+  color: var(--ink-soft);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.icon:hover {
+  background: var(--rule);
+  color: var(--ink);
+}
+
+.icon svg {
+  display: block;
+}
+
+/* Week strip */
+
+.week-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 auto;
+}
+
+.week-label {
+  display: grid;
+  min-width: 9rem;
+  text-align: center;
+}
+
+.week-number {
+  font-family: var(--font-serif);
+  font-weight: 600;
+}
+
+.week-range {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.week-days {
+  display: flex;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.week-day {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: 2.75rem;
+  padding: 0.25rem 0;
+  border-radius: 8px;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.week-day:hover {
+  background: var(--rule);
+}
+
+.week-day[data-today] {
+  color: var(--accent);
+}
+
+.week-day[aria-current='date'] {
+  background: var(--page);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+}
+
+.week-day-name {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.week-day-date {
+  font-weight: 600;
+}
+
+.written-dot {
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Month calendar */
+
+.month-picker {
+  position: relative;
+}
+
+.month-calendar {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 10;
+  background: var(--page);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.75rem;
+}
+
+.month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.month-calendar table {
+  border-collapse: collapse;
+}
+
+.month-calendar th {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.month-calendar td button {
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+}
+
+.month-calendar td button:hover {
+  background: var(--rule);
+}
+
+.month-calendar td button[data-outside] {
+  color: var(--ink-soft);
+  opacity: 0.6;
+}
+
+.month-calendar td button[data-today] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.month-calendar td button[aria-current='date'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Pages */
+
+.pages {
+  display: flex;
+  min-height: 0;
+  padding: 1rem;
+}
+
+.split {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.split-column {
+  flex-direction: column;
+}
+
+.split-child {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.separator {
+  flex: 0 0 1rem;
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.split-column > .separator {
+  cursor: row-resize;
+}
+
+.separator::after {
+  content: '';
+  position: absolute;
+  inset: 30% calc(50% - 1px);
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.split-column > .separator::after {
+  inset: calc(50% - 1px) 30%;
+}
+
+.separator:hover::after,
+.separator:focus-visible::after {
+  background: var(--rule);
+}
+
+.page {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--page);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem 1.75rem;
+  overflow: auto;
+}
+
+.page:not([data-editable]) {
+  opacity: 0.6;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.page-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+}
+
+.page-content {
+  margin-top: 1.25rem;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.page-open {
+  position: absolute;
+  inset: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--radius);
 }
