@@ -64,7 +64,7 @@ docs/adr/       one ADR per decision above
 - `users(id, email, password_hash, role, created_at)`, `sessions(...)`
 - `notes(id uuid, user_id, kind day|week|template, period_key, content, revision,
   template_id?, template_revision?, updated_at, deleted_at?, change_seq)`
-  — unique `(user_id, kind, period_key)`; keys like `2026-10-24`, `2026-W43`, `template:week`
+  — unique `(user_id, kind, period_key)`; keys like `2026-10-24` (day), `2026-10-19` (week = its first day, see ADR 0005), `template:week`
 - `note_revisions(note_id, revision, content, created_at, device_id)`
 - `user_settings(user_id, week_start, keymap json, layout json)`
 - `entitlements(user_id, feature, ...)`
