@@ -24,6 +24,20 @@ and on Mac also Option+key, because Option types characters on many layouts (`@ 
 Italian keyboards). Pure logic lives in `packages/core/src/keymap.ts`; handlers and the recorder
 UI live in the web app.
 
+Default bindings (Phase 3), chosen to avoid macOS text editing (⌘⇧←/→ selects to line edges,
+⌥←/→ moves by word), Mission Control (⌃←/→), VoiceOver (⌃⌥) and browser menus:
+
+| Command              | Binding                                        | Mac                          |
+| -------------------- | ---------------------------------------------- | ---------------------------- |
+| Previous / next day  | `Mod+Shift+Comma` / `Mod+Shift+Period`         | ⇧⌘, / ⇧⌘. (the `<` `>` keys) |
+| Previous / next week | `Mod+Alt+Shift+Comma` / `Mod+Alt+Shift+Period` | ⌥⇧⌘, / ⌥⇧⌘.                  |
+| Today                | `Mod+Alt+KeyT`                                 | ⌥⌘T                          |
+| Command palette      | `Mod+KeyK`                                     | ⌘K                           |
+
+Automated browser tests prove the page receives these keys; they cannot prove that no browser or
+OS menu claims one first on a given machine, so defaults are also checked by hand on a Mac.
+Form fields other than page editors (e.g. the palette search) keep every key to themselves.
+
 ## Consequences
 
 - Matching on physical keys means bindings follow key position, not the printed character, on

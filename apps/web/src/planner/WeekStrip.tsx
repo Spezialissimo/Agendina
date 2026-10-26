@@ -5,7 +5,14 @@ import { useApi, useLocale, useToday } from '../app/AppProviders.tsx'
 import { MonthPicker } from './MonthPicker.tsx'
 import { format, formatRange } from './weeks.ts'
 
-export function WeekStrip({ focus, rule }: { focus: DayKey; rule: WeekRule }) {
+interface Props {
+  focus: DayKey
+  rule: WeekRule
+  calendarOpen: boolean
+  setCalendarOpen: (open: boolean) => void
+}
+
+export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props) {
   const api = useApi()
   const locale = useLocale()
   const today = useToday()
@@ -81,7 +88,13 @@ export function WeekStrip({ focus, rule }: { focus: DayKey; rule: WeekRule }) {
       >
         Today
       </button>
-      <MonthPicker focus={focus} rule={rule} onPick={go} />
+      <MonthPicker
+        focus={focus}
+        rule={rule}
+        onPick={go}
+        open={calendarOpen}
+        setOpen={setCalendarOpen}
+      />
     </nav>
   )
 }
