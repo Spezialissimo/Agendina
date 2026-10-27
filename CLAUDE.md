@@ -42,6 +42,8 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
 - `e2e/`: Playwright specs; each project (api, chromium, firefox, webkit) gets its own server
   and in-memory database, so every journey starts on a fresh instance. Wait for autosave by
   polling the API (`savedOnServer`), not for a "Saved" label that may already be showing.
+  Journeys that change account-wide state (templates) sign in as their own account with
+  `enterAs`, so the journeys running in parallel on the same server are not affected.
 - The editor (CodeMirror) is tested in three layers: pure functions on `EditorState` (Node);
   real typing and clicking in `*.browser.test.tsx` (Vitest browser mode, Chromium:
   `pnpm test:browser`); app tests in jsdom drive it through CodeMirror's API with

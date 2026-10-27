@@ -11,6 +11,9 @@ importers:
       '@agendina/contract':
         specifier: workspace:*
         version: link:packages/contract
+      '@agendina/core':
+        specifier: workspace:*
+        version: link:packages/core
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.13.0)

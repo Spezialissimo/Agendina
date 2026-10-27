@@ -36,7 +36,8 @@ export function checkbox(page: Page, label: string) {
 
 /**
  * Signs in to this project's server, creating the account if the instance is new. Specs of one
- * project run in parallel on the same server, so two may race to create it: the loser signs in.
+ * project run in parallel on the same server, so two may race to create it: the loser signs in
+ * (it sees "Signup is closed", or, once `enterAs` opened signup, "already exists").
  */
 export async function enter(page: Page) {
   await page.goto('/')
@@ -49,7 +50,9 @@ export async function enter(page: Page) {
     await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
     await page.getByLabel('Repeat password').fill(PASSWORD)
     await page.getByRole('button', { name: 'Create account' }).click()
-    const closed = page.getByRole('alert').filter({ hasText: 'Signup is closed' })
+    const closed = page
+      .getByRole('alert')
+      .filter({ hasText: /Signup is closed|account with this email already exists/ })
     await expect(planner.or(closed)).toBeVisible()
     if (await planner.isVisible()) return
     await page.goto('/')
@@ -58,4 +61,26 @@ export async function enter(page: Page) {
   await page.getByLabel('Password').fill(PASSWORD)
   await signIn.click()
   await expect(planner).toBeVisible()
+}
+
+/**
+ * Signs in as a separate account, for journeys that change account-wide things (templates) that
+ * would show up in the other journeys running in parallel. The admin opens signup for it.
+ */
+export async function enterAs(page: Page, email: string) {
+  await enter(page)
+  const headers = { origin: new URL(page.url()).origin }
+  const credentials = { email, password: PASSWORD }
+  expect(
+    (await page.request.put('/api/admin/settings', { data: { signupOpen: true }, headers })).ok(),
+  ).toBe(true)
+  await page.request.post('/api/auth/logout', { headers })
+  const signup = await page.request.post('/api/auth/signup', { data: credentials, headers })
+  if (!signup.ok()) {
+    expect((await page.request.post('/api/auth/login', { data: credentials, headers })).ok()).toBe(
+      true,
+    )
+  }
+  await page.goto('/')
+  await expect(page.getByRole('navigation', { name: 'Week' })).toBeVisible()
 }
