@@ -73,6 +73,8 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
   const view = useRef<EditorView | undefined>(undefined)
   const latestOnChange = useRef(onChange)
   const latestWeekRule = useRef(weekRule)
+  /** Texts reported through onChange since the parent last caught up with the editor. */
+  const reported = useRef(new Set<string>())
 
   useLayoutEffect(() => {
     latestOnChange.current = onChange
@@ -111,7 +113,11 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
             const fromUser = update.transactions.some(
               (t) => t.annotation(External) !== true && t.docChanged,
             )
-            if (fromUser) latestOnChange.current(update.state.doc.toString())
+            if (fromUser) {
+              const text = update.state.doc.toString()
+              reported.current.add(text)
+              latestOnChange.current(text)
+            }
           }),
         ],
       }),
@@ -125,11 +131,20 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Apply text coming from outside (merges, other devices) as a minimal change.
+  // Apply text coming from outside (merges, other devices) as a minimal change. A `value` the
+  // editor itself reported is only the parent catching up, possibly with an older text while the
+  // user has typed on: applying it would delete the newest keystrokes and move the cursor.
   useEffect(() => {
     const editor = view.current
     if (editor === undefined) return
-    const change = minimalChange(editor.state.doc.toString(), value)
+    const current = editor.state.doc.toString()
+    if (value === current) {
+      reported.current.clear()
+      return
+    }
+    if (reported.current.has(value)) return
+    reported.current.clear()
+    const change = minimalChange(current, value)
     if (change !== undefined) editor.dispatch({ changes: change, annotations: External.of(true) })
   }, [value])
 
