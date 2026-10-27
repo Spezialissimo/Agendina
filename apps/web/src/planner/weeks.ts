@@ -1,4 +1,12 @@
-import { addDays, compareDays, weekStart, type DayKey, type WeekRule } from '@agendina/core'
+import {
+  addDays,
+  compareDays,
+  weekNumber,
+  weekStart,
+  type DayKey,
+  type WeekRule,
+} from '@agendina/core'
+import type { NoteKind } from '@agendina/contract'
 
 /** The weeks shown for a month: full weeks (per the rule) covering every day of the month. */
 export function monthGrid(year: number, month: number, rule: WeekRule): DayKey[][] {
@@ -33,4 +41,11 @@ export function formatRange(from: DayKey, to: DayKey, locale: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   }).formatRange(utc(from), utc(to))
+}
+
+/** A page's title: the full date for a day, "Week 44" for a week. */
+export function pageTitle(kind: NoteKind, key: DayKey, locale: string, rule: WeekRule): string {
+  return kind === 'day'
+    ? format(key, locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : `Week ${String(weekNumber(key, rule).week)}`
 }

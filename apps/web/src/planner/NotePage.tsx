@@ -1,15 +1,16 @@
 import type { NoteView } from '@agendina/core'
 import { useQuery } from '@tanstack/react-query'
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
-import { format, formatRange } from './weeks.ts'
+import { formatRange, pageTitle } from './weeks.ts'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
 import { PageEditor } from '../editor/PageEditor.tsx'
 import { useNoteDocument, type SaveStatus } from '../editor/useNoteDocument.ts'
+import { TemplateEditor } from '../templates/TemplateEditor.tsx'
 import { useTemplate } from '../templates/useTemplate.ts'
-import { addDays, weekNumber } from '@agendina/core'
+import { addDays } from '@agendina/core'
 
 /** One page of the planner: a day or a week. Read-only neighbours open their day when clicked. */
 export function NotePage({ view }: { view: NoteView }) {
@@ -23,16 +24,10 @@ export function NotePage({ view }: { view: NoteView }) {
     queryFn: () => api.getNote(view.kind, view.key),
   })
   const template = useTemplate(view.kind)
+  const [editingTemplate, setEditingTemplate] = useState(false)
+  const [notice, setNotice] = useState<{ key: string; text: string } | undefined>(undefined)
 
-  const title =
-    view.kind === 'day'
-      ? format(view.key, locale, {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        })
-      : `Week ${weekNumber(view.key, weekRule).week}`
+  const title = pageTitle(view.kind, view.key, locale, weekRule)
 
   return (
     <section className="page" aria-labelledby={titleId} data-editable={view.editable || undefined}>
@@ -41,8 +36,40 @@ export function NotePage({ view }: { view: NoteView }) {
         {view.kind === 'week' && (
           <p className="page-subtitle">{formatRange(view.key, addDays(view.key, 6), locale)}</p>
         )}
+        {view.editable && !editingTemplate && (
+          <button
+            type="button"
+            className="link page-template"
+            onClick={() => {
+              setNotice(undefined)
+              setEditingTemplate(true)
+            }}
+          >
+            Edit {view.kind} template
+          </button>
+        )}
       </header>
-      {view.editable ? (
+      {notice?.key === view.key && (
+        <p className="template-notice" aria-live="polite">
+          {notice.text}
+        </p>
+      )}
+      {view.editable && editingTemplate ? (
+        template.data !== undefined &&
+        note.data !== undefined && (
+          <TemplateEditor
+            key={`${view.kind}/${view.key}`}
+            kind={view.kind}
+            pageKey={view.key}
+            template={template.data}
+            pageText={note.data?.content ?? ''}
+            onClose={(text) => {
+              setEditingTemplate(false)
+              if (text !== undefined) setNotice({ key: view.key, text })
+            }}
+          />
+        )
+      ) : view.editable ? (
         <EditablePage key={`${view.kind}/${view.key}`} view={view} label={title} />
       ) : (
         <div className="page-content">

@@ -417,9 +417,51 @@ button {
   opacity: 0.6;
 }
 
+.page-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+}
+
 .page-header h2 {
   margin: 0;
   font-size: 1.5rem;
+}
+
+.page-template {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 0.8rem;
+}
+
+.template-notice {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.template-editor,
+.template-pages {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.template-editor h3,
+.template-pages h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.template-editor .hint,
+.template-pages .hint {
+  margin: 0;
+}
+
+.template-editor .editor {
+  border: 1px dashed var(--rule);
+  border-radius: 8px;
+  padding: 0.5rem;
 }
 
 .page-subtitle {
