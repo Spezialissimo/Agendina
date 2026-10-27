@@ -43,15 +43,16 @@ export function findCheckboxes(state: EditorState): Checkbox[] {
         for (const row of node.getChildren('TableRow')) {
           const line = state.doc.lineAt(row.from)
           const cells = splitCells(line.text)
+          const texts = cells.map((c) => c.text)
           cells.forEach((cell, index) => {
             const match = CELL_BOX.exec(cell.text)
-            if (match === null || index === 0) return
+            if (match === null) return
             const from = line.from + line.text.indexOf('[', cell.from)
             boxes.push({
               from,
               to: from + 3,
               checked: match[1] !== ' ',
-              label: `${cells[0]?.text ?? ''}, ${columns[index] ?? ''}`,
+              label: cellCheckboxLabel(texts, columns, index),
               kind: 'cell',
             })
           })
@@ -62,6 +63,15 @@ export function findCheckboxes(state: EditorState): Checkbox[] {
     },
   })
   return boxes
+}
+
+/**
+ * "row, column" for a checkbox cell, e.g. "Chest press, Fatto": the row is named by its first
+ * non-empty text cell, wherever the checkbox column is.
+ */
+export function cellCheckboxLabel(cells: string[], header: string[], column: number): string {
+  const row = cells.find((text) => text !== '' && !CELL_BOX.test(text)) ?? ''
+  return `${row}, ${header[column] ?? ''}`
 }
 
 /** The change that checks or unchecks a box. */

@@ -59,6 +59,22 @@ describe('findCheckboxes', () => {
     expect(findCheckboxes(s).map((b) => b.label)).toEqual(['Call dentist'])
   })
 
+  it('finds checkbox cells in any column, labelled by the row’s first text cell', () => {
+    const s = state(
+      [
+        '| Fatto | Esercizio        | Serie x Rip. | Peso (kg) | Note |',
+        '| ----- | -------------------- | ---------------- | ------------- | ---- |',
+        '|[ ]| Chest press      | 10x3             | 20            |      |',
+        '|[X]| Shoulder press   | 10x3             | 12.5          |      |',
+      ].join('\n'),
+    )
+
+    expect(findCheckboxes(s).map(({ checked, label }) => ({ checked, label }))).toEqual([
+      { checked: false, label: 'Chest press, Fatto' },
+      { checked: true, label: 'Shoulder press, Fatto' },
+    ])
+  })
+
   it('reports the exact range of each box', () => {
     const s = state('- [ ] Finish report')
     const [box] = findCheckboxes(s)

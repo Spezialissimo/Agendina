@@ -2,7 +2,7 @@ import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
 import { type EditorState, type Range, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, type DecorationSet, EditorView, WidgetType } from '@codemirror/view'
 import type { SyntaxNode } from '@lezer/common'
-import { findCheckboxes, toggleCheckbox } from './checkboxes.ts'
+import { cellCheckboxLabel, findCheckboxes, toggleCheckbox } from './checkboxes.ts'
 import { splitCells } from './tables.ts'
 
 /**
@@ -216,13 +216,20 @@ class TableWidget extends WidgetType {
         const element = document.createElement(index === 0 ? 'th' : 'td')
         element.dataset.line = String(index)
         element.dataset.col = String(col)
-        if (index > 0 && col > 0 && /^\[[ xX]\]$/.test(cell.text)) {
+        if (index > 0 && /^\[[ xX]\]$/.test(cell.text)) {
           const input = document.createElement('input')
           input.type = 'checkbox'
           input.className = 'cm-checkbox'
           input.tabIndex = -1
           input.checked = cell.text[1] !== ' '
-          input.setAttribute('aria-label', `${cells[0]?.text ?? ''}, ${header[col] ?? ''}`)
+          input.setAttribute(
+            'aria-label',
+            cellCheckboxLabel(
+              cells.map((c) => c.text),
+              header,
+              col,
+            ),
+          )
           input.dataset.offset = String(lineOffset + line.indexOf('[', cell.from))
           element.append(input)
         } else {
