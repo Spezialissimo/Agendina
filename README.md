@@ -3,9 +3,8 @@
 A planner/journal that feels like a paper journal, with infinitely many digital pages: a week
 page and day pages in markdown, side by side. Self-hostable.
 
-> Status: Phase 3 (web app) done: sign in, the planner (week page + day page), week strip,
-> shortcuts and command palette, autosave with merging and conflict resolution. Next: the
-> markdown editor (live preview, clickable checkboxes, tables). See [docs/plan.md](docs/plan.md).
+> Status: Phase 4 (editor) done: live-preview markdown, clickable checkboxes, tables with a
+> grid view, slash menu. Next: templates. See [docs/plan.md](docs/plan.md).
 
 ## Using it
 
@@ -15,6 +14,12 @@ page and day pages in markdown, side by side. Self-hostable.
 | Previous / next week         | ⌥⇧⌘, / ⌥⇧⌘. | Ctrl+Alt+Shift+, / . |
 | Today                        | ⌥⌘T         | Ctrl+Alt+T           |
 | Command palette (everything) | ⌘K          | Ctrl+K               |
+| Toggle / create a to-do      | ⌘↩          | Ctrl+Enter           |
+| Add a table row              | ⌥⌘↩         | Ctrl+Alt+Enter       |
+
+Pages are markdown, rendered as you write: the syntax shows only on the line you are editing.
+Type `/` at the start of a line for headings, to-dos, tables or a **week tracker** (a checkbox
+per day). Checkboxes, also in tables, are clickable; Tab moves between table cells.
 
 Pages save themselves as you type. If another device changed the same lines meanwhile, the page
 asks which version to keep (keeping both is the default, so nothing is ever lost).
