@@ -68,6 +68,7 @@ const STATUS_TEXT: Record<SaveStatus, string> = {
 
 function EditablePage({ view, label }: { view: NoteView; label: string }) {
   const document = useNoteDocument(view.kind, view.key)
+  const { weekRule } = usePlannerContext()
   return (
     <>
       {document.isError && document.status === 'loading' && (
@@ -75,7 +76,12 @@ function EditablePage({ view, label }: { view: NoteView; label: string }) {
       )}
       {/* Only once loaded: text typed into an editor that is still loading would be overwritten. */}
       {document.status === 'loading' ? null : document.conflict === undefined ? (
-        <PageEditor label={label} value={document.text} onChange={document.edit} />
+        <PageEditor
+          label={label}
+          value={document.text}
+          onChange={document.edit}
+          weekRule={weekRule}
+        />
       ) : (
         <ConflictResolver
           chunks={document.conflict.chunks}
