@@ -630,3 +630,88 @@ button {
   justify-content: flex-end;
   gap: 0.75rem;
 }
+
+/* Live preview */
+
+.editor .cm-h1,
+.editor .cm-h2,
+.editor .cm-h3,
+.editor .cm-h4,
+.editor .cm-h5,
+.editor .cm-h6 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+}
+
+.editor .cm-h1 {
+  font-size: 1.6em;
+}
+
+.editor .cm-h2 {
+  font-size: 1.3em;
+}
+
+.editor .cm-h3 {
+  font-size: 1.12em;
+}
+
+.editor .cm-strong {
+  font-weight: 650;
+}
+
+.editor .cm-em {
+  font-style: italic;
+}
+
+.editor .cm-strike {
+  text-decoration: line-through;
+  color: var(--ink-soft);
+}
+
+.editor .cm-code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--rule);
+  border-radius: 4px;
+  padding: 0 0.2em;
+}
+
+.editor .cm-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.editor .cm-bullet {
+  color: var(--ink-soft);
+}
+
+.editor .cm-quote {
+  border-left: 3px solid var(--rule);
+  padding-left: 0.75rem;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.editor .cm-rule {
+  display: inline-block;
+  width: 100%;
+  vertical-align: middle;
+  border-top: 1px solid var(--rule);
+}
+
+/* Checkboxes */
+
+.editor .cm-checkbox {
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0 0.35em 0 0;
+  vertical-align: -0.15em;
+  cursor: pointer;
+}
+
+.editor .cm-task-done {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--ink-soft) 60%, transparent);
+}

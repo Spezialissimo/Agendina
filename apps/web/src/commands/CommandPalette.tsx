@@ -16,7 +16,11 @@ export function CommandPalette({ keymap, onRun, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const matches = COMMANDS.filter(
-    (c) => c.id !== 'palette.open' && c.title.toLowerCase().includes(query.trim().toLowerCase()),
+    // Editor commands act on the focused page's cursor, which the palette has taken focus from.
+    (c) =>
+      c.id !== 'palette.open' &&
+      c.context !== 'editor' &&
+      c.title.toLowerCase().includes(query.trim().toLowerCase()),
   )
   const selected = Math.min(active, matches.length - 1)
 
