@@ -423,6 +423,11 @@ button {
   align-items: start;
 }
 
+.page-header h2,
+.page-header .page-subtitle {
+  grid-column: 1;
+}
+
 .page-header h2 {
   margin: 0;
   font-size: 1.5rem;
