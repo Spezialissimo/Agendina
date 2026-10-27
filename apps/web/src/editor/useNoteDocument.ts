@@ -3,6 +3,7 @@ import { merge3, type MergeChunk } from '@agendina/core'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApi } from '../app/AppProviders.tsx'
+import { useTemplate } from '../templates/useTemplate.ts'
 
 export type SaveStatus = 'loading' | 'saved' | 'dirty' | 'saving' | 'offline' | 'conflict'
 
@@ -12,8 +13,10 @@ const RETRY_DELAYS_MS = [1000, 3000, 10_000, 30_000]
 interface Sync {
   /** The revision the local text is based on (0 before the note exists). */
   base: number
-  /** The content of `base`, i.e. what the server has. */
+  /** The content of `base`, i.e. what the server has; the template for a page not written yet. */
   saved: string
+  /** The template revision shown on a page not written yet; recorded when it is first saved. */
+  templateRevision: number | undefined
   /** What the user sees. */
   text: string
   loaded: boolean
@@ -36,6 +39,7 @@ export function useNoteDocument(kind: NoteKind, key: string) {
     queryFn: () => api.getNote(kind, key),
     refetchOnWindowFocus: true,
   })
+  const template = useTemplate(kind)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<SaveStatus>('loading')
   const [conflict, setConflict] = useState<{ current: Note; chunks: MergeChunk[] } | undefined>(
@@ -44,6 +48,7 @@ export function useNoteDocument(kind: NoteKind, key: string) {
   const sync = useRef<Sync>({
     base: 0,
     saved: '',
+    templateRevision: undefined,
     text: '',
     loaded: false,
     inflight: false,
@@ -57,21 +62,26 @@ export function useNoteDocument(kind: NoteKind, key: string) {
     setText(value)
   }
 
-  // Load the note, and later adopt newer revisions from the server while the page is clean.
+  // Load the note (or the template for a page not written yet), and later adopt newer revisions
+  // from the server while the page is clean.
   useEffect(() => {
     const s = sync.current
-    if (note.data === undefined) return
+    if (note.data === undefined || template.data === undefined) return
+    const fromTemplate = note.data === null ? (template.data ?? undefined) : undefined
     const revision = note.data?.revision ?? 0
-    const content = note.data?.content ?? ''
+    const content = note.data?.content ?? fromTemplate?.content ?? ''
     const clean = s.text === s.saved && !s.inflight
-    if (!s.loaded || (clean && revision > s.base)) {
+    const newTemplate =
+      revision === 0 && s.base === 0 && fromTemplate?.revision !== s.templateRevision
+    if (!s.loaded || (clean && (revision > s.base || newTemplate))) {
       s.loaded = true
       s.base = revision
       s.saved = content
+      s.templateRevision = fromTemplate?.revision
       show(content)
       setStatus('saved')
     }
-  }, [note.data])
+  }, [note.data, template.data])
 
   // Retries and follow-up saves call the latest `save` through this ref.
   const saveLater = useRef<() => void>(() => undefined)
@@ -94,7 +104,10 @@ export function useNoteDocument(kind: NoteKind, key: string) {
       const sent = s.text
       setStatus('saving')
       try {
-        const result = await api.saveNote(kind, key, sent, s.base, { keepalive })
+        const result = await api.saveNote(kind, key, sent, s.base, {
+          keepalive,
+          templateRevision: s.base === 0 ? s.templateRevision : undefined,
+        })
         if (result.status === 'conflict') {
           // Re-merge against what is on screen now (the user may have typed since sending).
           const merged = merge3(s.saved, s.text, result.current.content)
@@ -193,5 +206,6 @@ export function useNoteDocument(kind: NoteKind, key: string) {
     setStatus('saved')
   }, [])
 
-  return { text, status, conflict, edit, resolve, discard, isError: note.isError }
+  const isError = note.isError || template.isError
+  return { text, status, conflict, edit, resolve, discard, isError }
 }
