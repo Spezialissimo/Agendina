@@ -74,6 +74,21 @@ describe('tables in a real browser', () => {
       )
   })
 
+  it('makes checkbox cells clickable in any column, e.g. a "done" column first', async () => {
+    const gym =
+      '| Fatto | Esercizio |\n| ----- | --- |\n|[ ]| Chest press |\n|[X]| Shoulder press |'
+    await render(<Harness initial={gym} />)
+
+    const done = await vi.waitFor(() => {
+      const box = document.querySelector('.cm-table-widget input[aria-label="Chest press, Fatto"]')
+      if (box === null) throw new Error('no checkbox')
+      return box
+    })
+    await userEvent.click(page.elementLocator(done))
+
+    await expect.poll(reported).toBe(gym.replace('|[ ]| Chest press', '|[x]| Chest press'))
+  })
+
   it('leaves Tab alone outside tables, so keyboard focus can move on', async () => {
     await render(<Harness initial={WORKOUT} />)
     const view = editorView()
