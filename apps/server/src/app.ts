@@ -12,6 +12,7 @@ import { exportRoutes } from './export/routes.ts'
 import { ApiError, type AppEnv } from './http.ts'
 import { notesRoutes } from './notes/routes.ts'
 import { settingsRoutes } from './settings/routes.ts'
+import { templatesRoutes } from './templates/routes.ts'
 
 export interface AppOptions {
   version: string
@@ -53,6 +54,7 @@ export function createApp({
   api.route('/', authRoutes(now))
   api.route('/', notesRoutes())
   api.route('/', settingsRoutes())
+  api.route('/', templatesRoutes())
   api.route('/', exportRoutes())
   api.all('*', (c) => c.json({ error: 'not_found' } satisfies ApiErrorBody, 404))
   api.onError((error, c) => {
