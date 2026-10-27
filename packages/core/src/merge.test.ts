@@ -198,6 +198,52 @@ describe('merge3: properties', () => {
     )
   })
 
+  it('merges a row added next to a row ticked on the other side', () => {
+    const base = ['| Exercise | Mo |', '|---|---|', '| Squat | [ ] |'].join('\n')
+    const ticked = base.replace('| Squat | [ ] |', '| Squat | [x] |')
+    const added = `${base}\n| Bench | [ ] |`
+
+    const expected = { status: 'clean', text: `${ticked}\n| Bench | [ ] |` }
+    expect(merge3(base, ticked, added)).toEqual(expected)
+    expect(merge3(base, added, ticked)).toEqual(expected)
+  })
+
+  it('merges lines added around lines edited in place on the other side', () => {
+    const scenario = fc
+      .uniqueArray(fc.nat({ max: 99 }), { minLength: 1, maxLength: 6 })
+      .chain((ids) =>
+        fc.record({
+          base: fc.constant(ids.map((id) => `- [ ] task ${id}`)),
+          ticked: fc.array(fc.boolean(), { minLength: ids.length, maxLength: ids.length }),
+          before: fc.uniqueArray(fc.nat({ max: 50 }), { maxLength: 3 }),
+          after: fc.uniqueArray(fc.nat({ max: 50 }), { maxLength: 3 }),
+        }),
+      )
+
+    fc.assert(
+      fc.property(scenario, ({ base, ticked, before, after }) => {
+        const edited = base.map((l, i) => (ticked[i] === true ? l.replace('[ ]', '[x]') : l))
+        const top = before.map((n) => `new above ${n}`)
+        const bottom = after.map((n) => `new below ${n}`)
+        const grown = [...top, ...base, ...bottom]
+
+        expect(merge3(base.join('\n'), edited.join('\n'), grown.join('\n'))).toEqual({
+          status: 'clean',
+          text: [...top, ...edited, ...bottom].join('\n'),
+        })
+      }),
+    )
+  })
+
+  it('still conflicts when both sides add different lines at the same place', () => {
+    expect(merge3('a', 'a\nmine', 'a\ntheirs').status).toBe('conflict')
+  })
+
+  it('conflicts when it is unclear which copy of a repeated line was edited', () => {
+    // "| [ ] |" was duplicated on one side and ticked on the other: which copy is the original?
+    expect(merge3('| [ ] |', '| [x] |', '| [ ] |\n| [ ] |').status).toBe('conflict')
+  })
+
   it('merges edits separated by an untouched line without conflict', () => {
     // Unique lines keep the diff unambiguous; the separator is never edited.
     const block = (prefix: string) =>
