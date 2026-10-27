@@ -63,8 +63,9 @@ test('a week of journaling', async ({ page }) => {
     await savedOnServer(page, 'day/2026-10-26', dayText)
 
     await page.reload()
-    await expect(week).toHaveValue(weekText)
-    await expect(monday).toHaveValue(dayText)
+    await expect(week).toContainText('Ship the MVP')
+    await expect(week).toContainText('| Squat | [x] | [ ] |')
+    await expect(monday).toContainText('Call dentist')
     await expect(page.getByRole('link', { name: /^Mon 26.*written/ })).toBeVisible()
   })
 
@@ -105,7 +106,7 @@ test('a week of journaling', async ({ page }) => {
     await resolver.getByRole('radio', { name: /Keep mine/ }).check()
     await resolver.getByRole('button', { name: 'Save' }).click()
 
-    await expect(tuesday).toHaveValue('Run 8km')
+    await expect(tuesday).toHaveText('Run 8km')
     await savedOnServer(page, 'day/2026-10-27', 'Run 8km')
   })
 

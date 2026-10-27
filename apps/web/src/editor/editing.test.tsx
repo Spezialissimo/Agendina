@@ -2,6 +2,7 @@ import { focusManager } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
+import { editorText, replaceText, typeInto } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
@@ -27,10 +28,9 @@ describe('writing on a page', () => {
   const status = (name: string) => within(screen.getByRole('region', { name })).getByRole('status')
 
   it('saves what you type shortly after you stop', async () => {
-    const { user } = renderApp(server, '/day/2026-10-26')
+    renderApp(server, '/day/2026-10-26')
 
-    // user-event reads "[" as a key name; "[[" types a literal "[".
-    await user.type(await editor(TODAY), '- [[ ] Finish report')
+    typeInto(await editor(TODAY), '- [ ] Finish report')
 
     await waitFor(async () => {
       expect(await stored('day', '2026-10-26')).toBe('- [ ] Finish report')
@@ -41,24 +41,31 @@ describe('writing on a page', () => {
   })
 
   it('writes on the week page too', async () => {
-    const { user } = renderApp(server, '/day/2026-10-26')
+    renderApp(server, '/day/2026-10-26')
 
-    await user.type(await editor('Week 44'), '| Squat | [[x] |')
+    typeInto(await editor('Week 44'), '| Squat | [x] |')
 
     await waitFor(async () => {
       expect(await stored('week', '2026-10-26')).toBe('| Squat | [x] |')
     })
   })
 
+  it('shows the stored text as soon as the editor appears, so nothing typed can be lost', async () => {
+    await api.saveNote('day', '2026-10-26', 'already written', 0)
+    renderApp(server, '/day/2026-10-26')
+
+    expect(editorText(await editor(TODAY))).toBe('already written')
+  })
+
   it('continues from what was saved before', async () => {
     await api.saveNote('day', '2026-10-26', 'first line', 0)
-    const { user } = renderApp(server, '/day/2026-10-26')
+    renderApp(server, '/day/2026-10-26')
 
     const textbox = await editor(TODAY)
     await waitFor(() => {
-      expect(textbox).toHaveValue('first line')
+      expect(editorText(textbox)).toBe('first line')
     })
-    await user.type(textbox, '\nsecond line')
+    typeInto(textbox, '\nsecond line')
 
     await waitFor(async () => {
       expect(await stored('day', '2026-10-26')).toBe('first line\nsecond line')
@@ -69,7 +76,7 @@ describe('writing on a page', () => {
   it('saves immediately when you move to another day', async () => {
     const { user, router } = renderApp(server, '/day/2026-10-26')
 
-    await user.type(await editor(TODAY), 'quick note')
+    typeInto(await editor(TODAY), 'quick note')
     await user.keyboard('{Meta>}{Shift>}[Period]{/Shift}{/Meta}')
 
     expect(router.state.location.pathname).toBe('/day/2026-10-27')
@@ -79,9 +86,9 @@ describe('writing on a page', () => {
   })
 
   it('marks the day as written in the week strip', async () => {
-    const { user } = renderApp(server, '/day/2026-10-26')
+    renderApp(server, '/day/2026-10-26')
 
-    await user.type(await editor(TODAY), 'something')
+    typeInto(await editor(TODAY), 'something')
 
     expect(
       await screen.findByRole('link', { name: 'Mon 26, today, written' }, { timeout: 3000 }),
@@ -90,32 +97,31 @@ describe('writing on a page', () => {
 
   it('takes in changes saved meanwhile from another device', async () => {
     await api.saveNote('day', '2026-10-26', '- [ ] Call dentist\n- [ ] Run 5km', 0)
-    const { user } = renderApp(server, '/day/2026-10-26')
+    renderApp(server, '/day/2026-10-26')
     const textbox = await editor(TODAY)
     await waitFor(() => {
-      expect(textbox).toHaveValue('- [ ] Call dentist\n- [ ] Run 5km')
+      expect(editorText(textbox)).toBe('- [ ] Call dentist\n- [ ] Run 5km')
     })
 
     await api.saveNote('day', '2026-10-26', '- [x] Call dentist\n- [ ] Run 5km', 1) // the phone
-    await user.type(textbox, '\nFelt good')
+    typeInto(textbox, '\nFelt good')
 
     await waitFor(() => {
-      expect(textbox).toHaveValue('- [x] Call dentist\n- [ ] Run 5km\nFelt good')
+      expect(editorText(textbox)).toBe('- [x] Call dentist\n- [ ] Run 5km\nFelt good')
     })
     expect(await stored('day', '2026-10-26')).toBe('- [x] Call dentist\n- [ ] Run 5km\nFelt good')
   })
 
   it('stops and asks how to resolve when the same line was changed elsewhere', async () => {
     await api.saveNote('day', '2026-10-26', 'Run 5km', 0)
-    const { user } = renderApp(server, '/day/2026-10-26')
+    renderApp(server, '/day/2026-10-26')
     const textbox = await editor(TODAY)
     await waitFor(() => {
-      expect(textbox).toHaveValue('Run 5km')
+      expect(editorText(textbox)).toBe('Run 5km')
     })
 
     await api.saveNote('day', '2026-10-26', 'Run 10km', 1)
-    await user.clear(textbox)
-    await user.type(textbox, 'Run 8km')
+    replaceText(textbox, 'Run 8km')
 
     await waitFor(() => {
       expect(status(TODAY)).toHaveTextContent('Conflict')
@@ -129,11 +135,11 @@ describe('writing on a page', () => {
   })
 
   it('keeps your text while offline and saves when the connection is back', async () => {
-    const { user } = renderApp(server, '/day/2026-10-26')
+    renderApp(server, '/day/2026-10-26')
     const textbox = await editor(TODAY)
 
     server.setOffline(true)
-    await user.type(textbox, 'written on the train')
+    typeInto(textbox, 'written on the train')
     await waitFor(() => {
       expect(status(TODAY)).toHaveTextContent('Offline')
     })
@@ -156,7 +162,7 @@ describe('writing on a page', () => {
     renderApp(server, '/day/2026-10-26')
     const textbox = await editor(TODAY)
     await waitFor(() => {
-      expect(textbox).toHaveValue('from the laptop')
+      expect(editorText(textbox)).toBe('from the laptop')
     })
 
     await api.saveNote('day', '2026-10-26', 'from the laptop\nfrom the phone', 1)
@@ -166,15 +172,15 @@ describe('writing on a page', () => {
     })
 
     await waitFor(() => {
-      expect(textbox).toHaveValue('from the laptop\nfrom the phone')
+      expect(editorText(textbox)).toBe('from the laptop\nfrom the phone')
     })
   })
 
   it('warns before closing the tab with unsaved text', async () => {
-    const { user } = renderApp(server, '/day/2026-10-26')
+    renderApp(server, '/day/2026-10-26')
     const textbox = await editor(TODAY)
     server.setOffline(true)
-    await user.type(textbox, 'not saved yet')
+    typeInto(textbox, 'not saved yet')
 
     const event = new Event('beforeunload', { cancelable: true })
     window.dispatchEvent(event)
