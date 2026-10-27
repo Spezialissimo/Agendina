@@ -13,8 +13,6 @@ import { useApi, useToday } from '../app/AppProviders.tsx'
 import { CommandPalette } from '../commands/CommandPalette.tsx'
 import { COMMANDS, type CommandId } from '../commands/registry.ts'
 import { useShortcuts } from '../commands/useShortcuts.ts'
-import { toggleAtCursor } from '../editor/checkboxes.ts'
-import { applyToFocusedEditor } from '../editor/focusedEditor.ts'
 import { LayoutView } from './LayoutView.tsx'
 import { PlannerContext } from './PlannerContext.tsx'
 import { WeekStrip } from './WeekStrip.tsx'
@@ -66,9 +64,6 @@ function Planner({ focus }: { focus: DayKey }) {
           break
         case 'account.signOut':
           void api.logout().then(() => queryClient.resetQueries())
-          break
-        case 'editor.toggleCheckbox':
-          applyToFocusedEditor(toggleAtCursor)
           break
       }
     },

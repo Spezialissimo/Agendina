@@ -24,11 +24,6 @@ async function savedOnServer(page: Page, path: string, content: string): Promise
   return revision
 }
 
-/** A checkbox inside a page editor, by its label ("Finish report", or "Squat, Mo" in a table). */
-function checkbox(page: Page, label: string) {
-  return page.locator(`input.cm-checkbox[aria-label="${label}"]`)
-}
-
 async function enter(page: Page) {
   await page.goto('/')
   const welcome = page.getByRole('heading', { name: 'Welcome to Agendina' })
@@ -69,17 +64,8 @@ test('a week of journaling', async ({ page }) => {
 
     await page.reload()
     await expect(week).toContainText('Ship the MVP')
+    await expect(week).toContainText('| Squat | [x] | [ ] |')
     await expect(monday).toContainText('Call dentist')
-    // Checkbox cells of the workout table render as checkboxes; ticking one saves the page.
-    await expect(checkbox(page, 'Squat, Mo')).toBeChecked()
-    await expect(checkbox(page, 'Squat, We')).not.toBeChecked()
-    await checkbox(page, 'Squat, We').click()
-    await expect(checkbox(page, 'Squat, We')).toBeChecked()
-    await savedOnServer(
-      page,
-      'week/2026-10-26',
-      weekText.replace('| Squat | [x] | [ ] |', '| Squat | [x] | [x] |'),
-    )
     await expect(page.getByRole('link', { name: /^Mon 26.*written/ })).toBeVisible()
   })
 

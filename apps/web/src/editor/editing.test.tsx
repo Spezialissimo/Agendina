@@ -2,7 +2,7 @@ import { focusManager } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
-import { editorText, placeCursor, replaceText, typeInto } from '../test/editor.ts'
+import { editorText, replaceText, typeInto } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
@@ -186,20 +186,6 @@ describe('writing on a page', () => {
     window.dispatchEvent(event)
 
     expect(event.defaultPrevented).toBe(true)
-  })
-
-  it('ticks the to-do on the cursor’s line with ⌘↩', async () => {
-    await api.saveNote('day', '2026-10-26', '- [ ] Finish report\n- [ ] Call dentist', 0)
-    const { user } = renderApp(server, '/day/2026-10-26')
-    const textbox = await editor(TODAY)
-    placeCursor(textbox, '- [ ] Call'.length + '- [ ] Finish report\n'.length)
-
-    await user.keyboard('{Meta>}{Enter}{/Meta}')
-
-    expect(editorText(textbox)).toBe('- [ ] Finish report\n- [x] Call dentist')
-    await waitFor(async () => {
-      expect(await stored('day', '2026-10-26')).toBe('- [ ] Finish report\n- [x] Call dentist')
-    })
   })
 
   it('does not offer editing on read-only neighbour pages', async () => {

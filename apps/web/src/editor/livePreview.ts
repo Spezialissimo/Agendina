@@ -2,7 +2,6 @@ import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
 import { type EditorState, type Range, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, type DecorationSet, EditorView, WidgetType } from '@codemirror/view'
 import type { SyntaxNode } from '@lezer/common'
-import { findCheckboxes, toggleCheckbox } from './checkboxes.ts'
 
 /**
  * What live preview does to the markdown, as plain data (so it can be tested without a browser):
@@ -14,7 +13,6 @@ export type PreviewItem =
   | { kind: 'rule'; from: number; to: number }
   | { kind: 'line'; from: number; className: string }
   | { kind: 'mark'; from: number; to: number; className: string }
-  | { kind: 'checkbox'; from: number; to: number; checked: boolean; label: string }
 
 const INLINE: Record<string, { className: string; mark: string }> = {
   StrongEmphasis: { className: 'cm-strong', mark: 'EmphasisMark' },
@@ -26,8 +24,8 @@ const INLINE: Record<string, { className: string; mark: string }> = {
 /**
  * Live preview of a page (ADR 0004): headings, emphasis, links, bullets, quotes and rules are
  * rendered; on every line holding a cursor (in a focused editor) the syntax stays visible so it
- * can be edited. To-dos and checkbox cells of tables become checkboxes (raw only while the cursor
- * is inside their brackets); the rest of a table is left to the table rendering.
+ * can be edited. To-dos
+ * and tables are left alone here (they have their own rendering).
  */
 export function livePreview(state: EditorState, { focused = true } = {}): PreviewItem[] {
   const tree = ensureSyntaxTree(state, state.doc.length, 200) ?? syntaxTree(state)
@@ -89,22 +87,8 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
         }
         case 'ListItem': {
           const mark = node.getChild('ListMark')
-          const task = node.getChild('Task')
-          if (mark === null) return
-          if (task !== null) {
-            if (!raw(mark.from)) hide(mark, true)
-            const marker = task.getChild('TaskMarker')
-            if (
-              marker !== null &&
-              /[xX]/.test(state.doc.sliceString(marker.from + 1, marker.from + 2))
-            ) {
-              items.push({
-                kind: 'line',
-                from: state.doc.lineAt(node.from).from,
-                className: 'cm-task-done',
-              })
-            }
-          } else if (node.parent?.name === 'BulletList' && !raw(mark.from)) {
+          const bullet = node.parent?.name === 'BulletList'
+          if (mark !== null && bullet && node.getChild('Task') === null && !raw(mark.from)) {
             items.push({ kind: 'bullet', from: mark.from, to: mark.to })
           }
           return
@@ -130,70 +114,8 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
       }
     },
   })
-  for (const box of findCheckboxes(state)) {
-    const editing =
-      focused && state.selection.ranges.some((r) => r.from > box.from && r.to < box.to)
-    if (!editing)
-      items.push({
-        kind: 'checkbox',
-        from: box.from,
-        to: box.to,
-        checked: box.checked,
-        label: box.label,
-      })
-  }
   return items
 }
-
-class CheckboxWidget extends WidgetType {
-  constructor(
-    readonly checked: boolean,
-    readonly label: string,
-  ) {
-    super()
-  }
-  override eq(other: CheckboxWidget) {
-    return other.checked === this.checked && other.label === this.label
-  }
-  toDOM() {
-    const input = document.createElement('input')
-    input.type = 'checkbox'
-    input.className = 'cm-checkbox'
-    input.checked = this.checked
-    input.tabIndex = -1
-    input.setAttribute('aria-label', this.label)
-    return input
-  }
-  override ignoreEvent() {
-    return false
-  }
-}
-
-/** Clicking a checkbox toggles it in the text (so it saves and merges like typing). */
-const checkboxClicks = EditorView.domEventHandlers({
-  mousedown(event, view) {
-    const target = event.target
-    if (!(target instanceof HTMLInputElement) || !target.classList.contains('cm-checkbox'))
-      return false
-    event.preventDefault()
-    const at = view.posAtDOM(target)
-    const box = findCheckboxes(view.state).find((b) => b.from === at)
-    if (box !== undefined)
-      view.dispatch({ changes: toggleCheckbox(box), userEvent: 'input.toggle' })
-    return true
-  },
-  click(event) {
-    // The text is the truth: the checkbox is redrawn from it, never toggled by the browser.
-    if (
-      event.target instanceof HTMLInputElement &&
-      event.target.classList.contains('cm-checkbox')
-    ) {
-      event.preventDefault()
-      return true
-    }
-    return false
-  },
-})
 
 class BulletWidget extends WidgetType {
   override eq() {
@@ -244,11 +166,6 @@ function decorations(state: EditorState): DecorationSet {
         return Decoration.line({ class: item.className }).range(item.from)
       case 'mark':
         return Decoration.mark({ class: item.className }).range(item.from, item.to)
-      case 'checkbox':
-        return Decoration.replace({ widget: new CheckboxWidget(item.checked, item.label) }).range(
-          item.from,
-          item.to,
-        )
     }
   })
   return Decoration.set(ranges, true)
@@ -269,7 +186,6 @@ const previewField = StateField.define<DecorationSet>({
 /** The CodeMirror extension: recomputes the preview when the text, cursor, parse or focus changes. */
 export const livePreviewExtension = [
   focusedField,
-  checkboxClicks,
   EditorView.focusChangeEffect.of((_state, focusing) => setFocused.of(focusing)),
   previewField,
 ]

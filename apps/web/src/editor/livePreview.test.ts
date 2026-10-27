@@ -25,22 +25,11 @@ function state(docWithCursor: string, extraCursors: number[] = []): EditorState 
 function rendered(s: EditorState, items: PreviewItem[]): string {
   const doc = s.doc.toString()
   const edits = items
-    .filter(
-      (i) => i.kind === 'hide' || i.kind === 'bullet' || i.kind === 'rule' || i.kind === 'checkbox',
-    )
+    .filter((i) => i.kind === 'hide' || i.kind === 'bullet' || i.kind === 'rule')
     .sort((a, b) => b.from - a.from)
   let text = doc
   for (const item of edits) {
-    const replacement =
-      item.kind === 'bullet'
-        ? '•'
-        : item.kind === 'rule'
-          ? '———'
-          : item.kind === 'checkbox'
-            ? item.checked
-              ? '☑'
-              : '☐'
-            : ''
+    const replacement = item.kind === 'bullet' ? '•' : item.kind === 'rule' ? '———' : ''
     text = text.slice(0, item.from) + replacement + text.slice(item.to)
   }
   return text
@@ -110,37 +99,10 @@ describe('livePreview', () => {
     expect(rendered(s, livePreview(s))).toBe('Ship it\n')
   })
 
-  it('turns bullets into dots, but leaves numbers alone', () => {
-    const s = state('- milk\n* eggs\n1. first\n‸')
+  it('turns bullets into dots, but leaves numbers and to-dos alone', () => {
+    const s = state('- milk\n* eggs\n1. first\n- [ ] call dentist\n‸')
 
-    expect(rendered(s, livePreview(s))).toBe('• milk\n• eggs\n1. first\n')
-  })
-
-  it('turns to-dos into checkboxes and strikes done ones through', () => {
-    const s = state('- [ ] call dentist\n- [x] buy milk\n‸')
-
-    const items = livePreview(s)
-
-    expect(rendered(s, items)).toBe('☐ call dentist\n☑ buy milk\n')
-    expect(lineClasses(items, s)).toEqual(['2:cm-task-done'])
-  })
-
-  it('keeps a to-do’s list mark on the cursor line, but still shows its checkbox', () => {
-    const s = state('- [ ] call ‸dentist')
-
-    expect(rendered(s, livePreview(s))).toBe('- ☐ call dentist')
-  })
-
-  it('shows the brackets when the cursor is inside them', () => {
-    const s = state('- [‸ ] call dentist')
-
-    expect(rendered(s, livePreview(s))).toBe('- [ ] call dentist')
-  })
-
-  it('turns checkbox cells of tables into checkboxes, leaving the rest of the table alone', () => {
-    const s = state('| Exercise | Mo |\n|---|---|\n| **Squat** | [x] |\n‸')
-
-    expect(rendered(s, livePreview(s))).toBe('| Exercise | Mo |\n|---|---|\n| **Squat** | ☑ |\n')
+    expect(rendered(s, livePreview(s))).toBe('• milk\n• eggs\n1. first\n- [ ] call dentist\n')
   })
 
   it('renders quotes and horizontal rules', () => {
@@ -186,7 +148,7 @@ describe('livePreview', () => {
         const cursor = seed % (doc.length + 1)
         const withCursor = s.update({ selection: EditorSelection.cursor(cursor) }).state
         const hidden = livePreview(withCursor)
-          .filter((i) => i.kind !== 'line' && i.kind !== 'mark' && i.kind !== 'checkbox')
+          .filter((i) => i.kind !== 'line' && i.kind !== 'mark')
           .sort((a, b) => a.from - b.from)
         const cursorLine = withCursor.doc.lineAt(cursor)
         hidden.forEach((item, index) => {
