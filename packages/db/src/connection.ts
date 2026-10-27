@@ -14,10 +14,25 @@ export interface DatabaseHandle {
   close(): Promise<void>
 }
 
+export interface DatabaseOptions {
+  /**
+   * Called when Postgres drops an idle pooled connection (server restart, failover, admin
+   * action). The pool replaces it; without a handler, Node would crash on the unhandled error.
+   */
+  onConnectionError?: (error: Error) => void
+}
+
 /**
  * Opens a database from a URL: `sqlite::memory:`, `sqlite:<path>` or `postgres://…`.
  */
-export function createDatabase(url: string): DatabaseHandle {
+export function createDatabase(
+  url: string,
+  {
+    onConnectionError = (error) => {
+      console.error('Postgres connection error:', error.message)
+    },
+  }: DatabaseOptions = {},
+): DatabaseHandle {
   if (url.startsWith('sqlite:')) {
     const path = url.slice('sqlite:'.length)
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true })
@@ -28,9 +43,9 @@ export function createDatabase(url: string): DatabaseHandle {
     return { db, kind: 'sqlite', close: () => db.destroy() }
   }
   if (url.startsWith('postgres://') || url.startsWith('postgresql://')) {
-    const db = new Kysely<DB>({
-      dialect: new PostgresDialect({ pool: new pg.Pool({ connectionString: url }) }),
-    })
+    const pool = new pg.Pool({ connectionString: url })
+    pool.on('error', onConnectionError)
+    const db = new Kysely<DB>({ dialect: new PostgresDialect({ pool }) })
     return { db, kind: 'postgres', close: () => db.destroy() }
   }
   throw new Error(
