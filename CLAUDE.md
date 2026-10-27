@@ -47,6 +47,8 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
   `pnpm test:browser`); app tests in jsdom drive it through CodeMirror's API with
   `src/test/editor.ts` (`typeInto`, `replaceText`, `editorText`), as jsdom cannot type into a
   contenteditable.
+- When editing files with scripts, assert that each replacement matched: Prettier rewraps lines,
+  so a text that was written one way may no longer be found; prefer exact-match edits.
 - user-event quirks: type a literal `[` as `[[`; press `.`/`,` by code (`[Period]`, `[Comma]`).
 
 ## How we work: test-driven

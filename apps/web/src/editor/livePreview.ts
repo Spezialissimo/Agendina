@@ -3,6 +3,7 @@ import { type EditorState, type Range, StateEffect, StateField } from '@codemirr
 import { Decoration, type DecorationSet, EditorView, WidgetType } from '@codemirror/view'
 import type { SyntaxNode } from '@lezer/common'
 import { findCheckboxes, toggleCheckbox } from './checkboxes.ts'
+import { splitCells } from './tables.ts'
 
 /**
  * What live preview does to the markdown, as plain data (so it can be tested without a browser):
@@ -15,6 +16,7 @@ export type PreviewItem =
   | { kind: 'line'; from: number; className: string }
   | { kind: 'mark'; from: number; to: number; className: string }
   | { kind: 'checkbox'; from: number; to: number; checked: boolean; label: string }
+  | { kind: 'table'; from: number; to: number }
 
 const INLINE: Record<string, { className: string; mark: string }> = {
   StrongEmphasis: { className: 'cm-strong', mark: 'EmphasisMark' },
@@ -26,8 +28,8 @@ const INLINE: Record<string, { className: string; mark: string }> = {
 /**
  * Live preview of a page (ADR 0004): headings, emphasis, links, bullets, quotes and rules are
  * rendered; on every line holding a cursor (in a focused editor) the syntax stays visible so it
- * can be edited. To-dos and checkbox cells of tables become checkboxes (raw only while the cursor
- * is inside their brackets); the rest of a table is left to the table rendering.
+ * can be edited. To-dos and checkbox cells become checkboxes (raw only while the cursor is inside
+ * their brackets). Tables are grids, and aligned text while the cursor is in them.
  */
 export function livePreview(state: EditorState, { focused = true } = {}): PreviewItem[] {
   const tree = ensureSyntaxTree(state, state.doc.length, 200) ?? syntaxTree(state)
@@ -44,6 +46,8 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
   }
   const raw = (pos: number) => activeLines.has(state.doc.lineAt(pos).number)
   const items: PreviewItem[] = []
+  /** Tables shown as grids: their checkboxes are drawn by the grid. */
+  const grids: { from: number; to: number }[] = []
   /** Hides a syntax mark, plus the space after it when there is one (`## `, `> `). */
   const hide = (node: SyntaxNode, withSpace = false) => {
     if (raw(node.from)) return
@@ -73,8 +77,25 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
         return
       }
       switch (node.name) {
-        case 'Table':
+        case 'Table': {
+          const editing =
+            focused && state.selection.ranges.some((r) => r.to >= node.from && r.from <= node.to)
+          if (!editing) {
+            items.push({ kind: 'table', from: node.from, to: node.to })
+            grids.push({ from: node.from, to: node.to })
+          } else {
+            // While editing, the table is aligned text: a monospace font keeps the columns straight.
+            const first = state.doc.lineAt(node.from).number
+            for (let line = first; line <= state.doc.lineAt(node.to).number; line++) {
+              items.push({
+                kind: 'line',
+                from: state.doc.line(line).from,
+                className: 'cm-table-line',
+              })
+            }
+          }
           return false
+        }
         case 'Link': {
           const marks = node.getChildren('LinkMark')
           const [open, close] = [marks[0], marks[1]]
@@ -131,6 +152,7 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
     },
   })
   for (const box of findCheckboxes(state)) {
+    if (grids.some((grid) => box.from >= grid.from && box.to <= grid.to)) continue
     const editing =
       focused && state.selection.ranges.some((r) => r.from > box.from && r.to < box.to)
     if (!editing)
@@ -169,21 +191,87 @@ class CheckboxWidget extends WidgetType {
   }
 }
 
-/** Clicking a checkbox toggles it in the text (so it saves and merges like typing). */
-const checkboxClicks = EditorView.domEventHandlers({
+/** A table drawn as a grid; its checkbox cells stay clickable, and clicking a cell edits it. */
+class TableWidget extends WidgetType {
+  constructor(readonly source: string) {
+    super()
+  }
+  override eq(other: TableWidget) {
+    return other.source === this.source
+  }
+  toDOM() {
+    const wrapper = document.createElement('div')
+    wrapper.className = 'cm-table-widget'
+    const table = document.createElement('table')
+    const lines = this.source.split('\n')
+    const header = splitCells(lines[0] ?? '').map((c) => c.text)
+    let offset = 0
+    lines.forEach((line, index) => {
+      const lineOffset = offset
+      offset += line.length + 1
+      if (index === 1) return // the delimiter row
+      const row = document.createElement('tr')
+      const cells = splitCells(line)
+      cells.forEach((cell, col) => {
+        const element = document.createElement(index === 0 ? 'th' : 'td')
+        element.dataset.line = String(index)
+        element.dataset.col = String(col)
+        if (index > 0 && col > 0 && /^\[[ xX]\]$/.test(cell.text)) {
+          const input = document.createElement('input')
+          input.type = 'checkbox'
+          input.className = 'cm-checkbox'
+          input.tabIndex = -1
+          input.checked = cell.text[1] !== ' '
+          input.setAttribute('aria-label', `${cells[0]?.text ?? ''}, ${header[col] ?? ''}`)
+          input.dataset.offset = String(lineOffset + line.indexOf('[', cell.from))
+          element.append(input)
+        } else {
+          element.textContent = cell.text
+        }
+        row.append(element)
+      })
+      table.append(row)
+    })
+    wrapper.append(table)
+    return wrapper
+  }
+  override ignoreEvent() {
+    return false
+  }
+}
+
+/** Clicks on checkboxes (inline or in a grid) and on grid cells. */
+const clicks = EditorView.domEventHandlers({
   mousedown(event, view) {
     const target = event.target
-    if (!(target instanceof HTMLInputElement) || !target.classList.contains('cm-checkbox'))
-      return false
+    if (!(target instanceof HTMLElement)) return false
+    const grid = target.closest('.cm-table-widget')
+    if (target instanceof HTMLInputElement && target.classList.contains('cm-checkbox')) {
+      event.preventDefault()
+      const at =
+        grid === null ? view.posAtDOM(target) : view.posAtDOM(grid) + Number(target.dataset.offset)
+      const box = findCheckboxes(view.state).find((b) => b.from === at)
+      // The text is the truth: toggling it redraws the checkbox.
+      if (box !== undefined)
+        view.dispatch({ changes: toggleCheckbox(box), userEvent: 'input.toggle' })
+      return true
+    }
+    const cell = target.closest('td, th')
+    if (grid === null || !(cell instanceof HTMLElement)) return false
+    // Put the cursor at the end of that cell's text: the table opens as editable text there.
     event.preventDefault()
-    const at = view.posAtDOM(target)
-    const box = findCheckboxes(view.state).find((b) => b.from === at)
-    if (box !== undefined)
-      view.dispatch({ changes: toggleCheckbox(box), userEvent: 'input.toggle' })
+    const first = view.state.doc.lineAt(view.posAtDOM(grid)).number
+    const line = view.state.doc.line(first + Number(cell.dataset.line))
+    const content = splitCells(line.text)[Number(cell.dataset.col)]
+    const end =
+      content === undefined
+        ? line.to
+        : line.from + content.from + line.text.slice(content.from, content.to).trimEnd().length
+    view.focus()
+    view.dispatch({ selection: { anchor: end } })
     return true
   },
   click(event) {
-    // The text is the truth: the checkbox is redrawn from it, never toggled by the browser.
     if (
       event.target instanceof HTMLInputElement &&
       event.target.classList.contains('cm-checkbox')
@@ -249,6 +337,11 @@ function decorations(state: EditorState): DecorationSet {
           item.from,
           item.to,
         )
+      case 'table':
+        return Decoration.replace({
+          widget: new TableWidget(state.doc.sliceString(item.from, item.to)),
+          block: true,
+        }).range(item.from, item.to)
     }
   })
   return Decoration.set(ranges, true)
@@ -269,7 +362,7 @@ const previewField = StateField.define<DecorationSet>({
 /** The CodeMirror extension: recomputes the preview when the text, cursor, parse or focus changes. */
 export const livePreviewExtension = [
   focusedField,
-  checkboxClicks,
+  clicks,
   EditorView.focusChangeEffect.of((_state, focusing) => setFocused.of(focusing)),
   previewField,
 ]

@@ -1,9 +1,11 @@
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { Annotation, EditorState } from '@codemirror/state'
+import { Annotation, EditorState, type TransactionSpec } from '@codemirror/state'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { livePreviewExtension } from './livePreview.ts'
+import { rememberFocus } from './focusedEditor.ts'
+import { moveToCell } from './tables.ts'
 import { minimalChange } from './textChange.ts'
 
 interface Props {
@@ -11,6 +13,13 @@ interface Props {
   label: string
   value: string
   onChange: (value: string) => void
+}
+
+/** Applies an editor command if it applies here; false lets the key do its usual job. */
+function apply(view: EditorView, spec: TransactionSpec | undefined): boolean {
+  if (spec === undefined) return false
+  view.dispatch(spec, { userEvent: 'input' })
+  return true
 }
 
 /** Marks changes that came from `value` (not from the user), so they are not reported back. */
@@ -39,9 +48,17 @@ export function PageEditor({ label, value, onChange }: Props) {
           history(),
           // ⌘↩ is the app's "toggle to-do" command (see commands/registry.ts), not "insert blank line".
           keymap.of([
+            // Tab moves between table cells; elsewhere it keeps moving keyboard focus.
+            {
+              key: 'Tab',
+              run: (view) => apply(view, moveToCell(view.state, 1)),
+              shift: (view) => apply(view, moveToCell(view.state, -1)),
+            },
+            // ⌘↩ is the app's "toggle to-do" command (see commands/registry.ts), not "insert blank line".
             ...defaultKeymap.filter((binding) => binding.key !== 'Mod-Enter'),
             ...historyKeymap,
           ]),
+          rememberFocus,
           markdown({ base: markdownLanguage }),
           livePreviewExtension,
           EditorView.lineWrapping,

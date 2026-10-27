@@ -10,6 +10,8 @@ export type CommandId =
   | 'palette.open'
   | 'account.signOut'
   | 'editor.toggleCheckbox'
+  | 'editor.addTableRow'
+  | 'editor.addTableColumn'
 
 export interface Command extends CommandSpec {
   id: CommandId
@@ -60,5 +62,17 @@ export const COMMANDS: Command[] = [
     title: 'Toggle to-do',
     context: 'editor',
     defaultBindings: ['Mod+Enter'],
+  },
+  {
+    id: 'editor.addTableRow',
+    title: 'Add table row',
+    context: 'editor',
+    defaultBindings: ['Mod+Alt+Enter'],
+  },
+  {
+    id: 'editor.addTableColumn',
+    title: 'Add table column',
+    context: 'editor',
+    defaultBindings: [],
   },
 ]

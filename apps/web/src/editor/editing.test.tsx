@@ -202,6 +202,21 @@ describe('writing on a page', () => {
     })
   })
 
+  it('adds a table column from the command palette, on the page being edited', async () => {
+    const table = '| Exercise | Mo |\n|---|---|\n| Squat | [x] |'
+    await api.saveNote('week', '2026-10-26', table, 0)
+    const { user } = renderApp(server, '/day/2026-10-26')
+    const week = await editor('Week 44')
+    placeCursor(week, table.indexOf('Mo') + 1)
+
+    await user.keyboard('{Meta>}{k}{/Meta}')
+    await user.keyboard('add table column{Enter}')
+
+    expect(editorText(week)).toBe(
+      '| Exercise | Mo  |     |\n| -------- | --- | --- |\n| Squat    | [x] | [ ] |',
+    )
+  })
+
   it('does not offer editing on read-only neighbour pages', async () => {
     renderApp(server, '/day/2026-10-26')
     await editor(TODAY)
