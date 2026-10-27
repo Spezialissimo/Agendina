@@ -9,6 +9,7 @@ export type CommandId =
   | 'calendar.open'
   | 'palette.open'
   | 'account.signOut'
+  | 'editor.toggleCheckbox'
 
 export interface Command extends CommandSpec {
   id: CommandId
@@ -54,4 +55,10 @@ export const COMMANDS: Command[] = [
     defaultBindings: ['Mod+KeyK'],
   },
   { id: 'account.signOut', title: 'Sign out', context: 'global', defaultBindings: [] },
+  {
+    id: 'editor.toggleCheckbox',
+    title: 'Toggle to-do',
+    context: 'editor',
+    defaultBindings: ['Mod+Enter'],
+  },
 ]

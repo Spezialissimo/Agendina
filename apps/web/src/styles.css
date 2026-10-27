@@ -699,3 +699,19 @@ button {
   vertical-align: middle;
   border-top: 1px solid var(--rule);
 }
+
+/* Checkboxes */
+
+.editor .cm-checkbox {
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0 0.35em 0 0;
+  vertical-align: -0.15em;
+  cursor: pointer;
+}
+
+.editor .cm-task-done {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--ink-soft) 60%, transparent);
+}
