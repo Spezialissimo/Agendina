@@ -1,7 +1,9 @@
-import type { UserSettings } from '@agendina/contract'
+import type { AuthState, UserSettings } from '@agendina/contract'
 import { addDays, type WeekRule, type Weekday } from '@agendina/core'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, type KeyboardEvent } from 'react'
-import { useLocale } from '../app/AppProviders.tsx'
+import { useApi, useLocale } from '../app/AppProviders.tsx'
+import { AUTH_QUERY } from '../auth/AuthGate.tsx'
 import { format } from '../planner/weeks.ts'
 
 interface Props {
@@ -98,7 +100,50 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
             </select>
           </label>
         </fieldset>
+        <fieldset>
+          <legend>Your pages</legend>
+          <p>
+            <a href="/api/export" download>
+              Download all pages
+            </a>{' '}
+            <span className="settings-hint">as markdown files in a zip</span>
+          </p>
+        </fieldset>
+        <SignupSetting />
       </div>
     </div>
+  )
+}
+
+/** For the admin: whether anyone can create an account on this instance. */
+function SignupSetting() {
+  const api = useApi()
+  const queryClient = useQueryClient()
+  const auth = useQuery({ queryKey: AUTH_QUERY, queryFn: () => api.authState() })
+  const save = useMutation({
+    mutationFn: (signupOpen: boolean) => api.setInstanceSettings({ signupOpen }),
+    onSuccess: ({ signupOpen }) => {
+      queryClient.setQueryData<AuthState>(AUTH_QUERY, (state) =>
+        state === undefined ? state : { ...state, signupOpen },
+      )
+    },
+  })
+  if (auth.data?.user?.role !== 'admin') return null
+  return (
+    <fieldset>
+      <legend>This server</legend>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={auth.data.signupOpen}
+          disabled={save.isPending}
+          onChange={(event) => {
+            save.mutate(event.target.checked)
+          }}
+        />
+        Anyone can create an account
+      </label>
+      {save.isError && <p role="alert">The change could not be saved. Try again.</p>}
+    </fieldset>
   )
 }

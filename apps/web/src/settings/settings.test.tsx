@@ -131,4 +131,48 @@ describe('settings', () => {
       expect(editorText(await screen.findByRole('textbox', { name: 'Week 44' }))).toBe('')
     })
   })
+
+  describe('export', () => {
+    it('downloads every page as markdown files in a zip', async () => {
+      const { dialog } = await openSettings('/day/2026-10-27')
+
+      const download = within(dialog).getByRole('link', { name: 'Download all pages' })
+
+      expect(download).toHaveAttribute('href', '/api/export')
+      expect(download).toHaveAttribute('download')
+    })
+  })
+
+  describe('sign-ups', () => {
+    const signupToggle = (dialog: HTMLElement) =>
+      within(dialog).getByRole('checkbox', { name: 'Anyone can create an account' })
+
+    it('the admin opens and closes them', async () => {
+      const { user, dialog } = await openSettings('/day/2026-10-27')
+      expect(signupToggle(dialog)).not.toBeChecked()
+
+      await user.click(signupToggle(dialog))
+      await waitFor(async () => {
+        expect((await api.authState()).signupOpen).toBe(true)
+      })
+      expect(signupToggle(dialog)).toBeChecked()
+
+      await user.click(signupToggle(dialog))
+      await waitFor(async () => {
+        expect((await api.authState()).signupOpen).toBe(false)
+      })
+    })
+
+    it('are not offered to other accounts', async () => {
+      await api.setInstanceSettings({ signupOpen: true })
+      await server.signup('member@example.com')
+
+      const { dialog } = await openSettings('/day/2026-10-27')
+
+      expect(within(dialog).getByRole('link', { name: 'Download all pages' })).toBeInTheDocument()
+      expect(
+        within(dialog).queryByRole('checkbox', { name: 'Anyone can create an account' }),
+      ).not.toBeInTheDocument()
+    })
+  })
 })
