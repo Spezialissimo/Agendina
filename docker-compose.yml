@@ -1,7 +1,10 @@
 # Self-hosting Agendina: `docker compose up -d`, then open http://localhost:3000.
 # The first account you create becomes the admin. Notes live in the `agendina-data` volume.
+# See docs/self-hosting.md for HTTPS, backups and upgrades.
 services:
   agendina:
+    # A released image; without access to it, Compose builds one from this checkout instead.
+    image: ghcr.io/spezialissimo/agendina:latest
     build: .
     ports:
       - '3000:3000'
