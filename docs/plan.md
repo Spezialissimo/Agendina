@@ -102,7 +102,7 @@ notes API with revisions/merge/409, changes feed, settings, entitlements stub, e
 **Phase 3 — Web shell** ✅ (PRs #16–#21): login, layout A renderer, week strip + month popover, command registry
 + default cmd shortcuts + palette, autosave (debounced) with revision handling, conflict resolve UI.
 **Phase 4 — Editor** ✅ (PRs #22–#28): CodeMirror live-preview steps (see Decisions).
-**Phase 5 — Templates**: day/week templates, auto-apply on new pages, "Edit template" button +
+**Phase 5 — Templates** ✅ (PRs #31–#35): day/week templates, auto-apply on new pages, "Edit template" button +
 propagation to current and existing future pages + conflict list.
 **Phase 6 — MVP release**: week-start setting, Docker image (web + API + SQLite volume, auto-
 migrations), self-host docs, daily use by you.
