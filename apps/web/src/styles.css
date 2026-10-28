@@ -182,7 +182,9 @@ button {
   font-size: 1.1rem;
 }
 
-.topbar > .link:last-child {
+.topbar-actions {
+  display: flex;
+  gap: 1rem;
   margin-left: auto;
 }
 
@@ -554,6 +556,58 @@ button {
 .palette-empty {
   color: var(--ink-soft);
   cursor: default;
+}
+
+/* Settings */
+
+.settings {
+  width: min(92vw, 30rem);
+  background: var(--page);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.settings-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.settings h2 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+}
+
+.settings fieldset {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings legend {
+  margin-bottom: 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.settings label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.settings select {
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--page);
+  color: var(--ink);
 }
 
 /* Editing */

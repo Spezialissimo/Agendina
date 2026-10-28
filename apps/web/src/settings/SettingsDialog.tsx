@@ -1,0 +1,104 @@
+import type { UserSettings } from '@agendina/contract'
+import { addDays, type WeekRule, type Weekday } from '@agendina/core'
+import { useId, type KeyboardEvent } from 'react'
+import { useLocale } from '../app/AppProviders.tsx'
+import { format } from '../planner/weeks.ts'
+
+interface Props {
+  settings: UserSettings
+  onChange: (settings: UserSettings) => void
+  onClose: () => void
+}
+
+const WEEKDAYS: Weekday[] = [1, 2, 3, 4, 5, 6, 7]
+// Monday 26 October 2026, to name the weekdays in the user's language.
+const A_MONDAY = '2026-10-26'
+
+const NUMBERING: { minimalDays: WeekRule['minimalDays']; label: string }[] = [
+  { minimalDays: 4, label: 'The first week with four days of the new year (ISO)' },
+  { minimalDays: 1, label: 'The week with 1 January' },
+]
+
+/** The user's preferences; changes apply right away and are saved shortly after. */
+export function SettingsDialog({ settings, onChange, onClose }: Props) {
+  const locale = useLocale()
+  const titleId = useId()
+  const { weekRule } = settings
+  const setWeekRule = (rule: Partial<WeekRule>) => {
+    onChange({ ...settings, weekRule: { ...weekRule, ...rule } })
+  }
+  const numbering = NUMBERING.some((n) => n.minimalDays === weekRule.minimalDays)
+    ? NUMBERING
+    : [
+        ...NUMBERING,
+        {
+          minimalDays: weekRule.minimalDays,
+          label: `The first week with ${String(weekRule.minimalDays)} days of the new year`,
+        },
+      ]
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onClose()
+    }
+  }
+
+  return (
+    <div className="palette-backdrop" onPointerDown={onClose}>
+      <div
+        className="settings"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onKeyDown={onKeyDown}
+        onPointerDown={(event) => {
+          event.stopPropagation()
+        }}
+      >
+        <header className="settings-header">
+          <h2 id={titleId}>Settings</h2>
+          <button type="button" className="link" onClick={onClose}>
+            Close
+          </button>
+        </header>
+        <fieldset>
+          <legend>Weeks</legend>
+          <label>
+            Weeks start on
+            <select
+              autoFocus
+              value={weekRule.firstDay}
+              onChange={(event) => {
+                setWeekRule({ firstDay: Number(event.target.value) as Weekday })
+              }}
+            >
+              {WEEKDAYS.map((day) => (
+                <option key={day} value={day}>
+                  {format(addDays(A_MONDAY, day - 1), locale, { weekday: 'long' })}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Week 1 is
+            <select
+              value={weekRule.minimalDays}
+              onChange={(event) => {
+                setWeekRule({
+                  minimalDays: Number(event.target.value) as WeekRule['minimalDays'],
+                })
+              }}
+            >
+              {numbering.map(({ minimalDays, label }) => (
+                <option key={minimalDays} value={minimalDays}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </fieldset>
+      </div>
+    </div>
+  )
+}

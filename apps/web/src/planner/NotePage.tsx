@@ -1,4 +1,4 @@
-import type { NoteView } from '@agendina/core'
+import { addDays, compareDays, type DayKey, type NoteView } from '@agendina/core'
 import { useQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -10,7 +10,26 @@ import { PageEditor } from '../editor/PageEditor.tsx'
 import { useNoteDocument, type SaveStatus } from '../editor/useNoteDocument.ts'
 import { TemplateEditor } from '../templates/TemplateEditor.tsx'
 import { useTemplate } from '../templates/useTemplate.ts'
-import { addDays } from '@agendina/core'
+
+/**
+ * The key of the note shown for `view`. A week page is keyed by the week's first day, but pages
+ * written before the user changed the week start begin on another day of the week: show the
+ * earliest of those when there is no page for the first day. Undefined while loading, so nothing
+ * is typed into a page that is about to change.
+ */
+function usePageKey(view: NoteView): DayKey | undefined {
+  const api = useApi()
+  const last = addDays(view.key, 6)
+  const notes = useQuery({
+    queryKey: ['notes', 'week', view.key, last],
+    queryFn: () => api.listNotes('week', view.key, last),
+    enabled: view.kind === 'week',
+  })
+  if (view.kind === 'day') return view.key
+  if (notes.data === undefined) return notes.isError ? view.key : undefined
+  const keys = notes.data.map((n) => n.key).sort(compareDays)
+  return keys.includes(view.key) ? view.key : (keys[0] ?? view.key)
+}
 
 /** One page of the planner: a day or a week. Read-only neighbours open their day when clicked. */
 export function NotePage({ view }: { view: NoteView }) {
@@ -19,9 +38,11 @@ export function NotePage({ view }: { view: NoteView }) {
   const navigate = useNavigate()
   const { weekRule } = usePlannerContext()
   const titleId = useId()
+  const pageKey = usePageKey(view)
   const note = useQuery({
-    queryKey: ['note', view.kind, view.key],
-    queryFn: () => api.getNote(view.kind, view.key),
+    queryKey: ['note', view.kind, pageKey],
+    queryFn: () => api.getNote(view.kind, pageKey ?? view.key),
+    enabled: pageKey !== undefined,
   })
   const template = useTemplate(view.kind)
   const [editingTemplate, setEditingTemplate] = useState(false)
@@ -49,28 +70,32 @@ export function NotePage({ view }: { view: NoteView }) {
           </button>
         )}
       </header>
-      {notice?.key === view.key && (
+      {notice !== undefined && notice.key === pageKey && (
         <p className="template-notice" aria-live="polite">
           {notice.text}
         </p>
       )}
-      {view.editable && editingTemplate ? (
+      {pageKey === undefined ? null : view.editable && editingTemplate ? (
         template.data !== undefined &&
         note.data !== undefined && (
           <TemplateEditor
-            key={`${view.kind}/${view.key}`}
+            key={`${view.kind}/${pageKey}`}
             kind={view.kind}
-            pageKey={view.key}
+            pageKey={pageKey}
             template={template.data}
             pageText={note.data?.content ?? ''}
             onClose={(text) => {
               setEditingTemplate(false)
-              if (text !== undefined) setNotice({ key: view.key, text })
+              if (text !== undefined) setNotice({ key: pageKey, text })
             }}
           />
         )
       ) : view.editable ? (
-        <EditablePage key={`${view.kind}/${view.key}`} view={view} label={title} />
+        <EditablePage
+          key={`${view.kind}/${pageKey}`}
+          view={{ ...view, key: pageKey }}
+          label={title}
+        />
       ) : (
         <div className="page-content">
           {note.data === null ? (template.data?.content ?? '') : (note.data?.content ?? '')}
