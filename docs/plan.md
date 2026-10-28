@@ -104,8 +104,9 @@ notes API with revisions/merge/409, changes feed, settings, entitlements stub, e
 **Phase 4 — Editor** ✅ (PRs #22–#28): CodeMirror live-preview steps (see Decisions).
 **Phase 5 — Templates** ✅ (PRs #31–#35): day/week templates, auto-apply on new pages, "Edit template" button +
 propagation to current and existing future pages + conflict list.
-**Phase 6 — MVP release**: week-start setting, Docker image (web + API + SQLite volume, auto-
-migrations), self-host docs, daily use by you.
+**Phase 6 — MVP release** ✅ (PRs #36–#40): week-start setting (old week pages stay visible), export
+and sign-ups in Settings, Docker image released to GHCR on `v*` tags (amd64 + arm64, smoke-tested
+across a container replacement), self-hosting guide (`docs/self-hosting.md`). Next: daily use.
 **Post-MVP (rough order)**: shortcut editor UI → extra layout presets + layout editor → mobile
 view (journal scroll, week header ↔ day footer) + PWA → offline sync with client-side merge →
 Capacitor app → freemium entitlements + hosted deployment → table-aware merge → E2E encryption;
