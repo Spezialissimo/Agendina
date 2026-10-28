@@ -32,6 +32,11 @@ A week note is identified by the **first day of the week** (`2026-10-19`), not b
 (`2026-W43`): the number depends on the user's rule, so a number-based key would point to
 different days after a settings change. The week number is a display label only.
 
+Refinement (Phase 6): after a change of week start, week pages written before it begin on another
+day of their week. A week shows the page keyed by its first day or, if there is none, the earliest
+page keyed by another of its days; edits keep going to that page. Nothing is re-keyed, so changing
+the setting back and forth never moves or merges pages.
+
 ## Consequences
 
 - The layout resolver is pure and lives in `core`.

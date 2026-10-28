@@ -16,6 +16,7 @@ import { useShortcuts } from '../commands/useShortcuts.ts'
 import { toggleAtCursor } from '../editor/checkboxes.ts'
 import { applyToFocusedEditor } from '../editor/focusedEditor.ts'
 import { addColumn, addRow } from '../editor/tables.ts'
+import { SettingsDialog } from '../settings/SettingsDialog.tsx'
 import { LayoutView } from './LayoutView.tsx'
 import { PlannerContext } from './PlannerContext.tsx'
 import { WeekStrip } from './WeekStrip.tsx'
@@ -37,6 +38,7 @@ function Planner({ focus }: { focus: DayKey }) {
   const { settings, isError, update } = useSettings()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
 
@@ -65,6 +67,9 @@ function Planner({ focus }: { focus: DayKey }) {
         case 'palette.open':
           setPaletteOpen(true)
           break
+        case 'settings.open':
+          setSettingsOpen(true)
+          break
         case 'account.signOut':
           void api.logout().then(() => queryClient.resetQueries())
           break
@@ -82,7 +87,7 @@ function Planner({ focus }: { focus: DayKey }) {
     [currentDay, today, navigate, api, queryClient],
   )
 
-  useShortcuts(keymap, run, !paletteOpen)
+  useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
 
   return (
     <div className="planner">
@@ -96,15 +101,26 @@ function Planner({ focus }: { focus: DayKey }) {
             setCalendarOpen={setCalendarOpen}
           />
         )}
-        <button
-          type="button"
-          className="link"
-          onClick={() => {
-            run('account.signOut')
-          }}
-        >
-          Sign out
-        </button>
+        <div className="topbar-actions">
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              run('settings.open')
+            }}
+          >
+            Settings
+          </button>
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              run('account.signOut')
+            }}
+          >
+            Sign out
+          </button>
+        </div>
       </header>
       <main className="pages">
         {isError && <p role="alert">Your settings could not be loaded.</p>}
@@ -119,6 +135,15 @@ function Planner({ focus }: { focus: DayKey }) {
           </PlannerContext>
         )}
       </main>
+      {settingsOpen && settings !== undefined && (
+        <SettingsDialog
+          settings={settings}
+          onChange={update}
+          onClose={() => {
+            setSettingsOpen(false)
+          }}
+        />
+      )}
       {paletteOpen && (
         <CommandPalette
           keymap={keymap}

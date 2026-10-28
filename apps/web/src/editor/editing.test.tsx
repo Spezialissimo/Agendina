@@ -220,6 +220,7 @@ describe('writing on a page', () => {
   it('does not offer editing on read-only neighbour pages', async () => {
     renderApp(server, '/day/2026-10-26')
     await editor(TODAY)
+    await editor('Week 44')
 
     expect(screen.getAllByRole('textbox')).toHaveLength(2)
   })

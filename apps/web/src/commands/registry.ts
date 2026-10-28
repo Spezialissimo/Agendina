@@ -8,6 +8,7 @@ export type CommandId =
   | 'focus.today'
   | 'calendar.open'
   | 'palette.open'
+  | 'settings.open'
   | 'account.signOut'
   | 'editor.toggleCheckbox'
   | 'editor.addTableRow'
@@ -56,6 +57,7 @@ export const COMMANDS: Command[] = [
     context: 'global',
     defaultBindings: ['Mod+KeyK'],
   },
+  { id: 'settings.open', title: 'Settings…', context: 'global', defaultBindings: [] },
   { id: 'account.signOut', title: 'Sign out', context: 'global', defaultBindings: [] },
   {
     id: 'editor.toggleCheckbox',
