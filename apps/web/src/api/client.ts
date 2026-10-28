@@ -154,8 +154,13 @@ export class Api {
     return (await this.call('GET', '/api/settings', SettingsResponse)).settings
   }
 
-  async saveSettings(settings: UserSettings): Promise<UserSettings> {
-    return (await this.call('PUT', '/api/settings', SettingsResponse, settings)).settings
+  /** `keepalive` lets the request finish even if the page is being closed. */
+  async saveSettings(
+    settings: UserSettings,
+    { keepalive = false }: { keepalive?: boolean } = {},
+  ): Promise<UserSettings> {
+    const res = await this.send('PUT', '/api/settings', settings, [], keepalive)
+    return (await this.parse(res, SettingsResponse)).settings
   }
 
   private async call<T>(

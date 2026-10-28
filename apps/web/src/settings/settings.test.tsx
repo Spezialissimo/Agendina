@@ -60,6 +60,35 @@ describe('settings', () => {
       })
     })
 
+    it('is saved even when the app closes right after the change', async () => {
+      const { user, dialog, unmount } = await openSettings('/day/2026-10-27')
+
+      await user.selectOptions(
+        within(dialog).getByRole('combobox', { name: 'Weeks start on' }),
+        'Sunday',
+      )
+      unmount()
+
+      await waitFor(async () => {
+        expect((await api.settings()).weekRule.firstDay).toBe(7)
+      })
+    })
+
+    it('is saved when the page is being closed', async () => {
+      const { user, dialog } = await openSettings('/day/2026-10-27')
+
+      await user.selectOptions(
+        within(dialog).getByRole('combobox', { name: 'Weeks start on' }),
+        'Sunday',
+      )
+      window.dispatchEvent(new Event('pagehide'))
+      server.setOffline(true)
+
+      await new Promise((resolve) => setTimeout(resolve, 600))
+      server.setOffline(false)
+      expect((await api.settings()).weekRule.firstDay).toBe(7)
+    })
+
     it('shows the current rule when opened', async () => {
       await api.saveSettings({ ...DEFAULT_SETTINGS, weekRule: US_WEEK })
 
