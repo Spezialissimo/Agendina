@@ -16,6 +16,8 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
 - `pnpm e2e`: Playwright against the production build in Chromium, Firefox and WebKit
 - `pnpm check`: format check + lint + typecheck + unit tests. **Must pass before work is done.**
 - `pnpm format`: Prettier write
+- `docker build -t agendina:local . && scripts/docker-smoke-test.sh`: the self-hosting image, as CI
+  checks it (also on release: pushing a `v*` tag publishes it to GHCR)
 
 ## Layout
 
