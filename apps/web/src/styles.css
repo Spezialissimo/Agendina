@@ -601,6 +601,20 @@ button {
   gap: 0.25rem;
 }
 
+.settings p {
+  margin: 0;
+}
+
+.settings-hint {
+  color: var(--ink-soft);
+}
+
+.settings label.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .settings select {
   font: inherit;
   padding: 0.35rem 0.5rem;
