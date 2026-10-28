@@ -38,10 +38,13 @@ export function merge3(base: string, mine: string, theirs: string): MergeResult 
  * diff3 reports edits to adjacent lines as one conflict. When neither side added or removed
  * lines (e.g. ticking checkboxes in a table), each line can be resolved on its own: take
  * whichever side changed it, and keep a conflict only where both changed it differently.
+ * Likewise when one side only added lines around the others' in-place edits (e.g. a template
+ * adds a table row below a row ticked on the page).
  */
 function resolveInPlaceEdits(base: string[], mine: string[], theirs: string[]): MergeChunk[] {
   if (mine.length !== base.length || theirs.length !== base.length) {
-    return [{ type: 'conflict', base, mine, theirs }]
+    const lines = addedAround(base, mine, theirs) ?? addedAround(base, theirs, mine)
+    return [lines === undefined ? { type: 'conflict', base, mine, theirs } : { type: 'ok', lines }]
   }
 
   const chunks: MergeChunk[] = []
@@ -64,6 +67,22 @@ function resolveInPlaceEdits(base: string[], mine: string[], theirs: string[]): 
     }
   })
   return chunks
+}
+
+/**
+ * If `grown` is `base` with lines added only before and after it, and `edited` changed `base` in
+ * place, the result is `edited` with those lines around it. Undefined when that is not the case
+ * or the position is ambiguous (the base block occurs more than once).
+ */
+function addedAround(base: string[], edited: string[], grown: string[]): string[] | undefined {
+  if (base.length === 0 || edited.length !== base.length) return undefined
+  const starts: number[] = []
+  for (let i = 0; i + base.length <= grown.length; i++) {
+    if (base.every((line, j) => grown[i + j] === line)) starts.push(i)
+  }
+  const [at] = starts
+  if (at === undefined || starts.length > 1) return undefined
+  return [...grown.slice(0, at), ...edited, ...grown.slice(at + base.length)]
 }
 
 function pushOk(chunks: MergeChunk[], lines: string[]): void {
