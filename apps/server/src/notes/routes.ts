@@ -14,7 +14,7 @@ import {
 } from '@agendina/contract'
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
-import { ApiError, readJson, requireUser, type AppEnv } from '../http.ts'
+import { ApiError, parse, readJson, requireUser, type AppEnv } from '../http.ts'
 import { deleteNote, getNote, listChanges, listNotes, saveNote } from './repository.ts'
 
 /** The week strip and a year view are the largest ranges the app needs. */
@@ -46,7 +46,7 @@ export function notesRoutes() {
   routes.put('/notes/:kind/:key', async (c) => {
     const user = requireUser(c)
     const { kind, key } = notePath(c)
-    const { content, baseRevision } = await readJson(c, SaveNoteRequest)
+    const { content, baseRevision, templateRevision } = await readJson(c, SaveNoteRequest)
     const result = await saveNote(
       c.get('db'),
       user.id,
@@ -55,6 +55,7 @@ export function notesRoutes() {
       content,
       baseRevision,
       c.get('now')(),
+      templateRevision,
     )
     if (result.status === 'conflict') {
       return c.json(
@@ -88,10 +89,4 @@ export function notesRoutes() {
 
 function notePath(c: Context<AppEnv>) {
   return parse(NotePath, c.req.param())
-}
-
-function parse<T>(schema: z.ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value)
-  if (!result.success) throw new ApiError(400, 'invalid_request', result.error.issues)
-  return result.data
 }

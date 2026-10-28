@@ -59,6 +59,18 @@ describe.each(testDatabases())('export on $kind', ({ create }) => {
     expect(files).toEqual({ 'days/2026-10-26.md': day, 'weeks/2026-10-19.md': week })
   })
 
+  it('contains the templates, so a backup restores the pre-printed pages too', async () => {
+    await server.request('/api/templates/week', {
+      method: 'PUT',
+      cookie,
+      body: { content: '## Objectives', baseRevision: 0 },
+    })
+
+    const { files } = await exportZip()
+
+    expect(files).toEqual({ 'templates/week.md': '## Objectives' })
+  })
+
   it('leaves out deleted pages', async () => {
     await save('day', '2026-10-25', 'kept')
     await save('day', '2026-10-26', 'deleted')

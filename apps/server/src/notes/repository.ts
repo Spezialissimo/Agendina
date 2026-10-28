@@ -7,6 +7,8 @@ import type { DB } from '@agendina/db'
 import { ApiError } from '../http.ts'
 
 type NoteRow = Selectable<NotesTable>
+/** What a row stores: a page, or the template (keyed by the kind of page it is for). */
+type StoredKind = NotesTable['kind']
 
 export type SaveResult =
   | { status: 'saved'; note: Note; merged: boolean }
@@ -60,16 +62,22 @@ export async function listNotes(
 export async function saveNote(
   db: Database,
   userId: string,
-  kind: NoteKind,
+  kind: StoredKind,
   key: string,
   content: string,
   baseRevision: number,
   now: Date,
+  /** For pages: the template revision the text is now based on (see SaveNoteRequest). */
+  templateRevision?: number,
 ): Promise<SaveResult> {
   try {
     return await db.transaction().execute(async (trx) => {
       const changeSeq = await nextChangeSeq(trx, userId)
       const current = await findRow(trx, userId, kind, key, { includeDeleted: true })
+      const template =
+        templateRevision === undefined
+          ? undefined
+          : await templateOf(trx, userId, kind, templateRevision)
 
       if (current === undefined) {
         if (baseRevision !== 0) throw new ApiError(400, 'invalid_base_revision')
@@ -80,8 +88,8 @@ export async function saveNote(
           key,
           content,
           revision: 1,
-          template_id: null,
-          template_revision: null,
+          template_id: template?.id ?? null,
+          template_revision: templateRevision ?? null,
           change_seq: changeSeq,
           created_at: now.toISOString(),
           updated_at: now.toISOString(),
@@ -108,8 +116,15 @@ export async function saveNote(
         next = result.text
         merged = true
       }
-      if (next === current.content)
+      const templated =
+        template === undefined
+          ? {}
+          : { template_id: template.id, template_revision: templateRevision ?? null }
+      const sameTemplate =
+        templateRevision === undefined || templateRevision === current.template_revision
+      if (next === current.content && sameTemplate) {
         throw new NoWrite({ status: 'saved', note: toNote(current), merged })
+      }
 
       const revision = current.revision + 1
       const updatedAt = now.toISOString()
@@ -121,6 +136,7 @@ export async function saveNote(
           change_seq: changeSeq,
           updated_at: updatedAt,
           deleted_at: null,
+          ...templated,
         })
         .where('id', '=', current.id)
         .execute()
@@ -132,6 +148,7 @@ export async function saveNote(
         change_seq: changeSeq,
         updated_at: updatedAt,
         deleted_at: null,
+        ...templated,
       }
       return { status: 'saved', note: toNote(row), merged }
     })
@@ -193,16 +210,20 @@ export async function listChanges(
     .execute()
   const page = rows.slice(0, limit)
   return {
-    changes: page.map((row) => ({ ...toNote(row), deleted: row.deleted_at !== null })),
+    changes: page.map((row) => ({
+      ...toNote(row),
+      kind: row.kind,
+      deleted: row.deleted_at !== null,
+    })),
     cursor: page.at(-1)?.change_seq ?? since,
     hasMore: rows.length > limit,
   }
 }
 
-function findRow(
+export function findRow(
   db: Database | Transaction<DB>,
   userId: string,
-  kind: NoteKind,
+  kind: StoredKind,
   key: string,
   { includeDeleted = false } = {},
 ): Promise<NoteRow | undefined> {
@@ -233,6 +254,20 @@ async function revisionContent(
   return row?.content ?? ''
 }
 
+/** The template for `kind` pages, if it has reached `revision`. */
+async function templateOf(
+  trx: Transaction<DB>,
+  userId: string,
+  kind: StoredKind,
+  revision: number,
+): Promise<NoteRow> {
+  const template = kind === 'template' ? undefined : await findRow(trx, userId, 'template', kind)
+  if (template === undefined || revision > template.revision) {
+    throw new ApiError(400, 'invalid_template_revision')
+  }
+  return template
+}
+
 /** Hands out the user's next change sequence number; the row lock orders concurrent saves. */
 async function nextChangeSeq(trx: Transaction<DB>, userId: string): Promise<number> {
   const row = await trx
@@ -257,7 +292,7 @@ async function addRevision(
     .execute()
 }
 
-function toNote(row: NoteRow): Note {
+export function toNote(row: NoteRow): Note {
   return {
     kind: row.kind as NoteKind,
     key: row.key,

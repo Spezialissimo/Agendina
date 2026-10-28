@@ -39,6 +39,13 @@ export async function readJson<T>(c: Context, schema: z.ZodType<T>): Promise<T> 
   return result.data
 }
 
+/** Validates path or query parameters; a mismatch is the client's fault (400). */
+export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
+  const result = schema.safeParse(value)
+  if (!result.success) throw new ApiError(400, 'invalid_request', result.error.issues)
+  return result.data
+}
+
 export function requireUser(c: Context<AppEnv>): User {
   const user = c.get('user')
   if (user === undefined) throw new ApiError(401, 'unauthorized')

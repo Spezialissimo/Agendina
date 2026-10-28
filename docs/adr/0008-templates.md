@@ -19,6 +19,12 @@ skipped (merging into the latter would paste the whole template in). Implemented
 `propagateTemplate` in `packages/core/src/templates.ts`. Later: a table-aware, per-cell merge to
 avoid conflicts on table rows.
 
+Templates are applied on the client, not the server: the server stores templates and their
+revisions (`/api/templates/:kind`), records which revision a page was made from, and lists the
+pages made from a template, but never merges template text into pages. That keeps the server
+independent of note content (E2E encryption stays possible). A page nobody wrote yet shows the
+current template and is only saved, with its template revision, once the user edits it.
+
 ## Consequences
 
 - Reuses the merge engine from ADR 0002.

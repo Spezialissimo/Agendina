@@ -1,4 +1,4 @@
-import { isDayKey, type MergeChunk } from '@agendina/core'
+import { isDayKey, type MergeChunk as CoreMergeChunk } from '@agendina/core'
 import { z } from 'zod'
 
 export const NoteKind = z.enum(['day', 'week'])
@@ -34,6 +34,11 @@ export const SaveNoteRequest = z.object({
   content: z.string().max(MAX_NOTE_LENGTH),
   /** The revision the edit started from; 0 for a note that did not exist yet. */
   baseRevision: z.number().int().nonnegative(),
+  /**
+   * The template revision the page is based on: sent when a page is created from the template,
+   * or brought up to a newer template.
+   */
+  templateRevision: z.number().int().positive().optional(),
 })
 export type SaveNoteRequest = z.infer<typeof SaveNoteRequest>
 
@@ -44,7 +49,7 @@ export const SaveNoteResponse = z.object({
 })
 export type SaveNoteResponse = z.infer<typeof SaveNoteResponse>
 
-const MergeChunkSchema: z.ZodType<MergeChunk> = z.discriminatedUnion('type', [
+export const MergeChunk: z.ZodType<CoreMergeChunk> = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ok'), lines: z.array(z.string()) }),
   z.object({
     type: z.literal('conflict'),
@@ -54,19 +59,27 @@ const MergeChunkSchema: z.ZodType<MergeChunk> = z.discriminatedUnion('type', [
   }),
 ])
 
+export type MergeChunk = CoreMergeChunk
+
 /** 409 body: the edit overlaps changes saved meanwhile; nothing was saved. */
 export const NoteConflict = z.object({
   error: z.literal('conflict'),
   current: Note,
-  chunks: z.array(MergeChunkSchema),
+  chunks: z.array(MergeChunk),
 })
 export type NoteConflict = z.infer<typeof NoteConflict>
 
 export const DeleteNoteQuery = z.object({ baseRevision: z.coerce.number().int().positive() })
 export type DeleteNoteQuery = z.infer<typeof DeleteNoteQuery>
 
-/** A note's latest state in the changes feed. Deleted notes have `deleted: true` and no content. */
-export const NoteChange = Note.extend({ deleted: z.boolean() })
+/**
+ * A note's latest state in the changes feed. Deleted notes have `deleted: true` and no content.
+ * Templates appear with kind `template` and the kind of page they are for as key.
+ */
+export const NoteChange = Note.extend({
+  kind: z.enum([...NoteKind.options, 'template']),
+  deleted: z.boolean(),
+})
 export type NoteChange = z.infer<typeof NoteChange>
 
 export const ChangesQuery = z.object({

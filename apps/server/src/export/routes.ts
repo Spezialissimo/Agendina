@@ -2,9 +2,9 @@ import { Hono } from 'hono'
 import { strToU8, zipSync, type Zippable } from 'fflate'
 import { requireUser, type AppEnv } from '../http.ts'
 
-const FOLDERS = { day: 'days', week: 'weeks' } as const
+const FOLDERS = { day: 'days', week: 'weeks', template: 'templates' } as const
 
-/** `GET /api/export`: every page as a markdown file in a zip, for backups and leaving freely. */
+/** `GET /api/export`: every page and template as a markdown file in a zip, for backups and leaving. */
 export function exportRoutes() {
   const routes = new Hono<AppEnv>()
 
@@ -15,7 +15,6 @@ export function exportRoutes() {
       .selectFrom('notes')
       .select(['kind', 'key', 'content', 'updated_at'])
       .where('user_id', '=', user.id)
-      .where('kind', 'in', ['day', 'week'])
       .where('deleted_at', 'is', null)
       .orderBy('kind')
       .orderBy('key')
@@ -23,7 +22,7 @@ export function exportRoutes() {
 
     const files: Zippable = {}
     for (const note of notes) {
-      const folder = FOLDERS[note.kind as keyof typeof FOLDERS]
+      const folder = FOLDERS[note.kind]
       files[`${folder}/${note.key}.md`] = [
         strToU8(note.content),
         { mtime: new Date(note.updated_at) },
