@@ -68,15 +68,15 @@ gcloud artifacts repositories set-cleanup-policies agendina --location "$REGION"
   --policy cleanup.json --no-dry-run
 ```
 
-**The service's own identity**, the only one allowed to read the database URL. `read -s` asks
-for the Neon connection string from step 1 without showing it or keeping it in the shell history:
+**The service's own identity**, the only one allowed to read the database URL. Paste your Neon
+connection string from step 1 between the quotes:
 
 ```sh
 gcloud iam service-accounts create agendina-runtime --display-name "Agendina (Cloud Run)"
 RUNTIME_SA=agendina-runtime@$PROJECT_ID.iam.gserviceaccount.com
 
-read -rsp 'Neon connection string: ' DATABASE_URL; echo
-printf '%s' "$DATABASE_URL" | gcloud secrets create agendina-database-url --data-file -
+printf '%s' 'postgresql://PASTE-YOUR-NEON-URL?sslmode=verify-full' |
+  gcloud secrets create agendina-database-url --data-file -
 gcloud secrets add-iam-policy-binding agendina-database-url \
   --member "serviceAccount:$RUNTIME_SA" --role roles/secretmanager.secretAccessor
 ```
