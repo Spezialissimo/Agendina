@@ -3,8 +3,8 @@
 A planner/journal that feels like a paper journal, with infinitely many digital pages: a week
 page and day pages in markdown, side by side. Self-hostable.
 
-> Status: Phase 5 (templates) done: day and week templates, edited from any page. Next: the MVP
-> release (week-start setting, Docker image). See [docs/plan.md](docs/plan.md).
+> Status: MVP (Phase 6) done: week and day pages, templates, settings, a self-hostable Docker
+> image. Next: daily use, then the shortcut editor. See [docs/plan.md](docs/plan.md).
 
 ## Using it
 
@@ -26,6 +26,10 @@ days. "Edit week template" on a page opens it (the first one starts as a copy of
 Saving it also updates that page and every later page made from the template, keeping what you
 wrote and ticked; earlier pages stay as they are. Where a page changed the same lines as the
 template, you decide per page.
+
+**Settings** (top bar or ⌘K) choose the first day of the week and how weeks are numbered (ISO by
+default), and download all your pages as markdown files in a zip. Week pages written before a
+change of week start stay where they were.
 
 Pages save themselves as you type. If another device changed the same lines meanwhile, the page
 asks which version to keep (keeping both is the default, so nothing is ever lost).
