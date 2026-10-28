@@ -16,6 +16,7 @@ The full plan and roadmap live in `docs/plan.md`; architectural decisions in `do
 - `pnpm e2e`: Playwright against the production build in Chromium, Firefox and WebKit
 - `pnpm check`: format check + lint + typecheck + unit tests. **Must pass before work is done.**
 - `pnpm format`: Prettier write
+- Deploys: every green commit on `main` goes to Cloud Run (`docs/deploying.md`, ADR 0012).
 - `docker build -t agendina:local . && scripts/docker-smoke-test.sh`: the self-hosting image, as CI
   checks it (also on release: pushing a `v*` tag publishes it to GHCR)
 
@@ -81,6 +82,8 @@ routes')`, not `it('calls readWebFile twice')`.
 ## Conventions
 
 - TypeScript strict, ES modules, relative imports with explicit `.ts`/`.tsx` extensions.
+- Migrations must keep the previous release working (production migrates while the old revision
+  still serves, ADR 0012): add tables/columns; rename or drop only a release later.
 - Prettier: no semicolons, single quotes, width 100.
 - Validate all external input (HTTP bodies, env, stored JSON) with Zod at the boundary.
 - Comments only for the non-obvious "why".

@@ -1,0 +1,101 @@
+name: Deploy
+
+# Every commit on main that passed CI goes to production on Cloud Run (docs/deploying.md, ADR 0012):
+# build one image, smoke-test it, start it as a revision that gets no traffic, check that revision,
+# then move all traffic to it. A failed check leaves the previous revision serving.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, in order; a newer commit waits instead of cancelling a deploy halfway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Cloud Run
+    # Off until the Google Cloud variables are set (docs/deploying.md, one-time setup).
+    if: >-
+      vars.GCP_PROJECT_ID != '' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: ${{ steps.promote.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write # to get short-lived Google credentials (Workload Identity Federation)
+    env:
+      PROJECT: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      SERVICE: agendina
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: agendina-deployer@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Image name
+        run: echo "IMAGE=$REGION-docker.pkg.dev/$PROJECT/agendina/agendina:$SHA" >> "$GITHUB_ENV"
+      - name: Build
+        run: docker build --build-arg "AGENDINA_VERSION=$SHA" -t "$IMAGE" .
+      - name: Smoke test
+        run: scripts/docker-smoke-test.sh "$IMAGE"
+      - name: Push
+        run: |
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker push "$IMAGE"
+
+      - name: Start the new revision without traffic
+        id: candidate
+        run: |
+          flags=(
+            --image "$IMAGE" --region "$REGION" --quiet
+            --service-account "agendina-runtime@$PROJECT.iam.gserviceaccount.com"
+            --set-secrets AGENDINA_DATABASE_URL=agendina-database-url:latest
+            # One instance at most: the login rate limit lives in memory. Zero when idle: free.
+            --min-instances 0 --max-instances 1
+            --cpu 1 --memory 512Mi --cpu-boost
+            --allow-unauthenticated
+          )
+          if gcloud run services describe "$SERVICE" --region "$REGION" > /dev/null 2>&1; then
+            gcloud run deploy "$SERVICE" "${flags[@]}" --no-traffic --tag candidate
+            url=$(gcloud run services describe "$SERVICE" --region "$REGION" --format json |
+              jq -r '.status.traffic[] | select(.tag == "candidate") | .url')
+          else
+            # The very first deploy creates the service; there is no previous revision to protect.
+            gcloud run deploy "$SERVICE" "${flags[@]}"
+            url=$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Check the new revision
+        env:
+          URL: ${{ steps.candidate.outputs.url }}
+        run: |
+          # The right version answers, and it can reach the database (auth state reads it).
+          for _ in $(seq 1 30); do
+            version=$(curl -sf "$URL/api/health" | jq -r .version) || version=
+            if [ "$version" = "$SHA" ] && curl -sf "$URL/api/auth/state" > /dev/null; then
+              echo "Revision $SHA is healthy at $URL"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The new revision did not become healthy; production still runs the previous one." >&2
+          exit 1
+
+      - name: Move all traffic to it
+        id: promote
+        run: |
+          gcloud run services update-traffic "$SERVICE" --region "$REGION" --to-latest --quiet
+          echo "url=$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')" >> "$GITHUB_OUTPUT"
