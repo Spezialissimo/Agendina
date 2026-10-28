@@ -8,6 +8,7 @@ import { format, formatRange } from './weeks.ts'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
 import { PageEditor } from '../editor/PageEditor.tsx'
 import { useNoteDocument, type SaveStatus } from '../editor/useNoteDocument.ts'
+import { useTemplate } from '../templates/useTemplate.ts'
 import { addDays, weekNumber } from '@agendina/core'
 
 /** One page of the planner: a day or a week. Read-only neighbours open their day when clicked. */
@@ -21,6 +22,7 @@ export function NotePage({ view }: { view: NoteView }) {
     queryKey: ['note', view.kind, view.key],
     queryFn: () => api.getNote(view.kind, view.key),
   })
+  const template = useTemplate(view.kind)
 
   const title =
     view.kind === 'day'
@@ -43,7 +45,9 @@ export function NotePage({ view }: { view: NoteView }) {
       {view.editable ? (
         <EditablePage key={`${view.kind}/${view.key}`} view={view} label={title} />
       ) : (
-        <div className="page-content">{note.data?.content ?? ''}</div>
+        <div className="page-content">
+          {note.data === null ? (template.data?.content ?? '') : (note.data?.content ?? '')}
+        </div>
       )}
       {view.focusOnClick !== undefined && (
         <button
