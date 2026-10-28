@@ -3,17 +3,36 @@ import { useId, useState } from 'react'
 
 type Choice = 'mine' | 'theirs' | 'both'
 
+export interface ResolverTexts {
+  title: string
+  hint: string
+  mine: string
+  theirs: string
+  discard: string
+}
+
+const PAGE_TEXTS: ResolverTexts = {
+  title: 'This page changed elsewhere',
+  hint: 'Another device saved changes to the same lines. Choose what to keep.',
+  mine: 'Keep mine',
+  theirs: 'Keep the other version',
+  discard: 'Discard my version',
+}
+
 interface Props {
   chunks: MergeChunk[]
   onResolve: (text: string) => void
   onDiscard: () => void
+  /** Wording for other clashes than two devices editing a page, e.g. a page and its template. */
+  texts?: Partial<ResolverTexts>
 }
 
 /**
- * Shown when this page and another device changed the same lines. Unchanged lines are context;
+ * Shown when this page and another version changed the same lines. Unchanged lines are context;
  * each clash is decided separately. "Keep both" is the default, so saving never loses text.
  */
-export function ConflictResolver({ chunks, onResolve, onDiscard }: Props) {
+export function ConflictResolver({ chunks, onResolve, onDiscard, texts: custom = {} }: Props) {
+  const texts = { ...PAGE_TEXTS, ...custom }
   const titleId = useId()
   const total = chunks.filter((c) => c.type === 'conflict').length
   const [choices, setChoices] = useState<Choice[]>(() => Array<Choice>(total).fill('both'))
@@ -34,8 +53,8 @@ export function ConflictResolver({ chunks, onResolve, onDiscard }: Props) {
   let conflictIndex = 0
   return (
     <section className="conflict" role="group" aria-labelledby={titleId}>
-      <h3 id={titleId}>This page changed elsewhere</h3>
-      <p className="hint">Another device saved changes to the same lines. Choose what to keep.</p>
+      <h3 id={titleId}>{texts.title}</h3>
+      <p className="hint">{texts.hint}</p>
       {chunks.map((chunk, i) => {
         if (chunk.type === 'ok') {
           return (
@@ -50,6 +69,7 @@ export function ConflictResolver({ chunks, onResolve, onDiscard }: Props) {
             key={i}
             chunk={chunk}
             label={`Change ${String(index + 1)} of ${String(total)}`}
+            texts={texts}
             choice={choices[index] ?? 'both'}
             onChoose={(choice) => {
               setChoices((current) => current.map((c, j) => (j === index ? choice : c)))
@@ -59,7 +79,7 @@ export function ConflictResolver({ chunks, onResolve, onDiscard }: Props) {
       })}
       <div className="conflict-actions">
         <button type="button" className="link" onClick={onDiscard}>
-          Discard my version
+          {texts.discard}
         </button>
         <button
           type="button"
@@ -78,15 +98,16 @@ export function ConflictResolver({ chunks, onResolve, onDiscard }: Props) {
 interface ClashProps {
   chunk: Extract<MergeChunk, { type: 'conflict' }>
   label: string
+  texts: ResolverTexts
   choice: Choice
   onChoose: (choice: Choice) => void
 }
 
-function Clash({ chunk, label, choice, onChoose }: ClashProps) {
+function Clash({ chunk, label, texts, choice, onChoose }: ClashProps) {
   const name = useId()
   const options: { value: Choice; label: string; lines: string[] }[] = [
-    { value: 'mine', label: 'Keep mine', lines: chunk.mine },
-    { value: 'theirs', label: 'Keep the other version', lines: chunk.theirs },
+    { value: 'mine', label: texts.mine, lines: chunk.mine },
+    { value: 'theirs', label: texts.theirs, lines: chunk.theirs },
     { value: 'both', label: 'Keep both', lines: [...chunk.mine, ...chunk.theirs] },
   ]
   return (
