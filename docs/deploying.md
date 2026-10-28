@@ -68,20 +68,22 @@ gcloud artifacts repositories set-cleanup-policies agendina --location "$REGION"
   --policy cleanup.json --no-dry-run
 ```
 
-**The service's own identity**, the only one allowed to read the database URL:
+**The service's own identity**, the only one allowed to read the database URL. `read -s` asks
+for the Neon connection string from step 1 without showing it or keeping it in the shell history:
 
 ```sh
 gcloud iam service-accounts create agendina-runtime --display-name "Agendina (Cloud Run)"
 RUNTIME_SA=agendina-runtime@$PROJECT_ID.iam.gserviceaccount.com
 
-printf '%s' 'postgresql://…?sslmode=verify-full' |
-  gcloud secrets create agendina-database-url --data-file -
+read -rsp 'Neon connection string: ' DATABASE_URL; echo
+printf '%s' "$DATABASE_URL" | gcloud secrets create agendina-database-url --data-file -
 gcloud secrets add-iam-policy-binding agendina-database-url \
   --member "serviceAccount:$RUNTIME_SA" --role roles/secretmanager.secretAccessor
 ```
 
 **The deployer**, used by GitHub Actions: it may deploy the service, push images and run the
-service as `agendina-runtime`, nothing else:
+service as `agendina-runtime`, nothing else. A just-created service account can take a few
+seconds to be known everywhere: if a command says it "does not exist", run that command again.
 
 ```sh
 gcloud iam service-accounts create agendina-deployer --display-name "Agendina deploys (GitHub)"
