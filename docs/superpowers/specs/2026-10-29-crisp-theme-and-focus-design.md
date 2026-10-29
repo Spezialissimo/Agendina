@@ -43,10 +43,12 @@ Colours (as CSS custom properties on `:root`, dark values under `prefers-color-s
 | background (`--paper`)   | `#ededed` | `#1a1a1a` |
 | page (`--page`)          | `#ffffff` | `#222222` |
 | text (`--ink`)           | `#1f1f1f` | `#ececec` |
-| secondary (`--ink-soft`) | `#8a8a8a` | `#7a7a7a` |
+| secondary (`--ink-soft`) | `#696969` | `#9a9a9a` |
 | lines (`--rule`)         | `#e0e0e0` | `#2e2e2e` |
 | hover/chip               | `#e2e2e2` | `#2c2c2c` |
 
+- **Contrast:** `--ink-soft` passes WCAG AA for small text (≥ 4.5:1) on both page and desk
+  colours; the first values (`#8a8a8a` / `#7a7a7a`, about 3:1) were too faint.
 - **No blue accent.** The theme is monochrome. `--accent` becomes the ink colour (dark grey in
   light mode, near-white in dark mode) so buttons like "Sign in" are dark with light text, the
   focus outline is ink, "today" in the week strip and month calendar is marked by weight (and the
@@ -97,6 +99,9 @@ Colours (as CSS custom properties on `:root`, dark values under `prefers-color-s
 - **Template editor:** typing in the template editor (opened with "Edit … template") also
   starts focus mode and dims everything else, but its own Save and Cancel buttons stay visible
   and clickable at all times.
+- **Also starts at once** when keyboard focus moves into a page (a click or Tab into it). A click
+  in the page that already has the cursor does not start it. _(Added after the first review
+  round.)_
 - **Also starts after 3 seconds** in which the mouse has not moved while the typing cursor
   blinks in a page (an editor has keyboard focus and the window is in front). Any mouse movement,
   tap, key or focus change starts the wait again; after Escape, focus mode returns after the wait

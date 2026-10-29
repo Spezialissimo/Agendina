@@ -5,7 +5,7 @@
   --paper: #ededed;
   --page: #ffffff;
   --ink: #1f1f1f;
-  --ink-soft: #8a8a8a;
+  --ink-soft: #696969;
   --rule: #e0e0e0;
   --chip: #e2e2e2;
   --accent: var(--ink);
@@ -26,7 +26,7 @@
     --paper: #1a1a1a;
     --page: #222222;
     --ink: #ececec;
-    --ink-soft: #7a7a7a;
+    --ink-soft: #9a9a9a;
     --rule: #2e2e2e;
     --chip: #2c2c2c;
     --danger: #e08a7a;
