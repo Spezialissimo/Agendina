@@ -19,6 +19,7 @@ import { applyToFocusedEditor } from '../editor/focusedEditor.ts'
 import { addColumn, addRow } from '../editor/tables.ts'
 import { SettingsDialog } from '../settings/SettingsDialog.tsx'
 import { LayoutView } from './LayoutView.tsx'
+import { useFocusMode } from './useFocusMode.ts'
 import { PlannerContext } from './PlannerContext.tsx'
 import { WeekStrip } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
@@ -89,9 +90,10 @@ function Planner({ focus }: { focus: DayKey }) {
   )
 
   useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
+  const focusMode = useFocusMode(!paletteOpen && !settingsOpen)
 
   return (
-    <div className="planner">
+    <div className="planner" data-focus-mode={focusMode || undefined}>
       <header className="topbar">
         <span className="brand">Agendina</span>
         {settings !== undefined && (
