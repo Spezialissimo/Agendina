@@ -4,7 +4,6 @@ import { ISO_WEEK, US_WEEK, isDayKey } from './calendar.ts'
 import {
   MIN_PANE_SIZE,
   OPEN_PLANNER,
-  parseLayout,
   resolveLayout,
   setSplitSizes,
   type Layout,
@@ -49,10 +48,6 @@ describe('OPEN_PLANNER', () => {
         },
       ],
     } satisfies ResolvedLayout)
-  })
-
-  it('is a valid layout', () => {
-    expect(parseLayout(OPEN_PLANNER)).toEqual(OPEN_PLANNER)
   })
 })
 
@@ -161,28 +156,6 @@ describe('resolveLayout', () => {
         },
       ),
     )
-  })
-})
-
-describe('parseLayout', () => {
-  it.each([
-    ['a non-positive size', row('r', [note('a', 'day', 0), 0])],
-    ['a duplicate id', row('r', [note('a', 'day', 0), 1], [note('a', 'week', 0), 1])],
-    ['a split without children', { type: 'split', id: 'r', direction: 'row', children: [] }],
-    ['an unknown panel type', { type: 'panel', id: 'p', panel: { type: 'habits' } }],
-    [
-      'an unknown direction',
-      {
-        type: 'split',
-        id: 'r',
-        direction: 'diagonal',
-        children: [{ node: note('a', 'day', 0), size: 1 }],
-      },
-    ],
-    ['a fractional offset', note('a', 'day', 0.5)],
-    ['not an object', 'open-planner'],
-  ])('rejects %s', (_, value) => {
-    expect(() => parseLayout(value)).toThrow()
   })
 })
 

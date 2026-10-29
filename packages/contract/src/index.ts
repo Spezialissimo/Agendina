@@ -1,6 +1,7 @@
 export * from './auth.ts'
 export * from './errors.ts'
 export * from './health.ts'
+export * from './layout.ts'
 export * from './notes.ts'
 export * from './settings.ts'
 export * from './templates.ts'
