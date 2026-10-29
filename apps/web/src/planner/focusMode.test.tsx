@@ -20,6 +20,8 @@ describe('focus mode', () => {
     const view = renderApp(server, '/day/2026-10-26')
     const day = await screen.findByRole('textbox', { name: 'Monday, 26 October 2026' })
     placeCursor(day, 0)
+    // Moving the cursor into the page starts focus mode; start each test with it off.
+    moveMouse(0, 50)
     const planner = () => view.container.querySelector('.planner')
     /** Presses a key in the page and checks that focus mode is on, before testing what ends it. */
     const focus = (key = 'a') => {
@@ -60,6 +62,25 @@ describe('focus mode', () => {
     expect(planner()).not.toHaveAttribute('data-focus-mode')
   })
 
+  it('starts when a click moves the keyboard focus into a page', async () => {
+    const { planner } = await open()
+    const week = screen.getByRole('textbox', { name: 'Week 44' })
+
+    fireEvent.pointerDown(week)
+    placeCursor(week, 0)
+
+    expect(planner()).toHaveAttribute('data-focus-mode')
+  })
+
+  it('does not start on a click in the page that already has the cursor', async () => {
+    const { day, planner } = await open()
+
+    fireEvent.pointerDown(day)
+    placeCursor(day, 0)
+
+    expect(planner()).not.toHaveAttribute('data-focus-mode')
+  })
+
   it('ends when the mouse moves', async () => {
     const { planner, focus } = await open()
     focus()
@@ -74,8 +95,9 @@ describe('focus mode', () => {
     focus()
 
     // What browsers send when the page scrolls under a still pointer (the editor following the caret).
-    moveMouse(100, 100)
-    moveMouse(100, 102)
+    // The pointer rests where open() left it.
+    moveMouse(50, 50)
+    moveMouse(50, 52)
 
     expect(planner()).toHaveAttribute('data-focus-mode')
   })

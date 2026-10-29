@@ -27,7 +27,8 @@ Layout stays as in ADR 0005; this is about the theme only.
   third-party requests** (checked by an e2e test).
 - **Icon buttons** for the top bar actions: small inline SVGs, no icon library. Each keeps its
   accessible name and has a matching tooltip.
-- **Focus mode:** a key pressed in a page's editor (any key, arrows included), or a mouse that has
+- **Focus mode:** a key pressed in a page's editor (any key, arrows included), keyboard focus
+  moving into a page, or a mouse that has
   rested for 3 seconds while the cursor blinks in a page, dims and desaturates everything but that
   page and hides every button and the mouse pointer; a real mouse movement, a pointer
   down, focus leaving the editor, Escape, or opening the palette or settings brings everything

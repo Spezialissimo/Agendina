@@ -9,9 +9,9 @@ const inEditor = (target: EventTarget | null) =>
   target instanceof Element && target.closest('.cm-content') !== null
 
 /**
- * Focus mode (ADR 0013): on as soon as the user types in a page, or once the mouse has rested for
- * 3 seconds while the cursor blinks in one; off as soon as they reach for the mouse, tap, leave the
- * editor or press Escape. Off while `enabled` is false (the command palette or settings are open)
+ * Focus mode (ADR 0013): on as soon as the user types in a page or moves the keyboard focus into
+ * one, or once the mouse has rested for 3 seconds while the cursor blinks in a page; off as soon
+ * as they reach for the mouse, tap, leave the editor or press Escape. Off while `enabled` is false (the command palette or settings are open)
  * and whenever the focused `day` changes: the new day's editor is a new element, and the keyboard
  * focus that was in the old one is gone.
  */
@@ -68,8 +68,10 @@ export function useFocusMode(enabled: boolean, day: string): boolean {
         event.stopPropagation()
       }
     }
+    // Focus moving into a page (a click or Tab into it) starts focus mode at once; focus moving
+    // anywhere else ends it.
     const onFocusIn = (event: FocusEvent) => {
-      if (!inEditor(event.target)) set(false)
+      set(inEditor(event.target))
       restartIdle()
     }
 

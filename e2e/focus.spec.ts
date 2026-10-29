@@ -29,6 +29,15 @@ test('focus mode dims everything but the page you are working in', async ({ page
     await expect(day).not.toHaveCSS('cursor', 'none')
   })
 
+  await test.step('clicking into the other page starts it at once', async () => {
+    await weekPage.getByRole('textbox').click()
+    await expect(settings).toHaveCSS('opacity', '0')
+    await expect(dayPage).toHaveCSS('opacity', '0.35')
+    await revealButtons(page)
+    await day.click()
+    await revealButtons(page)
+  })
+
   await test.step('a mouse resting for 3 seconds with the cursor in the page starts it too', async () => {
     await day.click()
     await expect(settings).toHaveCSS('opacity', '1')
