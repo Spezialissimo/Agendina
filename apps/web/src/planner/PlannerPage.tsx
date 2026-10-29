@@ -1,3 +1,4 @@
+import { DEFAULT_FOCUS_MODE } from '@agendina/contract'
 import {
   addDays,
   isDayKey,
@@ -90,7 +91,8 @@ function Planner({ focus }: { focus: DayKey }) {
   )
 
   useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
-  const focusMode = useFocusMode(!paletteOpen && !settingsOpen, focus)
+  const { enabled: focusModeOn, idleMs } = settings?.focusMode ?? DEFAULT_FOCUS_MODE
+  const focusMode = useFocusMode(focusModeOn && !paletteOpen && !settingsOpen, focus, idleMs)
 
   return (
     <div className="planner" data-focus-mode={focusMode || undefined}>

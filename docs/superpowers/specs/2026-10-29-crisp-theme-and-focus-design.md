@@ -25,7 +25,7 @@ UI, serif writing). The other two (soft shadowed sheets, one borderless sheet) w
 - Layout changes: panel arrangement, the week strip position, sizes and spacing between regions
   stay as they are (only padding/radius inside components may change to fit the new style).
 - A manual light/dark switch. The theme keeps following the system setting.
-- New settings for the theme or focus mode.
+- Settings for the theme. (Focus mode got settings later: on/off and the resting time.)
 
 ## Anti-goals (it fails if…)
 
@@ -102,7 +102,7 @@ Colours (as CSS custom properties on `:root`, dark values under `prefers-color-s
 - **Also starts at once** when keyboard focus moves into a page (a click or Tab into it). A click
   in the page that already has the cursor does not start it. _(Added after the first review
   round.)_
-- **Also starts after 3 seconds** in which the mouse has not moved while the typing cursor
+- **Also starts after 1.5 seconds** (a setting: 1–10 s; focus mode can also be turned off) in which the mouse has not moved while the typing cursor
   blinks in a page (an editor has keyboard focus and the window is in front). Any mouse movement,
   tap, key or focus change starts the wait again; after Escape, focus mode returns after the wait
   unless the mouse moves or focus leaves the page. _(Added after the first review round.)_

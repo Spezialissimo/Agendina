@@ -2,20 +2,19 @@ import { useEffect, useState } from 'react'
 
 /** How far the pointer must move on screen to count as the user reaching for the mouse. */
 const MOUSE_THRESHOLD = 3
-/** How long the mouse must rest, with the cursor blinking in a page, before focus mode starts. */
-const IDLE_MS = 3000
 
 const inEditor = (target: EventTarget | null) =>
   target instanceof Element && target.closest('.cm-content') !== null
 
 /**
  * Focus mode (ADR 0013): on as soon as the user types in a page or moves the keyboard focus into
- * one, or once the mouse has rested for 3 seconds while the cursor blinks in a page; off as soon
- * as they reach for the mouse, tap, leave the editor or press Escape. Off while `enabled` is false (the command palette or settings are open)
- * and whenever the focused `day` changes: the new day's editor is a new element, and the keyboard
- * focus that was in the old one is gone.
+ * one, or once the mouse has rested for `idleMs` while the cursor blinks in a page; off as soon as
+ * they reach for the mouse, tap, leave the editor or press Escape. Off while `enabled` is false
+ * (turned off in the settings, or the command palette or settings are open) and whenever the
+ * focused `day` changes: the new day's editor is a new element, and the keyboard focus that was in
+ * the old one is gone.
  */
-export function useFocusMode(enabled: boolean, day: string): boolean {
+export function useFocusMode(enabled: boolean, day: string, idleMs: number): boolean {
   const [on, setOn] = useState(false)
 
   useEffect(() => {
@@ -35,7 +34,7 @@ export function useFocusMode(enabled: boolean, day: string): boolean {
       clearTimeout(idle)
       idle = setTimeout(() => {
         if (document.hasFocus() && inEditor(document.activeElement)) set(true)
-      }, IDLE_MS)
+      }, idleMs)
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -94,7 +93,7 @@ export function useFocusMode(enabled: boolean, day: string): boolean {
       // Disabled, another day, or unmounted: come back without focus mode.
       setOn(false)
     }
-  }, [enabled, day])
+  }, [enabled, day, idleMs])
 
   return on
 }

@@ -1,5 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { DEFAULT_SETTINGS } from '@agendina/contract'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Api } from '../api/client.ts'
 import { placeCursor } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
 import { startTestServer, type TestServer } from '../test/server.ts'
@@ -52,6 +54,20 @@ describe('focus mode', () => {
     fireEvent.keyDown(day, { key: 'ArrowDown' })
 
     expect(planner()).toHaveAttribute('data-focus-mode')
+  })
+
+  it('never starts when turned off in the settings', async () => {
+    await new Api(server.fetch).saveSettings({
+      ...DEFAULT_SETTINGS,
+      focusMode: { enabled: false, idleMs: 1500 },
+    })
+    const { day, planner } = await open()
+    const week = await screen.findByRole('textbox', { name: 'Week 44' })
+
+    fireEvent.keyDown(day, { key: 'a' })
+    placeCursor(week, 0)
+
+    expect(planner()).not.toHaveAttribute('data-focus-mode')
   })
 
   it('does not start on keys pressed outside a page', async () => {
@@ -207,10 +223,23 @@ describe('focus mode', () => {
       vi.restoreAllMocks()
     })
 
-    it('starts after 3 seconds with the cursor in a page', async () => {
+    it('starts after 1.5 seconds with the cursor in a page', async () => {
       const { planner } = await openResting()
 
-      wait(2900)
+      wait(1400)
+      expect(planner()).not.toHaveAttribute('data-focus-mode')
+      wait(100)
+      expect(planner()).toHaveAttribute('data-focus-mode')
+    })
+
+    it('waits as long as the settings say', async () => {
+      await new Api(server.fetch).saveSettings({
+        ...DEFAULT_SETTINGS,
+        focusMode: { enabled: true, idleMs: 5000 },
+      })
+      const { planner } = await openResting()
+
+      wait(4900)
       expect(planner()).not.toHaveAttribute('data-focus-mode')
       wait(100)
       expect(planner()).toHaveAttribute('data-focus-mode')
@@ -219,11 +248,11 @@ describe('focus mode', () => {
     it('waits again after the mouse moves', async () => {
       const { planner } = await openResting()
 
-      wait(2000)
-      moveMouse(100, 120)
-      wait(2000)
-      expect(planner()).not.toHaveAttribute('data-focus-mode')
       wait(1000)
+      moveMouse(100, 120)
+      wait(1000)
+      expect(planner()).not.toHaveAttribute('data-focus-mode')
+      wait(500)
       expect(planner()).toHaveAttribute('data-focus-mode')
     })
 

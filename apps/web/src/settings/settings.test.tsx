@@ -29,6 +29,42 @@ describe('settings', () => {
     return { ...view, dialog: screen.getByRole('dialog', { name: 'Settings' }) }
   }
 
+  describe('focus mode', () => {
+    it('can be turned off, and remembers it', async () => {
+      const { user, dialog } = await openSettings('/day/2026-10-27')
+
+      await user.click(within(dialog).getByRole('checkbox', { name: 'Focus mode' }))
+
+      expect(within(dialog).getByRole('checkbox', { name: 'Focus mode' })).not.toBeChecked()
+      await waitFor(async () => {
+        expect((await api.settings()).focusMode.enabled).toBe(false)
+      })
+    })
+
+    it('starts after the chosen time of a resting mouse', async () => {
+      const { user, dialog } = await openSettings('/day/2026-10-27')
+      const wait = within(dialog).getByRole('combobox', {
+        name: 'Start after the mouse rests for',
+      })
+      expect(wait).toHaveDisplayValue('1.5 seconds')
+
+      await user.selectOptions(wait, '5 seconds')
+
+      await waitFor(async () => {
+        expect((await api.settings()).focusMode.idleMs).toBe(5000)
+      })
+    })
+
+    it('cannot choose a time while focus mode is off', async () => {
+      await api.saveSettings({ ...DEFAULT_SETTINGS, focusMode: { enabled: false, idleMs: 1500 } })
+      const { dialog } = await openSettings('/day/2026-10-27')
+
+      expect(
+        within(dialog).getByRole('combobox', { name: 'Start after the mouse rests for' }),
+      ).toBeDisabled()
+    })
+  })
+
   describe('week start', () => {
     it('starts weeks on the chosen day, and remembers it', async () => {
       const { user, dialog } = await openSettings('/day/2026-10-27')

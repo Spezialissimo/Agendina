@@ -38,7 +38,7 @@ test('focus mode dims everything but the page you are working in', async ({ page
     await revealButtons(page)
   })
 
-  await test.step('a mouse resting for 3 seconds with the cursor in the page starts it too', async () => {
+  await test.step('a mouse resting for 1.5 seconds with the cursor in the page starts it too', async () => {
     await day.click()
     await expect(settings).toHaveCSS('opacity', '1')
     await expect(settings).toHaveCSS('opacity', '0', { timeout: 6000 })

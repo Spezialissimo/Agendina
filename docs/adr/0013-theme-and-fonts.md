@@ -29,7 +29,7 @@ Layout stays as in ADR 0005; this is about the theme only.
   accessible name and has a matching tooltip.
 - **Focus mode:** a key pressed in a page's editor (any key, arrows included), keyboard focus
   moving into a page, or a mouse that has
-  rested for 3 seconds while the cursor blinks in a page, dims and desaturates everything but that
+  rested for 1.5 seconds (a user setting, as is turning focus mode off) while the cursor blinks in a page, dims and desaturates everything but that
   page and hides every button and the mouse pointer; a real mouse movement, a pointer
   down, focus leaving the editor, Escape, or opening the palette or settings brings everything
   back. "Real" movement means the pointer moved on screen: browsers fire `mousemove` under a still

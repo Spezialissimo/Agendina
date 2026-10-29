@@ -37,6 +37,15 @@ const LayoutSchema = z.unknown().transform((value, ctx): Layout => {
   }
 })
 
+/** Focus mode (ADR 0013): whether it is on, and how long the mouse must rest before it starts. */
+export const FocusModeSettings = z.object({
+  enabled: z.boolean(),
+  idleMs: z.number().int().min(500).max(60_000),
+})
+export type FocusModeSettings = z.infer<typeof FocusModeSettings>
+
+export const DEFAULT_FOCUS_MODE: FocusModeSettings = { enabled: true, idleMs: 1500 }
+
 export const UserSettings = z.object({
   weekRule: WeekRule,
   /** Command id → bindings, replacing the command's defaults. An empty list unbinds it. */
@@ -44,6 +53,8 @@ export const UserSettings = z.object({
     .record(z.string().max(100), z.array(Binding).max(5))
     .refine((keymap) => Object.keys(keymap).length <= 200, 'Too many commands'),
   layout: LayoutSchema,
+  // A default, so settings stored before focus mode existed stay valid.
+  focusMode: FocusModeSettings.default(DEFAULT_FOCUS_MODE),
 })
 export type UserSettings = z.infer<typeof UserSettings>
 
@@ -51,6 +62,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   weekRule: ISO_WEEK,
   keymap: {},
   layout: OPEN_PLANNER,
+  focusMode: DEFAULT_FOCUS_MODE,
 }
 
 export const SettingsResponse = z.object({ settings: UserSettings })

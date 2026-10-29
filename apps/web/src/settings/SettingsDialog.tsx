@@ -16,6 +16,10 @@ const WEEKDAYS: Weekday[] = [1, 2, 3, 4, 5, 6, 7]
 // Monday 26 October 2026, to name the weekdays in the user's language.
 const A_MONDAY = '2026-10-26'
 
+const RESTING_TIMES_MS = [1000, 1500, 2000, 3000, 5000, 10_000]
+
+const seconds = (ms: number) => `${String(ms / 1000)} ${ms === 1000 ? 'second' : 'seconds'}`
+
 const NUMBERING: { minimalDays: WeekRule['minimalDays']; label: string }[] = [
   { minimalDays: 4, label: 'The first week with four days of the new year (ISO)' },
   { minimalDays: 1, label: 'The week with 1 January' },
@@ -25,7 +29,14 @@ const NUMBERING: { minimalDays: WeekRule['minimalDays']; label: string }[] = [
 export function SettingsDialog({ settings, onChange, onClose }: Props) {
   const locale = useLocale()
   const titleId = useId()
-  const { weekRule } = settings
+  const { weekRule, focusMode } = settings
+  const setFocusMode = (change: Partial<typeof focusMode>) => {
+    onChange({ ...settings, focusMode: { ...focusMode, ...change } })
+  }
+  // A time set elsewhere (the API) is still shown.
+  const restingTimes = RESTING_TIMES_MS.includes(focusMode.idleMs)
+    ? RESTING_TIMES_MS
+    : [...RESTING_TIMES_MS, focusMode.idleMs].sort((a, b) => a - b)
   const setWeekRule = (rule: Partial<WeekRule>) => {
     onChange({ ...settings, weekRule: { ...weekRule, ...rule } })
   }
@@ -95,6 +106,39 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
               {numbering.map(({ minimalDays, label }) => (
                 <option key={minimalDays} value={minimalDays}>
                   {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </fieldset>
+        <fieldset>
+          <legend>Focus</legend>
+          <label className="settings-check">
+            <input
+              type="checkbox"
+              checked={focusMode.enabled}
+              onChange={(event) => {
+                setFocusMode({ enabled: event.target.checked })
+              }}
+            />
+            Focus mode
+          </label>
+          <p className="settings-hint">
+            While you write, everything but the page fades and the buttons hide until you move the
+            mouse.
+          </p>
+          <label>
+            Start after the mouse rests for
+            <select
+              value={focusMode.idleMs}
+              disabled={!focusMode.enabled}
+              onChange={(event) => {
+                setFocusMode({ idleMs: Number(event.target.value) })
+              }}
+            >
+              {restingTimes.map((ms) => (
+                <option key={ms} value={ms}>
+                  {seconds(ms)}
                 </option>
               ))}
             </select>

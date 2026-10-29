@@ -62,6 +62,8 @@ describe.each(testDatabases())('settings on $kind', ({ create }) => {
       weekRule: US_WEEK,
       keymap: { 'focus.nextDay': ['Mod+Shift+ArrowRight', 'Mod+KeyJ'], 'palette.open': [] },
       layout,
+      // Left out of the request: the default.
+      focusMode: DEFAULT_SETTINGS.focusMode,
     })
   })
 
@@ -112,6 +114,34 @@ describe.each(testDatabases())('settings on $kind', ({ create }) => {
     expect(res.status).toBe(400)
     expect(await res.json()).toMatchObject({ error: 'invalid_request' })
     expect(await getSettings()).toEqual(DEFAULT_SETTINGS)
+  })
+
+  it('saves focus mode settings', async () => {
+    const focusMode = { enabled: false, idleMs: 5000 }
+    await putSettings({ ...DEFAULT_SETTINGS, focusMode })
+
+    expect((await getSettings()).focusMode).toEqual(focusMode)
+  })
+
+  it('turns focus mode on after 1.5 seconds by default', () => {
+    expect(DEFAULT_SETTINGS.focusMode).toEqual({ enabled: true, idleMs: 1500 })
+  })
+
+  it.each([0, 499, 60_001, 1.5])('rejects a resting time of %s ms', async (idleMs) => {
+    const res = await putSettings({ ...DEFAULT_SETTINGS, focusMode: { enabled: true, idleMs } })
+
+    expect(res.status).toBe(400)
+  })
+
+  it('keeps settings saved before focus mode existed, with its defaults', async () => {
+    await putSettings({ ...DEFAULT_SETTINGS, weekRule: US_WEEK })
+    const older = { weekRule: US_WEEK, keymap: {}, layout: DEFAULT_SETTINGS.layout }
+    await handle.db
+      .updateTable('user_settings')
+      .set({ value: JSON.stringify(older) })
+      .execute()
+
+    expect(await getSettings()).toEqual({ ...DEFAULT_SETTINGS, weekRule: US_WEEK })
   })
 
   it('falls back to the defaults when stored settings are no longer valid', async () => {
