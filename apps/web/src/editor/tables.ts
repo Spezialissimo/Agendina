@@ -1,6 +1,6 @@
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
 import { EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
-import type { SyntaxNode } from '@lezer/common'
+import type { SyntaxNode, Tree } from '@lezer/common'
 
 /** A cell of a markdown table row: its text (trimmed) and its range within the line. */
 interface Cell {
@@ -30,7 +30,13 @@ export function splitCells(line: string): Cell[] {
 }
 
 const DELIMITER_ROW = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
-const CHECKBOX_CELL = /^\[[ xX]\]$/
+/** A table cell that is a checkbox: exactly `[ ]` or `[x]`. */
+export const CHECKBOX_CELL = /^\[[ xX]\]$/
+
+/** The whole page's syntax tree: parsing the rest (briefly) if only the visible part is parsed. */
+export function fullTree(state: EditorState): Tree {
+  return ensureSyntaxTree(state, state.doc.length, 200) ?? syntaxTree(state)
+}
 
 type Align = 'none' | 'left' | 'center' | 'right'
 
@@ -106,7 +112,7 @@ export function findTable(
   state: EditorState,
   pos: number,
 ): { from: number; to: number } | undefined {
-  const tree = ensureSyntaxTree(state, state.doc.length, 200) ?? syntaxTree(state)
+  const tree = fullTree(state)
   for (const side of [-1, 1] as const) {
     for (
       let node: SyntaxNode | null = tree.resolveInner(pos, side);

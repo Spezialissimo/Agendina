@@ -1,11 +1,11 @@
-import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
+import { syntaxTree } from '@codemirror/language'
 import {
   EditorSelection,
   type ChangeSpec,
   type EditorState,
   type TransactionSpec,
 } from '@codemirror/state'
-import { splitCells } from './tables.ts'
+import { CHECKBOX_CELL, fullTree, splitCells } from './tables.ts'
 
 export interface Checkbox {
   /** Range of the `[ ]` / `[x]` brackets. */
@@ -17,12 +17,11 @@ export interface Checkbox {
   kind: 'task' | 'cell'
 }
 
-const CELL_BOX = /^\[([ xX])\]$/
 const LIST_ITEM = /^(\s*)([-*+]|\d+[.)])(\s+)/
 
 /** Every checkbox in the page: to-dos (`- [ ] …`) and table cells that are exactly `[ ]`/`[x]`. */
 export function findCheckboxes(state: EditorState): Checkbox[] {
-  const tree = ensureSyntaxTree(state, state.doc.length, 200) ?? syntaxTree(state)
+  const tree = fullTree(state)
   const boxes: Checkbox[] = []
   tree.iterate({
     enter(ref) {
@@ -30,7 +29,7 @@ export function findCheckboxes(state: EditorState): Checkbox[] {
       if (node.name === 'Task') {
         const marker = node.getChild('TaskMarker')
         if (marker === null) return false
-        const checked = /[xX]/.test(state.doc.sliceString(marker.from + 1, marker.from + 2))
+        const checked = isChecked(state.doc.sliceString(marker.from, marker.to))
         // A line right below a list item continues it in markdown; the label is the to-do's line.
         const label = state.doc.sliceString(marker.to, state.doc.lineAt(marker.from).to).trim()
         boxes.push({ from: marker.from, to: marker.to, checked, label, kind: 'task' })
@@ -42,20 +41,10 @@ export function findCheckboxes(state: EditorState): Checkbox[] {
           header === null ? [] : splitCells(state.doc.lineAt(header.from).text).map((c) => c.text)
         for (const row of node.getChildren('TableRow')) {
           const line = state.doc.lineAt(row.from)
-          const cells = splitCells(line.text)
-          const texts = cells.map((c) => c.text)
-          cells.forEach((cell, index) => {
-            const match = CELL_BOX.exec(cell.text)
-            if (match === null) return
-            const from = line.from + line.text.indexOf('[', cell.from)
-            boxes.push({
-              from,
-              to: from + 3,
-              checked: match[1] !== ' ',
-              label: cellCheckboxLabel(texts, columns, index),
-              kind: 'cell',
-            })
-          })
+          for (const { offset, checked, label } of rowCheckboxes(line.text, columns)) {
+            const from = line.from + offset
+            boxes.push({ from, to: from + 3, checked, label, kind: 'cell' })
+          }
         }
         return false
       }
@@ -65,12 +54,38 @@ export function findCheckboxes(state: EditorState): Checkbox[] {
   return boxes
 }
 
+/** Whether a `[ ]`/`[x]` box is checked. */
+export function isChecked(box: string): boolean {
+  return /^\[[xX]\]$/.test(box)
+}
+
+/** A table row's checkbox cells: column, where the box starts in the line, state and label. */
+export function rowCheckboxes(
+  line: string,
+  header: string[],
+): { col: number; offset: number; checked: boolean; label: string }[] {
+  const cells = splitCells(line)
+  const texts = cells.map((c) => c.text)
+  return cells.flatMap((cell, col) =>
+    CHECKBOX_CELL.test(cell.text)
+      ? [
+          {
+            col,
+            offset: line.indexOf('[', cell.from),
+            checked: isChecked(cell.text),
+            label: cellCheckboxLabel(texts, header, col),
+          },
+        ]
+      : [],
+  )
+}
+
 /**
  * "row, column" for a checkbox cell, e.g. "Chest press, Fatto": the row is named by its first
  * non-empty text cell, wherever the checkbox column is.
  */
-export function cellCheckboxLabel(cells: string[], header: string[], column: number): string {
-  const row = cells.find((text) => text !== '' && !CELL_BOX.test(text)) ?? ''
+function cellCheckboxLabel(cells: string[], header: string[], column: number): string {
+  const row = cells.find((text) => text !== '' && !CHECKBOX_CELL.test(text)) ?? ''
   return `${row}, ${header[column] ?? ''}`
 }
 

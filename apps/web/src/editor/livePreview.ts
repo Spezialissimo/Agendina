@@ -1,9 +1,9 @@
-import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
+import { syntaxTree } from '@codemirror/language'
 import { type EditorState, type Range, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, type DecorationSet, EditorView, WidgetType } from '@codemirror/view'
 import type { SyntaxNode } from '@lezer/common'
-import { cellCheckboxLabel, findCheckboxes, toggleCheckbox } from './checkboxes.ts'
-import { splitCells } from './tables.ts'
+import { findCheckboxes, isChecked, rowCheckboxes, toggleCheckbox } from './checkboxes.ts'
+import { fullTree, splitCells } from './tables.ts'
 
 /**
  * What live preview does to the markdown, as plain data (so it can be tested without a browser):
@@ -32,7 +32,7 @@ const INLINE: Record<string, { className: string; mark: string }> = {
  * their brackets). Tables are grids, and aligned text while the cursor is in them.
  */
 export function livePreview(state: EditorState, { focused = true } = {}): PreviewItem[] {
-  const tree = ensureSyntaxTree(state, state.doc.length, 200) ?? syntaxTree(state)
+  const tree = fullTree(state)
   const activeLines = new Set<number>()
   // An editor that is not focused still has a cursor position; only show syntax while typing.
   for (const range of focused ? state.selection.ranges : []) {
@@ -115,10 +115,7 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
           if (task !== null) {
             if (!raw(mark.from)) hide(mark, true)
             const marker = task.getChild('TaskMarker')
-            if (
-              marker !== null &&
-              /[xX]/.test(state.doc.sliceString(marker.from + 1, marker.from + 2))
-            ) {
+            if (marker !== null && isChecked(state.doc.sliceString(marker.from, marker.to))) {
               items.push({
                 kind: 'line',
                 from: state.doc.lineAt(node.from).from,
@@ -167,6 +164,16 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
   return items
 }
 
+function checkboxInput(checked: boolean, label: string): HTMLInputElement {
+  const input = document.createElement('input')
+  input.type = 'checkbox'
+  input.className = 'cm-checkbox'
+  input.checked = checked
+  input.tabIndex = -1
+  input.setAttribute('aria-label', label)
+  return input
+}
+
 class CheckboxWidget extends WidgetType {
   constructor(
     readonly checked: boolean,
@@ -178,13 +185,7 @@ class CheckboxWidget extends WidgetType {
     return other.checked === this.checked && other.label === this.label
   }
   toDOM() {
-    const input = document.createElement('input')
-    input.type = 'checkbox'
-    input.className = 'cm-checkbox'
-    input.checked = this.checked
-    input.tabIndex = -1
-    input.setAttribute('aria-label', this.label)
-    return input
+    return checkboxInput(this.checked, this.label)
   }
   override ignoreEvent() {
     return false
@@ -211,26 +212,15 @@ class TableWidget extends WidgetType {
       offset += line.length + 1
       if (index === 1) return // the delimiter row
       const row = document.createElement('tr')
-      const cells = splitCells(line)
-      cells.forEach((cell, col) => {
+      const boxes = index === 0 ? [] : rowCheckboxes(line, header)
+      splitCells(line).forEach((cell, col) => {
         const element = document.createElement(index === 0 ? 'th' : 'td')
         element.dataset.line = String(index)
         element.dataset.col = String(col)
-        if (index > 0 && /^\[[ xX]\]$/.test(cell.text)) {
-          const input = document.createElement('input')
-          input.type = 'checkbox'
-          input.className = 'cm-checkbox'
-          input.tabIndex = -1
-          input.checked = cell.text[1] !== ' '
-          input.setAttribute(
-            'aria-label',
-            cellCheckboxLabel(
-              cells.map((c) => c.text),
-              header,
-              col,
-            ),
-          )
-          input.dataset.offset = String(lineOffset + line.indexOf('[', cell.from))
+        const box = boxes.find((b) => b.col === col)
+        if (box !== undefined) {
+          const input = checkboxInput(box.checked, box.label)
+          input.dataset.offset = String(lineOffset + box.offset)
           element.append(input)
         } else {
           element.textContent = cell.text
