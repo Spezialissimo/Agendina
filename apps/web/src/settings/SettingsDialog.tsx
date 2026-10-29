@@ -1,9 +1,9 @@
 import type { AuthState, UserSettings } from '@agendina/contract'
 import { addDays, type WeekRule, type Weekday } from '@agendina/core'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId, type KeyboardEvent } from 'react'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
-import { AUTH_QUERY } from '../auth/AuthGate.tsx'
+import { AUTH_QUERY, useAuthState } from '../auth/AuthGate.tsx'
 import { format } from '../planner/weeks.ts'
 
 interface Props {
@@ -163,7 +163,7 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
 function SignupSetting() {
   const api = useApi()
   const queryClient = useQueryClient()
-  const auth = useQuery({ queryKey: AUTH_QUERY, queryFn: () => api.authState() })
+  const auth = useAuthState()
   const save = useMutation({
     mutationFn: (signupOpen: boolean) => api.setInstanceSettings({ signupOpen }),
     onSuccess: ({ signupOpen }) => {

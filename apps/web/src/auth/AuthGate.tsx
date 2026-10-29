@@ -6,10 +6,14 @@ import { SignInScreen } from './SignInScreen.tsx'
 
 export const AUTH_QUERY = ['auth'] as const
 
+export function useAuthState() {
+  const api = useApi()
+  return useQuery({ queryKey: AUTH_QUERY, queryFn: () => api.authState() })
+}
+
 /** Shows first-run setup or sign-in until there is a session, then the requested page. */
 export function AuthGate() {
-  const api = useApi()
-  const auth = useQuery({ queryKey: AUTH_QUERY, queryFn: () => api.authState() })
+  const auth = useAuthState()
 
   if (auth.isPending) return <p className="splash">Agendina</p>
   if (auth.isError) {
