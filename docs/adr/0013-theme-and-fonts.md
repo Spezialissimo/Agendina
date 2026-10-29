@@ -32,7 +32,7 @@ Layout stays as in ADR 0005; this is about the theme only.
   rested for 1.5 seconds (a user setting, as is turning focus mode off) while the cursor blinks in a page, dims and desaturates everything but that
   page and hides every button and the mouse pointer; a real mouse movement, a pointer
   down, focus leaving the editor, Escape, or opening the palette or settings brings everything
-  back. "Real" movement means the pointer moved on screen: browsers fire `mousemove` under a still
+  back. "Real" movement means the pointer moved in the window: browsers fire `mousemove` under a still
   pointer when the page scrolls under it (CodeMirror scrolling to the caret while you type), and
   that must not end focus mode. Errors, offline/conflict states and the conflict resolver are
   never dimmed; the template editor's Save and Cancel stay visible.

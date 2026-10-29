@@ -45,9 +45,10 @@ export function useFocusMode(enabled: boolean, day: string, idleMs: number): boo
       restartIdle()
     }
     // Browsers also send mousemove when the page scrolls under a still pointer (the editor
-    // following the caret while typing): only a pointer that moved on screen ends focus mode.
+    // following the caret while typing): only a pointer that moved in the window ends focus mode.
+    // Not screenX/Y: WebKit on Linux reports them as 0.
     const onMouseMove = (event: MouseEvent) => {
-      const position = { x: event.screenX, y: event.screenY }
+      const position = { x: event.clientX, y: event.clientY }
       anchor ??= position
       if (Math.hypot(position.x - anchor.x, position.y - anchor.y) <= MOUSE_THRESHOLD) return
       anchor = position

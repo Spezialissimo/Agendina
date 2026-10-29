@@ -33,10 +33,16 @@ describe('focus mode', () => {
     return { ...view, day, planner, focus }
   }
 
-  /** A real mouse sends several events while it moves; two are enough to measure a distance. */
+  /**
+   * A real mouse sends several events while it moves; two are enough to measure a distance. The
+   * screen position stays 0, as WebKit on Linux reports it.
+   */
+  const mouseAt = (x: number) => {
+    fireEvent.mouseMove(document, { clientX: x, clientY: 100, screenX: 0, screenY: 0 })
+  }
   const moveMouse = (from: number, to: number) => {
-    fireEvent.mouseMove(document, { screenX: from, screenY: 100 })
-    fireEvent.mouseMove(document, { screenX: to, screenY: 100 })
+    mouseAt(from)
+    mouseAt(to)
   }
 
   it('starts when a key is pressed in a page', async () => {
@@ -123,7 +129,7 @@ describe('focus mode', () => {
     focus()
 
     // A slow nudge arrives as many events a pixel apart.
-    for (let x = 100; x <= 110; x++) fireEvent.mouseMove(document, { screenX: x, screenY: 100 })
+    for (let x = 100; x <= 110; x++) mouseAt(x)
 
     expect(planner()).not.toHaveAttribute('data-focus-mode')
   })
