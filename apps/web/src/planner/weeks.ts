@@ -21,5 +21,10 @@ export function formatRange(from: DayKey, to: DayKey, locale: string): string {
 export function pageTitle(kind: NoteKind, key: DayKey, locale: string, rule: WeekRule): string {
   return kind === 'day'
     ? format(key, locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-    : `Week ${String(weekNumber(key, rule).week)}`
+    : weekTitle(key, rule)
+}
+
+/** E.g. "Week 44": the number of the week containing `day`. */
+export function weekTitle(day: DayKey, rule: WeekRule): string {
+  return `Week ${String(weekNumber(day, rule).week)}`
 }

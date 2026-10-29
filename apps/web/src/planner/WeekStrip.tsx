@@ -1,11 +1,11 @@
-import { addDays, weekDays, weekNumber, type DayKey, type WeekRule } from '@agendina/core'
+import { addDays, weekDays, type DayKey, type WeekRule } from '@agendina/core'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
 import { useApi, useLocale, useToday } from '../app/AppProviders.tsx'
 import { ChevronLeftIcon, ChevronRightIcon } from '../app/icons.tsx'
 import { MonthPicker } from './MonthPicker.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
-import { format, formatRange } from './weeks.ts'
+import { format, formatRange, weekTitle } from './weeks.ts'
 
 interface Props {
   focus: DayKey
@@ -45,7 +45,7 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
         <ChevronLeftIcon />
       </button>
       <div className="week-label">
-        <span className="week-number">Week {weekNumber(focus, rule).week}</span>
+        <span className="week-number">{weekTitle(focus, rule)}</span>
         <span className="week-range">{formatRange(first, last, locale)}</span>
       </div>
       <ol className="week-days">
