@@ -38,14 +38,14 @@ UI, serif writing). The other two (soft shadowed sheets, one borderless sheet) w
 
 Colours (as CSS custom properties on `:root`, dark values under `prefers-color-scheme: dark`):
 
-| Token                   | Light     | Dark      |
-| ----------------------- | --------- | --------- |
-| background (`--paper`)  | `#ededed` | `#1a1a1a` |
-| page (`--page`)         | `#ffffff` | `#222222` |
-| text (`--ink`)          | `#1f1f1f` | `#ececec` |
-| secondary (`--ink-soft`)| `#8a8a8a` | `#7a7a7a` |
-| lines (`--rule`)        | `#e0e0e0` | `#2e2e2e` |
-| hover/chip              | `#e2e2e2` | `#2c2c2c` |
+| Token                    | Light     | Dark      |
+| ------------------------ | --------- | --------- |
+| background (`--paper`)   | `#ededed` | `#1a1a1a` |
+| page (`--page`)          | `#ffffff` | `#222222` |
+| text (`--ink`)           | `#1f1f1f` | `#ececec` |
+| secondary (`--ink-soft`) | `#8a8a8a` | `#7a7a7a` |
+| lines (`--rule`)         | `#e0e0e0` | `#2e2e2e` |
+| hover/chip               | `#e2e2e2` | `#2c2c2c` |
 
 - **No blue accent.** The theme is monochrome. `--accent` becomes the ink colour (dark grey in
   light mode, near-white in dark mode) so buttons like "Sign in" are dark with light text, the

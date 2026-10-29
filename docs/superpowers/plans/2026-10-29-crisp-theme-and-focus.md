@@ -54,6 +54,7 @@ focused page is found with `:focus-within`, so no page needs to know about focus
 ### Task 1: Monochrome palette, bundled fonts, ADR
 
 **Files:**
+
 - Modify: `apps/web/package.json` (add the two font packages via `pnpm --filter @agendina/web add`)
 - Modify: `apps/web/src/main.tsx` (import the font CSS)
 - Modify: `apps/web/src/styles.css` (tokens, fonts per selector, shadows → borders)
@@ -64,8 +65,9 @@ focused page is found with `:focus-within`, so no page needs to know about focus
 - Test: `e2e/smoke.spec.ts`
 
 **Interfaces:**
+
 - Produces: CSS tokens used by Tasks 2 and 4: `--paper --page --ink --ink-soft --rule --chip
-  --accent --accent-ink --danger --shadow --radius --font-body --font-serif --font-mono`.
+--accent --accent-ink --danger --shadow --radius --font-body --font-serif --font-mono`.
 
 - [ ] **Step 1: Write the failing e2e test** in `e2e/smoke.spec.ts`
 
@@ -90,29 +92,30 @@ Run: `pnpm e2e --project chromium e2e/smoke.spec.ts`
 Expected: FAIL on the `.woff2` assertion (no font files today).
 
 - [ ] **Step 3: Add fonts.** `pnpm --filter @agendina/web add @fontsource-variable/inter @fontsource-variable/source-serif-4`;
-in `main.tsx` import `@fontsource-variable/inter`, `@fontsource-variable/source-serif-4` and
-`@fontsource-variable/source-serif-4/wght-italic.css` before `./styles.css`.
+      in `main.tsx` import `@fontsource-variable/inter`, `@fontsource-variable/source-serif-4` and
+      `@fontsource-variable/source-serif-4/wght-italic.css` before `./styles.css`.
 
 - [ ] **Step 4: Restyle `styles.css`.** Header comment: "a crisp, monochrome page; fonts bundled
-(no third-party requests)". Tokens:
+      (no third-party requests)". Tokens:
 
-| Token | Light | Dark |
-| --- | --- | --- |
-| `--paper` | `#ededed` | `#1a1a1a` |
-| `--page` | `#ffffff` | `#222222` |
-| `--ink` | `#1f1f1f` | `#ececec` |
-| `--ink-soft` | `#8a8a8a` | `#7a7a7a` |
-| `--rule` | `#e0e0e0` | `#2e2e2e` |
-| `--chip` (new, hover/selected) | `#e2e2e2` | `#2c2c2c` |
-| `--accent` | `var(--ink)` | `var(--ink)` |
-| `--accent-ink` | `var(--page)` | `var(--page)` |
-| `--danger` | `#a23b2a` | `#e08a7a` |
-| `--shadow` (popovers only) | `0 1px 2px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 8%)` | `0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 35%)` |
-| `--radius` | `6px` | |
-| `--font-body` | `'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif` | |
-| `--font-serif` | `'Source Serif 4 Variable', 'Iowan Old Style', Georgia, serif` | |
+| Token                          | Light                                                                        | Dark                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `--paper`                      | `#ededed`                                                                    | `#1a1a1a`                                                 |
+| `--page`                       | `#ffffff`                                                                    | `#222222`                                                 |
+| `--ink`                        | `#1f1f1f`                                                                    | `#ececec`                                                 |
+| `--ink-soft`                   | `#8a8a8a`                                                                    | `#7a7a7a`                                                 |
+| `--rule`                       | `#e0e0e0`                                                                    | `#2e2e2e`                                                 |
+| `--chip` (new, hover/selected) | `#e2e2e2`                                                                    | `#2c2c2c`                                                 |
+| `--accent`                     | `var(--ink)`                                                                 | `var(--ink)`                                              |
+| `--accent-ink`                 | `var(--page)`                                                                | `var(--page)`                                             |
+| `--danger`                     | `#a23b2a`                                                                    | `#e08a7a`                                                 |
+| `--shadow` (popovers only)     | `0 1px 2px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 8%)`                      | `0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 35%)` |
+| `--radius`                     | `6px`                                                                        |                                                           |
+| `--font-body`                  | `'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif` |                                                           |
+| `--font-serif`                 | `'Source Serif 4 Variable', 'Iowan Old Style', Georgia, serif`               |                                                           |
 
 Then:
+
 - Chrome headings move to the sans: `h1, h2, h3`, `.brand`, `.week-number`, `.month-header`,
   `.splash` and the other `font-family: var(--font-serif)` rules outside `.editor` use
   `var(--font-body)` (weight 600). `.editor .cm-content` and `.page-content` use `var(--font-serif)`
@@ -132,15 +135,15 @@ Run: `pnpm e2e --project chromium e2e/smoke.spec.ts`
 Expected: PASS.
 
 - [ ] **Step 6: Look at it.** `pnpm dev`, sign in, check planner, settings, month calendar,
-palette, template editor, sign-in page, in light and dark (DevTools → Rendering → prefers-color-scheme).
-No blue left: `grep -n '#3d5a80\|#8fb0d8' apps/web/src` → no matches.
+      palette, template editor, sign-in page, in light and dark (DevTools → Rendering → prefers-color-scheme).
+      No blue left: `grep -n '#3d5a80\|#8fb0d8' apps/web/src` → no matches.
 
 - [ ] **Step 7: Write ADR 0013** (`docs/adr/0013-theme-and-fonts.md`, format of 0012): context
-(scrivi.la-like focus, mockups A/B/C, C chosen), decision (monochrome tokens, Inter + Source
-Serif 4 via `@fontsource-variable`, SIL OFL 1.1, licence files ship in the packages, replaces the
-"system fonts only" rule with "no third-party requests"; focus mode summary and why it ends on
-real mouse movement), consequences (≈ bundle size of the woff2 files, measured from `pnpm build`
-output). Add the line to `docs/adr/README.md`. Add `.superpowers/` to `.gitignore`.
+      (scrivi.la-like focus, mockups A/B/C, C chosen), decision (monochrome tokens, Inter + Source
+      Serif 4 via `@fontsource-variable`, SIL OFL 1.1, licence files ship in the packages, replaces the
+      "system fonts only" rule with "no third-party requests"; focus mode summary and why it ends on
+      real mouse movement), consequences (≈ bundle size of the woff2 files, measured from `pnpm build`
+      output). Add the line to `docs/adr/README.md`. Add `.superpowers/` to `.gitignore`.
 
 - [ ] **Step 8: Verify and commit**
 
@@ -158,6 +161,7 @@ git commit -m "feat(web): monochrome crisp theme with bundled Inter and Source S
 ### Task 2: Icon buttons
 
 **Files:**
+
 - Create: `apps/web/src/app/icons.tsx`
 - Modify: `apps/web/src/planner/PlannerPage.tsx:104-123` (Settings, Sign out)
 - Modify: `apps/web/src/planner/WeekStrip.tsx` (‹ › → chevrons)
@@ -167,15 +171,16 @@ git commit -m "feat(web): monochrome crisp theme with bundled Inter and Source S
 - Test: `apps/web/src/planner/planner.test.tsx`
 
 **Interfaces:**
+
 - Produces: `SettingsIcon`, `SignOutIcon`, `ChevronLeftIcon`, `ChevronRightIcon`,
   `CalendarIcon` — each `() => JSX.Element`, an `<svg viewBox="0 0 24 24" width="18" height="18"
-  aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-  stroke-linejoin="round">`. Artwork: the gear, door-with-arrow and calendar from the mockup
+aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+stroke-linejoin="round">`. Artwork: the gear, door-with-arrow and calendar from the mockup
   (`.superpowers/brainstorm/*/content/theme-directions.html`).
 - Buttons use `className="icon"`, `aria-label` and `title` with the same text.
 
 - [ ] **Step 1: Write the failing test** in `planner.test.tsx` (inside the existing per-database
-`describe`, using `renderApp`):
+      `describe`, using `renderApp`):
 
 ```ts
 it('shows the top bar actions as labelled icons', async () => {
@@ -197,7 +202,7 @@ Expected: FAIL: Settings has text content / no `title`.
 - [ ] **Step 3: Implement** `icons.tsx` and use it in `PlannerPage` and `WeekStrip` as above.
 
 - [ ] **Step 4: Run it to see it pass**, then `pnpm vitest run --project web` (the settings and
-sign-out tests find the buttons by the same names). Expected: PASS.
+      sign-out tests find the buttons by the same names). Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -211,16 +216,19 @@ git commit -m "feat(web): icon buttons for settings, sign out and week navigatio
 ### Task 3: Focus mode state
 
 **Files:**
+
 - Create: `apps/web/src/planner/useFocusMode.ts`
 - Modify: `apps/web/src/planner/PlannerPage.tsx` (call the hook, set the attribute)
 - Test: `apps/web/src/planner/focusMode.test.tsx`
 
 **Interfaces:**
+
 - Produces: `useFocusMode(enabled: boolean): boolean` and `<div className="planner"
-  data-focus-mode={focusMode || undefined}>`. Task 4's CSS keys off `.planner[data-focus-mode]`.
+data-focus-mode={focusMode || undefined}>`. Task 4's CSS keys off `.planner[data-focus-mode]`.
 - `PlannerPage` passes `enabled = !paletteOpen && !settingsOpen`.
 
 Rules (all listeners on `document`, removed on unmount):
+
 - `keydown` (bubble phase): if `event.key === 'Escape'` and `!event.defaultPrevented` → off
   (CodeMirror marks keys it handled, e.g. Escape closing the slash menu, as `defaultPrevented`).
   Otherwise, if the event target is inside a `.cm-content` → on. Any key counts (letters, arrows,
@@ -233,9 +241,9 @@ Rules (all listeners on `document`, removed on unmount):
 - `enabled` false → off (and stays off while false).
 
 - [ ] **Step 1: Write the failing tests** in `focusMode.test.tsx` (`describe.each(testDatabases())`
-like the other app tests; `renderApp(server, '/day/2026-10-26')`; get the day editor with
-`await screen.findByRole('textbox', { name: /26 October 2026/ })`, focus it with `placeCursor`;
-`const planner = () => container.querySelector('.planner')`):
+      like the other app tests; `renderApp(server, '/day/2026-10-26')`; get the day editor with
+      `await screen.findByRole('textbox', { name: /26 October 2026/ })`, focus it with `placeCursor`;
+      `const planner = () => container.querySelector('.planner')`):
 
 ```ts
 it('starts when a key is pressed in a page', ...)          // fireEvent.keyDown(editor, { key: 'a' }) → planner has data-focus-mode
@@ -261,8 +269,8 @@ Expected: the "starts…" tests FAIL (no attribute); "does not start…" passes 
 - [ ] **Step 3: Implement** `useFocusMode` with the rules above and wire it into `PlannerPage`.
 
 - [ ] **Step 4: Run them to see them pass**; then prove the scroll guard: temporarily make
-`mousemove` end focus mode unconditionally, see "ignores mouse events that do not move the
-pointer" fail, restore. Expected: all PASS after restoring.
+      `mousemove` end focus mode unconditionally, see "ignores mouse events that do not move the
+      pointer" fail, restore. Expected: all PASS after restoring.
 
 - [ ] **Step 5: Commit**
 
@@ -276,19 +284,22 @@ git commit -m "feat(web): focus mode starts on keys in a page and ends on mouse,
 ### Task 4: Focus mode look, and the journey
 
 **Files:**
+
 - Modify: `apps/web/src/styles.css` (new "Focus mode" section)
 - Create: `e2e/focus.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `.planner[data-focus-mode]` (Task 3), tokens (Task 1).
 
 CSS (exact values):
+
 - `.topbar, .page, .save-status, .topbar button, .page button` get
   `transition: opacity 0.5s, filter 0.5s`; inside `@media (prefers-reduced-motion: reduce)`
   `transition: none`.
 - `.planner[data-focus-mode] .topbar` → `opacity: 0.35; filter: grayscale(1)`.
 - `.planner[data-focus-mode] .page:not(:focus-within):not(:has([role='alert'], .conflict,
-  .save-status[data-status='offline'], .save-status[data-status='conflict']))` →
+.save-status[data-status='offline'], .save-status[data-status='conflict']))` →
   `opacity: 0.35; filter: grayscale(1)`.
 - `.planner[data-focus-mode] :is(.topbar, .page) button:not(.template-editor button, .conflict button)`
   → `opacity: 0; pointer-events: none`.
@@ -296,8 +307,8 @@ CSS (exact values):
   → `opacity: 0`.
 
 - [ ] **Step 1: Write the failing e2e journey** `e2e/focus.spec.ts` (use `enter(page)` from
-`./helpers.ts`; a day far from other journeys, e.g. `2026-12-08`; `toHaveCSS` retries through the
-transition):
+      `./helpers.ts`; a day far from other journeys, e.g. `2026-12-08`; `toHaveCSS` retries through the
+      transition):
 
 ```ts
 test('focus mode dims everything but the page you are working in', async ({ page }) => {
@@ -340,7 +351,10 @@ test('focus mode dims everything but the page you are working in', async ({ page
   })
   await test.step('the template editor keeps Save and Cancel visible', async () => {
     await page.mouse.move(300, 300)
-    await page.locator('.page', { has: day }).getByRole('button', { name: /Edit day template/ }).click()
+    await page
+      .locator('.page', { has: day })
+      .getByRole('button', { name: /Edit day template/ })
+      .click()
     const template = page.getByRole('textbox', { name: /template/i })
     await template.click()
     await page.keyboard.type('x')
@@ -378,8 +392,8 @@ Run: `pnpm e2e e2e/focus.spec.ts`
 Expected: PASS on chromium, firefox, webkit.
 
 - [ ] **Step 5: Look at it** with `pnpm dev`: type in the day page, watch the fade; open the
-template editor, type, check Save/Cancel stay; turn on reduce motion and check the change is
-instant.
+      template editor, type, check Save/Cancel stay; turn on reduce motion and check the change is
+      instant.
 
 - [ ] **Step 6: Full verification and commit**
 

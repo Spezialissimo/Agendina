@@ -1,19 +1,21 @@
-/* Agendina: a paper journal. Warm paper, dark ink, one accent. System fonts only (no third-party
-   requests from a self-hosted instance). */
+/* Agendina: crisp, monochrome pages (ADR 0013). Fonts are bundled, so a self-hosted instance makes
+   no third-party requests. */
 
 :root {
-  --paper: #f4efe4;
-  --page: #fffdf8;
-  --ink: #2b2925;
-  --ink-soft: #6b665c;
-  --rule: #e2dacb;
-  --accent: #3d5a80;
-  --accent-ink: #ffffff;
+  --paper: #ededed;
+  --page: #ffffff;
+  --ink: #1f1f1f;
+  --ink-soft: #8a8a8a;
+  --rule: #e0e0e0;
+  --chip: #e2e2e2;
+  --accent: var(--ink);
+  --accent-ink: var(--page);
   --danger: #a23b2a;
-  --shadow: 0 1px 2px rgb(60 50 30 / 8%), 0 8px 24px rgb(60 50 30 / 6%);
-  --radius: 10px;
-  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  /* Only for what floats above the pages (popovers, dialogs); pages have a border. */
+  --shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 8%);
+  --radius: 6px;
+  --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Source Serif 4 Variable', 'Iowan Old Style', Georgia, serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: light;
   accent-color: var(--accent);
@@ -21,15 +23,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #1c1a17;
-    --page: #24221e;
-    --ink: #ece6da;
-    --ink-soft: #a39c8e;
-    --rule: #3a362f;
-    --accent: #8fb0d8;
-    --accent-ink: #1c1a17;
+    --paper: #1a1a1a;
+    --page: #222222;
+    --ink: #ececec;
+    --ink-soft: #7a7a7a;
+    --rule: #2e2e2e;
+    --chip: #2c2c2c;
     --danger: #e08a7a;
-    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 35%);
     color-scheme: dark;
   }
 }
@@ -57,7 +58,7 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--font-serif);
+  font-family: var(--font-body);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -97,7 +98,7 @@ button {
   place-items: center;
   height: 100%;
   margin: 0;
-  font-family: var(--font-serif);
+  font-family: var(--font-body);
   color: var(--ink-soft);
 }
 
@@ -115,8 +116,8 @@ button {
   gap: 1rem;
   width: min(100%, 24rem);
   background: var(--page);
+  border: 1px solid var(--rule);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   padding: 2rem;
 }
 
@@ -177,7 +178,7 @@ button {
 }
 
 .brand {
-  font-family: var(--font-serif);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1.1rem;
 }
@@ -199,7 +200,7 @@ button {
 }
 
 .icon:hover {
-  background: var(--rule);
+  background: var(--chip);
   color: var(--ink);
 }
 
@@ -223,7 +224,7 @@ button {
 }
 
 .week-number {
-  font-family: var(--font-serif);
+  font-family: var(--font-body);
   font-weight: 600;
 }
 
@@ -252,16 +253,16 @@ button {
 }
 
 .week-day:hover {
-  background: var(--rule);
+  background: var(--chip);
 }
 
 .week-day[data-today] {
-  color: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .week-day[aria-current='date'] {
-  background: var(--page);
-  box-shadow: var(--shadow);
+  background: var(--chip);
   color: var(--ink);
 }
 
@@ -305,7 +306,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-family: var(--font-serif);
+  font-family: var(--font-body);
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
@@ -330,7 +331,7 @@ button {
 }
 
 .month-calendar td button:hover {
-  background: var(--rule);
+  background: var(--chip);
 }
 
 .month-calendar td button[data-outside] {
@@ -339,8 +340,8 @@ button {
 }
 
 .month-calendar td button[data-today] {
-  color: var(--accent);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .month-calendar td button[aria-current='date'] {
@@ -409,8 +410,8 @@ button {
   flex-direction: column;
   min-width: 0;
   background: var(--page);
+  border: 1px solid var(--rule);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   padding: 1.5rem 1.75rem;
   overflow: auto;
 }
@@ -480,8 +481,8 @@ button {
 .page-content {
   margin-top: 1.25rem;
   white-space: pre-wrap;
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-family: var(--font-serif);
+  line-height: 1.6;
 }
 
 .page-open {
@@ -502,7 +503,7 @@ button {
   justify-items: center;
   align-items: start;
   padding-top: 15vh;
-  background: rgb(30 25 15 / 25%);
+  background: rgb(0 0 0 / 25%);
 }
 
 .palette {
@@ -544,7 +545,7 @@ button {
 }
 
 .palette li[aria-selected='true'] {
-  background: var(--rule);
+  background: var(--chip);
 }
 
 .palette kbd {
@@ -576,7 +577,7 @@ button {
 
 .settings h2 {
   margin: 0;
-  font-family: var(--font-serif);
+  font-family: var(--font-body);
   font-size: 1.25rem;
 }
 
@@ -645,7 +646,7 @@ button {
 }
 
 .editor .cm-scroller {
-  font-family: var(--font-body);
+  font-family: var(--font-serif);
   line-height: 1.6;
 }
 
@@ -665,7 +666,7 @@ button {
 
 .editor .cm-selectionBackground,
 .editor .cm-focused .cm-selectionBackground {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: color-mix(in srgb, var(--ink) 15%, transparent);
 }
 
 .save-status {
@@ -728,7 +729,7 @@ button {
 }
 
 .clash-option[data-checked] {
-  background: var(--rule);
+  background: var(--chip);
 }
 
 .clash-option span {
@@ -792,7 +793,7 @@ button {
 }
 
 .editor .cm-link {
-  color: var(--accent);
+  color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
