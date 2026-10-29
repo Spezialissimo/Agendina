@@ -33,9 +33,7 @@ export async function readJson<T>(c: Context, schema: z.ZodType<T>): Promise<T> 
   } catch {
     throw new ApiError(400, 'invalid_request')
   }
-  const result = schema.safeParse(body)
-  if (!result.success) throw new ApiError(400, 'invalid_request')
-  return result.data
+  return parse(schema, body)
 }
 
 /** Validates path or query parameters; a mismatch is the client's fault (400). */
