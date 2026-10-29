@@ -3,14 +3,11 @@
 FROM node:24-alpine AS build
 RUN npm install -g pnpm@11.1.2
 WORKDIR /src
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/server/package.json apps/server/
-COPY apps/web/package.json apps/web/
-COPY packages/contract/package.json packages/contract/
-COPY packages/core/package.json packages/core/
-COPY packages/db/package.json packages/db/
-RUN pnpm install --frozen-lockfile
+# Dependencies are fetched from the lockfile alone, so this layer stays cached until it changes.
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm fetch
 COPY . .
+RUN pnpm install --offline --frozen-lockfile
 RUN pnpm build
 
 FROM node:24-alpine
