@@ -5,8 +5,9 @@ Date: 2026-10-24 · Status: Accepted
 ## Context
 
 Daily use: write today's page each morning, consult and tick the week page (which holds a wide
-workout table), glance at yesterday occasionally. The first mockup (three day columns + narrow
-week sidebar) wasted space on mostly empty neighbour days and squeezed the widest content.
+workout table), glance at yesterday occasionally. The [first mockup](../first-mockup.png) (three
+day columns + narrow week sidebar) wasted space on mostly empty neighbour days and squeezed the
+widest content.
 
 ## Decision
 
