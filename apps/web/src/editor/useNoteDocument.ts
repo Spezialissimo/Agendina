@@ -121,10 +121,7 @@ export function useNoteDocument(kind: NoteKind, key: string) {
             return
           }
         } else {
-          s.base = result.note.revision
-          s.saved = result.note.content
-          s.retries = 0
-          queryClient.setQueryData(queryKey, result.note)
+          adopt(result.note)
           if (kind === 'day') void queryClient.invalidateQueries({ queryKey: ['notes'] })
           // Merged with changes from elsewhere: show them, unless the user typed meanwhile.
           if (s.text === sent && result.note.content !== sent) show(result.note.content)
