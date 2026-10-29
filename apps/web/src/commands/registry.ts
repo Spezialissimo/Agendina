@@ -1,18 +1,4 @@
-import type { CommandSpec } from '@agendina/core'
-
-export type CommandId =
-  | 'focus.previousDay'
-  | 'focus.nextDay'
-  | 'focus.previousWeek'
-  | 'focus.nextWeek'
-  | 'focus.today'
-  | 'calendar.open'
-  | 'palette.open'
-  | 'settings.open'
-  | 'account.signOut'
-  | 'editor.toggleCheckbox'
-  | 'editor.addTableRow'
-  | 'editor.addTableColumn'
+import type { Binding, CommandContext, CommandSpec } from '@agendina/core'
 
 export interface Command extends CommandSpec {
   id: CommandId
@@ -20,11 +6,18 @@ export interface Command extends CommandSpec {
   title: string
 }
 
+interface CommandDefinition {
+  id: string
+  title: string
+  context: CommandContext
+  defaultBindings: readonly Binding[]
+}
+
 /**
  * Every command, in palette order. Default bindings avoid what macOS text editing, VoiceOver and
  * the browsers already use (ADR 0007): ⇧⌘, and ⇧⌘. are the `<` and `>` keys.
  */
-export const COMMANDS: Command[] = [
+const DEFINITIONS = [
   {
     id: 'focus.previousDay',
     title: 'Previous day',
@@ -77,4 +70,12 @@ export const COMMANDS: Command[] = [
     context: 'editor',
     defaultBindings: [],
   },
-]
+] as const satisfies readonly CommandDefinition[]
+
+export type CommandId = (typeof DEFINITIONS)[number]['id']
+
+// The core keymap functions take mutable arrays; `as const` made them readonly.
+export const COMMANDS: Command[] = DEFINITIONS.map((command) => ({
+  ...command,
+  defaultBindings: [...command.defaultBindings],
+}))
