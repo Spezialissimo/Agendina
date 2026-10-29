@@ -127,6 +127,22 @@ describe('moveToCell (Tab / Shift+Tab)', () => {
     )
   })
 
+  it('moves to the first cell of the next row when the cursor is after the closing pipe', () => {
+    const s = state(table.replace('| Mo |', '| Mo |‸'))
+
+    expect(after(s, moveToCell(s, 1))).toBe(
+      lines('| Exercise | Mo  |', '| -------- | --- |', '| Squat‸    | [x] |'),
+    )
+  })
+
+  it('moves back from the last cell with Shift+Tab when the cursor is after the closing pipe', () => {
+    const s = state(table.replace('| [x] |', '| [x] |‸'))
+
+    expect(after(s, moveToCell(s, -1))).toBe(
+      lines('| Exercise | Mo  |', '| -------- | --- |', '| Squat‸    | [x] |'),
+    )
+  })
+
   it('adds a row after the last cell, copying its checkboxes', () => {
     const s = state(table.replace('| [x] |', '| [x]‸ |'))
 

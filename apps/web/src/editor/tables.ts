@@ -139,16 +139,14 @@ function tableContext(state: EditorState): TableContext | undefined {
   const row = line.number - state.doc.lineAt(table.from).number
   const cells = splitCells(line.text)
   const column = head - line.from
-  const col = Math.max(
-    0,
-    cells.findIndex((c) => column <= c.to),
-  )
+  const col = cells.findIndex((c) => column <= c.to)
   return {
     ...table,
     rows,
     delimiter: delimiterIndex(rows),
     row,
-    col: col === -1 ? cells.length - 1 : col,
+    // Past the last cell (after the closing pipe): the cursor is in the last cell.
+    col: col === -1 ? Math.max(cells.length - 1, 0) : col,
   }
 }
 
