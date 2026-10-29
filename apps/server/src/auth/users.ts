@@ -19,13 +19,6 @@ export async function createUser(
   const id = randomUUID()
   try {
     return await db.transaction().execute(async (trx) => {
-      const taken = await trx
-        .selectFrom('users')
-        .select('id')
-        .where('email', '=', email)
-        .executeTakeFirst()
-      if (taken !== undefined) throw new ApiError(409, 'email_taken')
-
       const claim = await trx
         .insertInto('instance_settings')
         .values({ key: ADMIN_CLAIM, value: JSON.stringify(id) })
@@ -42,7 +35,8 @@ export async function createUser(
       return { id, email, role }
     })
   } catch (error) {
-    // A concurrent signup with the same email can still hit the unique constraint.
+    // A taken email fails the unique constraint. The lookup runs outside the transaction, which
+    // Postgres has aborted by then.
     if (!(error instanceof ApiError)) {
       const taken = await db
         .selectFrom('users')

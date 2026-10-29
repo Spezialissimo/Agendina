@@ -84,6 +84,18 @@ describe.each(testDatabases())('auth on $kind', ({ create }) => {
       expect(await res.json()).toEqual({ error: 'email_taken' })
     })
 
+    it('does not reveal that an account exists while signup is closed', async () => {
+      await t.server.signup('admin@example.com')
+
+      const res = await t.server.request('/api/auth/signup', {
+        method: 'POST',
+        body: { email: 'admin@example.com', password: PASSWORD },
+      })
+
+      expect(res.status).toBe(403)
+      expect(await res.json()).toEqual({ error: 'signup_closed' })
+    })
+
     it.each([
       ['an invalid email', { email: 'not-an-email', password: PASSWORD }],
       ['a short password', { email: 'a@example.com', password: 'short' }],
