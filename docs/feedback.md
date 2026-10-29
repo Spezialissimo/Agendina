@@ -8,9 +8,13 @@ happened (`editor`, `week strip`, `focus mode`, `mobile`, …).
 
 ## Inbox
 
-<!-- Newest at the top. Example:
-- 2026-10-29 · annoying · editor — pressing Enter at the end of a checklist adds an empty box I then have to delete
--->
+- I want to be able to quickly change the font size of the pages, maybe a button next to the "edit template button" that cycles between presets
+- The settings section feels disorganized
+- when moving around with the shortcut, the keyboard focus is not moved
+- I need the mobile version asap
+- On mobile, the keyboard is raised when clicking on a checkbox
+- The day name is localized, so it becomes italian when the rest of the ui is in english
+- It looks like there is no polling of new content. So I need to refresh the page on one device to see the changes done by another one
 
 ## Triaged
 

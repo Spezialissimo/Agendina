@@ -2,7 +2,8 @@
 
 A planner/journal web app that should feel as close as possible to a paper journal, with
 infinitely many digital pages: a week page and day pages written in markdown. Self-hostable.
-The full plan and roadmap live in `docs/plan.md`; architectural decisions in `docs/adr/`.
+The full plan and roadmap live in `docs/plan.md`; architectural decisions in `docs/adr/`;
+how we plan, size and review work with Claude Code in `docs/developer-guide.md`.
 
 ## Commands
 
