@@ -20,13 +20,11 @@ function SplitView({
   onResize,
 }: { split: Extract<ResolvedLayout, { type: 'split' }> } & Pick<Props, 'onResize'>) {
   const key = split.children.map((c) => c.size).join()
-  const [state, setState] = useState(() => ({
-    key,
-    sizes: normalize(split.children.map((c) => c.size)),
-  }))
+  const fromSettings = normalize(split.children.map((c) => c.size))
+  const [state, setState] = useState({ key, sizes: fromSettings })
   // Follow sizes coming from settings (e.g. saved on another device): reset when they change.
-  if (state.key !== key) setState({ key, sizes: normalize(split.children.map((c) => c.size)) })
-  const sizes = state.key === key ? state.sizes : normalize(split.children.map((c) => c.size))
+  if (state.key !== key) setState({ key, sizes: fromSettings })
+  const sizes = state.sizes
   const setSizes = (next: number[]) => {
     setState({ key, sizes: next })
   }
