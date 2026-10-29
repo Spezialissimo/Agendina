@@ -185,18 +185,20 @@ button {
 
 .topbar-actions {
   display: flex;
-  gap: 1rem;
+  gap: 0.25rem;
   margin-left: auto;
 }
 
 .icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   background: none;
   border: 0;
   color: var(--ink-soft);
   border-radius: 6px;
-  padding: 0.2rem 0.5rem;
-  font-size: 1.1rem;
-  line-height: 1;
 }
 
 .icon:hover {

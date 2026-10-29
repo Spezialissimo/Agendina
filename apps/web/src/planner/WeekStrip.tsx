@@ -2,6 +2,7 @@ import { addDays, weekDays, weekNumber, type DayKey, type WeekRule } from '@agen
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
 import { useApi, useLocale, useToday } from '../app/AppProviders.tsx'
+import { ChevronLeftIcon, ChevronRightIcon } from '../app/icons.tsx'
 import { MonthPicker } from './MonthPicker.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { format, formatRange } from './weeks.ts'
@@ -36,11 +37,12 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
         type="button"
         className="icon"
         aria-label="Previous week"
+        title="Previous week"
         onClick={() => {
           go(addDays(currentDay(), -7))
         }}
       >
-        ‹
+        <ChevronLeftIcon />
       </button>
       <div className="week-label">
         <span className="week-number">Week {weekNumber(focus, rule).week}</span>
@@ -75,11 +77,12 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
         type="button"
         className="icon"
         aria-label="Next week"
+        title="Next week"
         onClick={() => {
           go(addDays(currentDay(), 7))
         }}
       >
-        ›
+        <ChevronRightIcon />
       </button>
       <button
         type="button"
