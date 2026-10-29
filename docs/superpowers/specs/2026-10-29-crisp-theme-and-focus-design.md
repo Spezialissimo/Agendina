@@ -97,7 +97,12 @@ Colours (as CSS custom properties on `:root`, dark values under `prefers-color-s
 - **Template editor:** typing in the template editor (opened with "Edit … template") also
   starts focus mode and dims everything else, but its own Save and Cancel buttons stay visible
   and clickable at all times.
-- After ending it stays off until the next key press in an editor; there is no timer.
+- **Also starts after 3 seconds** in which the mouse has not moved while the typing cursor
+  blinks in a page (an editor has keyboard focus and the window is in front). Any mouse movement,
+  tap, key or focus change starts the wait again; after Escape, focus mode returns after the wait
+  unless the mouse moves or focus leaves the page. _(Added after the first review round.)_
+- **The mouse pointer hides** while focus mode is on, however it started, and comes back with
+  the buttons.
 - **Motion:** fades of about 0.4–0.6s. With `prefers-reduced-motion: reduce` the change is
   instant.
 - Hidden buttons must not be reachable while invisible: when focus mode ends because keyboard focus

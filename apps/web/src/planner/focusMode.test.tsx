@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { placeCursor } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
 import { startTestServer, type TestServer } from '../test/server.ts'
@@ -163,6 +163,77 @@ describe('focus mode', () => {
 
     await waitFor(() => {
       expect(planner()).toHaveAttribute('data-focus-mode')
+    })
+  })
+
+  describe('when the mouse rests', () => {
+    /** The app is loaded with real timers; the wait starts again from the click under fake ones. */
+    const openResting = async () => {
+      const view = await open()
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      fireEvent.pointerDown(view.day)
+      return view
+    }
+    const wait = (ms: number) => {
+      act(() => {
+        vi.advanceTimersByTime(ms)
+      })
+    }
+
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+
+    it('starts after 3 seconds with the cursor in a page', async () => {
+      const { planner } = await openResting()
+
+      wait(2900)
+      expect(planner()).not.toHaveAttribute('data-focus-mode')
+      wait(100)
+      expect(planner()).toHaveAttribute('data-focus-mode')
+    })
+
+    it('waits again after the mouse moves', async () => {
+      const { planner } = await openResting()
+
+      wait(2000)
+      moveMouse(100, 120)
+      wait(2000)
+      expect(planner()).not.toHaveAttribute('data-focus-mode')
+      wait(1000)
+      expect(planner()).toHaveAttribute('data-focus-mode')
+    })
+
+    it('comes back after Escape while the mouse rests', async () => {
+      const { day, planner, focus } = await openResting()
+      focus()
+      fireEvent.keyDown(day, { key: 'Escape' })
+      expect(planner()).not.toHaveAttribute('data-focus-mode')
+
+      wait(3000)
+
+      expect(planner()).toHaveAttribute('data-focus-mode')
+    })
+
+    it('does not start when the cursor is not in a page', async () => {
+      const { planner } = await openResting()
+      act(() => {
+        screen.getByRole('button', { name: 'Settings' }).focus()
+      })
+
+      wait(3000)
+
+      expect(planner()).not.toHaveAttribute('data-focus-mode')
+    })
+
+    it('does not start while another window is in front', async () => {
+      const { planner } = await openResting()
+      vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+
+      wait(3000)
+
+      expect(planner()).not.toHaveAttribute('data-focus-mode')
     })
   })
 })

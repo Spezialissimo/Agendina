@@ -540,6 +540,13 @@ button {
   pointer-events: none;
 }
 
+/* The mouse pointer hides too. !important: the editor and buttons set their own cursors, and
+   CodeMirror's injected styles come after this sheet. */
+.planner[data-focus-mode],
+.planner[data-focus-mode] * {
+  cursor: none !important;
+}
+
 .planner[data-focus-mode] .save-status:not([data-status='offline'], [data-status='conflict']) {
   opacity: 0;
 }

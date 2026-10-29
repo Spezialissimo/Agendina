@@ -19,12 +19,22 @@ test('focus mode dims everything but the page you are working in', async ({ page
     await expect(settings).toHaveCSS('opacity', '0')
     await expect(weekPage).toHaveCSS('opacity', '0.35')
     await expect(dayPage).toHaveCSS('opacity', '1')
+    await expect(day).toHaveCSS('cursor', 'none')
   })
 
   await test.step('moving the mouse brings them back', async () => {
     await revealButtons(page)
     await expect(settings).toHaveCSS('opacity', '1')
     await expect(weekPage).toHaveCSS('opacity', '1')
+    await expect(day).not.toHaveCSS('cursor', 'none')
+  })
+
+  await test.step('a mouse resting for 3 seconds with the cursor in the page starts it too', async () => {
+    await day.click()
+    await expect(settings).toHaveCSS('opacity', '1')
+    await expect(settings).toHaveCSS('opacity', '0', { timeout: 6000 })
+    await expect(day).toHaveCSS('cursor', 'none')
+    await revealButtons(page)
   })
 
   await test.step('Escape closes the slash menu first', async () => {

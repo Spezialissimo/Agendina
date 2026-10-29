@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react'
 
 /** How far the pointer must move on screen to count as the user reaching for the mouse. */
 const MOUSE_THRESHOLD = 3
+/** How long the mouse must rest, with the cursor blinking in a page, before focus mode starts. */
+const IDLE_MS = 3000
 
 const inEditor = (target: EventTarget | null) =>
   target instanceof Element && target.closest('.cm-content') !== null
 
 /**
- * Focus mode (ADR 0013): on while the user works in a page with the keyboard, off as soon as they
- * reach for the mouse, tap, leave the editor or press Escape. Off while `enabled` is false (the
- * command palette or settings are open) and whenever the focused `day` changes: the new day's
- * editor is a new element, and the keyboard focus that was in the old one is gone.
+ * Focus mode (ADR 0013): on as soon as the user types in a page, or once the mouse has rested for
+ * 3 seconds while the cursor blinks in one; off as soon as they reach for the mouse, tap, leave the
+ * editor or press Escape. Off while `enabled` is false (the command palette or settings are open)
+ * and whenever the focused `day` changes: the new day's editor is a new element, and the keyboard
+ * focus that was in the old one is gone.
  */
 export function useFocusMode(enabled: boolean, day: string): boolean {
   const [on, setOn] = useState(false)
@@ -26,12 +29,21 @@ export function useFocusMode(enabled: boolean, day: string): boolean {
     let anchor: { x: number; y: number } | undefined
     /** Set by the tap that ends focus mode, so its click does not press a button nobody saw. */
     let swallowClick = false
+    let idle: ReturnType<typeof setTimeout> | undefined
+    /** (Re)starts the wait for a resting mouse; any sign of the user resets it. */
+    const restartIdle = () => {
+      clearTimeout(idle)
+      idle = setTimeout(() => {
+        if (document.hasFocus() && inEditor(document.activeElement)) set(true)
+      }, IDLE_MS)
+    }
 
     const onKeyDown = (event: KeyboardEvent) => {
       // CodeMirror marks keys it used as handled, e.g. Escape closing the slash menu.
       if (event.key === 'Escape') {
         if (!event.defaultPrevented) set(false)
       } else if (inEditor(event.target)) set(true)
+      restartIdle()
     }
     // Browsers also send mousemove when the page scrolls under a still pointer (the editor
     // following the caret while typing): only a pointer that moved on screen ends focus mode.
@@ -41,10 +53,12 @@ export function useFocusMode(enabled: boolean, day: string): boolean {
       if (Math.hypot(position.x - anchor.x, position.y - anchor.y) <= MOUSE_THRESHOLD) return
       anchor = position
       set(false)
+      restartIdle()
     }
     const onPointerDown = () => {
       swallowClick = active
       set(false)
+      restartIdle()
     }
     const onClick = (event: MouseEvent) => {
       if (!swallowClick) return
@@ -56,6 +70,7 @@ export function useFocusMode(enabled: boolean, day: string): boolean {
     }
     const onFocusIn = (event: FocusEvent) => {
       if (!inEditor(event.target)) set(false)
+      restartIdle()
     }
 
     document.addEventListener('keydown', onKeyDown)
@@ -63,7 +78,12 @@ export function useFocusMode(enabled: boolean, day: string): boolean {
     document.addEventListener('pointerdown', onPointerDown)
     document.addEventListener('click', onClick, true)
     document.addEventListener('focusin', onFocusIn)
+    // Back from another window: the cursor blinks again.
+    window.addEventListener('focus', restartIdle)
+    restartIdle()
     return () => {
+      clearTimeout(idle)
+      window.removeEventListener('focus', restartIdle)
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('pointerdown', onPointerDown)
