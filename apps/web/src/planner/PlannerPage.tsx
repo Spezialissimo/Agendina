@@ -90,7 +90,7 @@ function Planner({ focus }: { focus: DayKey }) {
   )
 
   useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
-  const focusMode = useFocusMode(!paletteOpen && !settingsOpen)
+  const focusMode = useFocusMode(!paletteOpen && !settingsOpen, focus)
 
   return (
     <div className="planner" data-focus-mode={focusMode || undefined}>

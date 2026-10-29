@@ -80,6 +80,26 @@ describe('focus mode', () => {
     expect(planner()).toHaveAttribute('data-focus-mode')
   })
 
+  it('ends when the mouse moves slowly', async () => {
+    const { planner, focus } = await open()
+    focus()
+
+    // A slow nudge arrives as many events a pixel apart.
+    for (let x = 100; x <= 110; x++) fireEvent.mouseMove(document, { screenX: x, screenY: 100 })
+
+    expect(planner()).not.toHaveAttribute('data-focus-mode')
+  })
+
+  it('ends when a shortcut moves to another day', async () => {
+    const { user, router, planner, focus } = await open()
+    focus()
+
+    await user.keyboard('{Meta>}{Shift>}[Period]{/Shift}{/Meta}')
+
+    expect(router.state.location.pathname).toBe('/day/2026-10-27')
+    expect(planner()).not.toHaveAttribute('data-focus-mode')
+  })
+
   it('ends on pointer down', async () => {
     const { planner, focus } = await open()
     focus()
