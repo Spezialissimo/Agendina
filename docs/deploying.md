@@ -163,8 +163,21 @@ block again.
 
 ### 7. Let GitHub Actions sign in (Workload Identity Federation)
 
+First find out how GitHub names this repository in its tokens. On a computer with `gh` signed in
+(Cloud Shell may not have it), run:
+
+```sh
+gh api repos/Spezialissimo/Agendina/actions/oidc/customization/sub --jq .sub_claim_prefix
+```
+
+It prints `repo:Spezialissimo/Agendina`, or, for repositories using GitHub's _immutable_ names,
+the same with the account's and repository's IDs, e.g.
+`repo:Spezialissimo@112642085/Agendina@1432427611`. Those IDs never change, even if the
+repository is renamed. Put **exactly** what it printed in `GITHUB_SUBJECT` below:
+
 ```sh
 : "${PROJECT_ID:?Run the settings block first}"
+GITHUB_SUBJECT='repo:Spezialissimo@112642085/Agendina@1432427611'
 
 gcloud iam workload-identity-pools create github --location global --display-name GitHub
 gcloud iam workload-identity-pools providers create-oidc agendina \
@@ -174,13 +187,13 @@ gcloud iam workload-identity-pools providers create-oidc agendina \
   --attribute-condition "assertion.repository == '${GITHUB_REPO}'"
 gcloud iam service-accounts add-iam-policy-binding "${DEPLOYER_SA}" \
   --role roles/iam.workloadIdentityUser \
-  --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/subject/repo:${GITHUB_REPO}:environment:production"
+  --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/subject/${GITHUB_SUBJECT}:environment:production"
 ```
 
-The last command's output must show
-`…/subject/repo:Spezialissimo/Agendina:environment:production` (your repository). The braces in
-`${GITHUB_REPO}` matter: in zsh, `$GITHUB_REPO:environment` would be cut to
-`…:nvironment`.
+The last command's output must show `…/subject/` followed by what `gh` printed and
+`:environment:production`. If it doesn't match, the deploy fails at **Push** with
+`Permission 'iam.serviceAccounts.getAccessToken' denied`. (The braces in `${GITHUB_SUBJECT}`
+matter: in zsh, `$GITHUB_SUBJECT:environment` would be cut to `…:nvironment`.)
 
 ### 8. Tell GitHub where to deploy
 
@@ -213,7 +226,7 @@ gh variable list
 ```
 
 You should see: the `agendina` repository; both service accounts; an `enabled` secret version (older ones may say `destroyed`);
-`roles/run.admin`; the `…repo:Spezialissimo/Agendina:environment:production` binding; and the
+`roles/run.admin`; the `…/subject/…:environment:production` binding from step 7; and the
 three variables.
 
 ### 10. First deploy
