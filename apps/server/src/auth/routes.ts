@@ -12,7 +12,7 @@ import { ApiError, readJson, requireUser, type AppEnv } from '../http.ts'
 import { hashPassword, verifyPassword } from './password.ts'
 import { FailureLimiter } from './rate-limit.ts'
 import { SESSION_LIFETIME, createSession, deleteSession, findSessionUser } from './sessions.ts'
-import { SIGNUP_OPEN, createUser, isSignupOpen } from './users.ts'
+import { createUser, isSignupOpen, setSignupOpen } from './users.ts'
 
 const COOKIE = 'agendina_session'
 
@@ -88,14 +88,7 @@ export function authRoutes() {
   routes.put('/admin/settings', async (c) => {
     requireAdmin(c)
     const settings = await readJson(c, InstanceSettings)
-    await c
-      .get('db')
-      .insertInto('instance_settings')
-      .values({ key: SIGNUP_OPEN, value: JSON.stringify(settings.signupOpen) })
-      .onConflict((oc) =>
-        oc.column('key').doUpdateSet({ value: JSON.stringify(settings.signupOpen) }),
-      )
-      .execute()
+    await setSignupOpen(c.get('db'), settings.signupOpen)
     return c.json(settings)
   })
 
