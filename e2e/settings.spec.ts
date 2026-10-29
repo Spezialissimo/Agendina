@@ -1,6 +1,6 @@
 import { addDays } from '@agendina/core'
 import { expect, test } from '@playwright/test'
-import { enterAs, savedOnServer } from './helpers.ts'
+import { enterAs, revealButtons, savedOnServer } from './helpers.ts'
 
 test('settings: week start, and downloading every page', async ({ page }, testInfo) => {
   // Its own account per run (retries, --repeat-each): the week start is an account-wide setting.
@@ -19,6 +19,7 @@ test('settings: week start, and downloading every page', async ({ page }, testIn
   })
 
   await test.step('weeks start on Sunday, and the page is still there', async () => {
+    await revealButtons(page)
     await page.getByRole('button', { name: 'Settings' }).click()
     const settings = page.getByRole('dialog', { name: 'Settings' })
     await settings.getByRole('combobox', { name: 'Weeks start on' }).selectOption('Sunday')

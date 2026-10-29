@@ -495,6 +495,55 @@ button {
   border-radius: var(--radius);
 }
 
+/* Focus mode (ADR 0013): while the user works in a page with the keyboard, everything else fades
+   and its buttons hide. Problems (alerts, offline, conflicts) and the template editor's own
+   actions stay fully visible. */
+
+.topbar,
+.page,
+.save-status,
+.topbar button,
+.page button {
+  transition:
+    opacity 0.5s,
+    filter 0.5s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar,
+  .page,
+  .save-status,
+  .topbar button,
+  .page button {
+    transition: none;
+  }
+}
+
+.planner[data-focus-mode] .topbar,
+.planner[data-focus-mode]
+  .page:not(:focus-within):not(
+    :has(
+      [role='alert'],
+      .conflict,
+      .save-status[data-status='offline'],
+      .save-status[data-status='conflict']
+    )
+  ) {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.planner[data-focus-mode]
+  :is(.topbar, .page)
+  button:not(.template-editor button, .conflict button) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.planner[data-focus-mode] .save-status:not([data-status='offline'], [data-status='conflict']) {
+  opacity: 0;
+}
+
 /* Command palette */
 
 .palette-backdrop {
