@@ -1,3 +1,4 @@
+import { DEFAULT_FOCUS_MODE } from '@agendina/contract'
 import {
   addDays,
   isDayKey,
@@ -10,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useApi, useToday } from '../app/AppProviders.tsx'
+import { SettingsIcon, SignOutIcon } from '../app/icons.tsx'
 import { CommandPalette } from '../commands/CommandPalette.tsx'
 import { COMMANDS, type CommandId } from '../commands/registry.ts'
 import { useShortcuts } from '../commands/useShortcuts.ts'
@@ -18,6 +20,7 @@ import { applyToFocusedEditor } from '../editor/focusedEditor.ts'
 import { addColumn, addRow } from '../editor/tables.ts'
 import { SettingsDialog } from '../settings/SettingsDialog.tsx'
 import { LayoutView } from './LayoutView.tsx'
+import { useFocusMode } from './useFocusMode.ts'
 import { PlannerContext } from './PlannerContext.tsx'
 import { WeekStrip } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
@@ -88,9 +91,11 @@ function Planner({ focus }: { focus: DayKey }) {
   )
 
   useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
+  const { enabled: focusModeOn, idleMs } = settings?.focusMode ?? DEFAULT_FOCUS_MODE
+  const focusMode = useFocusMode(focusModeOn && !paletteOpen && !settingsOpen, focus, idleMs)
 
   return (
-    <div className="planner">
+    <div className="planner" data-focus-mode={focusMode || undefined}>
       <header className="topbar">
         <span className="brand">Agendina</span>
         {settings !== undefined && (
@@ -104,21 +109,25 @@ function Planner({ focus }: { focus: DayKey }) {
         <div className="topbar-actions">
           <button
             type="button"
-            className="link"
+            className="icon"
+            aria-label="Settings"
+            title="Settings"
             onClick={() => {
               run('settings.open')
             }}
           >
-            Settings
+            <SettingsIcon />
           </button>
           <button
             type="button"
-            className="link"
+            className="icon"
+            aria-label="Sign out"
+            title="Sign out"
             onClick={() => {
               run('account.signOut')
             }}
           >
-            Sign out
+            <SignOutIcon />
           </button>
         </div>
       </header>

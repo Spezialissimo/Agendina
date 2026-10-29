@@ -84,3 +84,12 @@ export async function enterAs(page: Page, email: string) {
   await page.goto('/')
   await expect(page.getByRole('navigation', { name: 'Week' })).toBeVisible()
 }
+
+/**
+ * Moves the mouse, as a person does before clicking. While typing, focus mode hides the buttons and
+ * only a moving mouse brings them back; Playwright's click would not move it onto a hidden button.
+ */
+export async function revealButtons(page: Page) {
+  await page.mouse.move(400, 300)
+  await page.mouse.move(420, 320)
+}

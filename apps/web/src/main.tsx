@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider, createBrowserRouter } from 'react-router'
 import { AppProviders } from './app/AppProviders.tsx'
 import { routes } from './app/routes.tsx'
+import '@fontsource-variable/inter'
+import '@fontsource-variable/source-serif-4'
+import '@fontsource-variable/source-serif-4/wght-italic.css'
 import './styles.css'
 
 const root = document.getElementById('root')

@@ -96,6 +96,19 @@ describe('planner', () => {
     })
   })
 
+  describe('top bar', () => {
+    it('shows its actions as icons with a name and a tooltip', async () => {
+      renderApp(server, '/day/2026-10-26')
+
+      for (const name of ['Settings', 'Sign out', 'Previous week', 'Next week']) {
+        const button = await screen.findByRole('button', { name })
+        expect(button).toHaveAttribute('title', name)
+        expect(button).not.toHaveTextContent(/\S/)
+        expect(button.querySelector('svg')).not.toBeNull()
+      }
+    })
+  })
+
   describe('week strip', () => {
     it('lists the days of the focused week, marking the focused day, today and written days', async () => {
       await api.saveNote('day', '2026-10-21', 'written', 0)
