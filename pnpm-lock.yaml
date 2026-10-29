@@ -4,6 +4,36 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@playwright/test':
+      specifier: 1.64.1
+      version: 1.64.1
+    '@types/node':
+      specifier: 26.6.5
+      version: 26.6.5
+    '@vitest/browser':
+      specifier: 5.0.5
+      version: 5.0.5
+    '@vitest/browser-playwright':
+      specifier: 5.0.5
+      version: 5.0.5
+    fast-check:
+      specifier: 4.10.2
+      version: 4.10.2
+    kysely:
+      specifier: 0.29.7
+      version: 0.29.7
+    playwright:
+      specifier: 1.64.1
+      version: 1.64.1
+    vitest:
+      specifier: 5.0.5
+      version: 5.0.5
+    zod:
+      specifier: 4.6.7
+      version: 4.6.7
+
 importers:
 
   .:
@@ -18,10 +48,10 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.13.0)
       '@playwright/test':
-        specifier: ^1.64.1
+        specifier: 'catalog:'
         version: 1.64.1
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       eslint:
         specifier: ^10.13.0
@@ -45,7 +75,7 @@ importers:
         specifier: ^8.72.0
         version: 8.72.0(eslint@10.13.0)(typescript@6.0.3)
       vitest:
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.5(@types/node@26.6.5)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(jsdom@30.1.3)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15))
 
   apps/server:
@@ -69,14 +99,14 @@ importers:
         specifier: ^4.13.13
         version: 4.13.13
       kysely:
-        specifier: ^0.29.7
+        specifier: 'catalog:'
         version: 0.29.7
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       tsup:
         specifier: ^9.0.0
@@ -133,7 +163,7 @@ importers:
         specifier: ^8.5.0
         version: 8.5.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
       '@agendina/db':
@@ -161,19 +191,19 @@ importers:
         specifier: ^6.1.2
         version: 6.1.2(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15))
       '@vitest/browser':
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.5(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15))(vitest@5.0.5)
       '@vitest/browser-playwright':
-        specifier: ^5.0.5
+        specifier: 'catalog:'
         version: 5.0.5(playwright@1.64.1)(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(tsx@4.23.15))(vitest@5.0.5)
       fast-check:
-        specifier: ^4.10.2
+        specifier: 'catalog:'
         version: 4.10.2
       jsdom:
         specifier: ^30.1.3
         version: 30.1.3
       playwright:
-        specifier: 1.64.1
+        specifier: 'catalog:'
         version: 1.64.1
       vite:
         specifier: ^8.3.5
@@ -188,7 +218,7 @@ importers:
         specifier: workspace:*
         version: link:../core
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
 
   packages/core:
@@ -197,27 +227,27 @@ importers:
         specifier: ^3.2.1
         version: 3.2.1
       zod:
-        specifier: ^4.6.7
+        specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
       date-fns:
         specifier: ^4.4.0
         version: 4.4.0
       fast-check:
-        specifier: ^4.10.2
+        specifier: 'catalog:'
         version: 4.10.2
 
   packages/db:
     dependencies:
       kysely:
-        specifier: ^0.29.7
+        specifier: 'catalog:'
         version: 0.29.7
       pg:
         specifier: ^8.23.1
         version: 8.23.1
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
+        specifier: 'catalog:'
         version: 26.6.5
       '@types/pg':
         specifier: ^8.23.1
