@@ -5,23 +5,22 @@ export class FailureLimiter {
   constructor(
     private readonly maxFailures: number,
     private readonly windowMs: number,
-    private readonly now: () => Date,
   ) {}
 
-  isBlocked(key: string): boolean {
-    return this.recent(key).length >= this.maxFailures
+  isBlocked(key: string, now: Date): boolean {
+    return this.recent(key, now).length >= this.maxFailures
   }
 
-  recordFailure(key: string): void {
-    this.failures.set(key, [...this.recent(key), this.now().getTime()])
+  recordFailure(key: string, now: Date): void {
+    this.failures.set(key, [...this.recent(key, now), now.getTime()])
   }
 
   reset(key: string): void {
     this.failures.delete(key)
   }
 
-  private recent(key: string): number[] {
-    const cutoff = this.now().getTime() - this.windowMs
+  private recent(key: string, now: Date): number[] {
+    const cutoff = now.getTime() - this.windowMs
     const recent = (this.failures.get(key) ?? []).filter((t) => t > cutoff)
     if (recent.length === 0) this.failures.delete(key)
     else this.failures.set(key, recent)

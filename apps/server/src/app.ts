@@ -51,7 +51,7 @@ export function createApp({
   })
   api.use(loadSession)
   api.get('/health', (c) => c.json({ status: 'ok', version } satisfies HealthResponse))
-  api.route('/', authRoutes(now))
+  api.route('/', authRoutes())
   api.route('/', notesRoutes())
   api.route('/', settingsRoutes())
   api.route('/', templatesRoutes())

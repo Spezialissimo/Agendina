@@ -16,9 +16,9 @@ import { SIGNUP_OPEN, createUser, isSignupOpen } from './users.ts'
 
 const COOKIE = 'agendina_session'
 
-export function authRoutes(now: () => Date) {
+export function authRoutes() {
   const routes = new Hono<AppEnv>()
-  const loginFailures = new FailureLimiter(10, 15 * 60 * 1000, now)
+  const loginFailures = new FailureLimiter(10, 15 * 60 * 1000)
   // Verifying against a dummy hash for unknown emails makes both failures take the same time.
   let dummyHash: Promise<string> | undefined
 
@@ -38,14 +38,14 @@ export function authRoutes(now: () => Date) {
     const { email, password } = await readJson(c, Credentials)
     const db = c.get('db')
     const passwordHash = await hashPassword(password)
-    const user = await createUser(db, email, passwordHash, now())
+    const user = await createUser(db, email, passwordHash, c.get('now')())
     await startSession(c, user.id)
     return c.json({ user } satisfies UserResponse, 201)
   })
 
   routes.post('/auth/login', async (c) => {
     const { email, password } = await readJson(c, Credentials)
-    if (loginFailures.isBlocked(email)) throw new ApiError(429, 'too_many_attempts')
+    if (loginFailures.isBlocked(email, c.get('now')())) throw new ApiError(429, 'too_many_attempts')
 
     const row = await c
       .get('db')
@@ -56,7 +56,7 @@ export function authRoutes(now: () => Date) {
     dummyHash ??= hashPassword('not a real password')
     const valid = await verifyPassword(password, row?.password_hash ?? (await dummyHash))
     if (row === undefined || !valid) {
-      loginFailures.recordFailure(email)
+      loginFailures.recordFailure(email, c.get('now')())
       throw new ApiError(401, 'invalid_credentials')
     }
 
@@ -100,7 +100,7 @@ export function authRoutes(now: () => Date) {
   })
 
   async function startSession(c: Context<AppEnv>, userId: string) {
-    const token = await createSession(c.get('db'), userId, now())
+    const token = await createSession(c.get('db'), userId, c.get('now')())
     setSessionCookie(c, token)
   }
 
