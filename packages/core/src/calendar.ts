@@ -25,11 +25,6 @@ export function isDayKey(value: string): value is DayKey {
   return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month)
 }
 
-export function parseDayKey(value: string): DayKey {
-  if (isDayKey(value)) return value
-  throw new Error(`Invalid day ${JSON.stringify(value)}: expected YYYY-MM-DD`)
-}
-
 export function addDays(day: DayKey, days: number): DayKey {
   return fromEpochDay(toEpochDay(day) + days)
 }

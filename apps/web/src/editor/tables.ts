@@ -3,7 +3,7 @@ import { EditorSelection, type EditorState, type TransactionSpec } from '@codemi
 import type { SyntaxNode } from '@lezer/common'
 
 /** A cell of a markdown table row: its text (trimmed) and its range within the line. */
-export interface Cell {
+interface Cell {
   text: string
   /** Offset of the cell's content (between the pipes) within the line. */
   from: number

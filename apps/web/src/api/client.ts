@@ -1,8 +1,6 @@
 import {
   AuthState,
-  ChangesResponse,
   InstanceSettings,
-  MeResponse,
   NoteConflict,
   NoteResponse,
   NotesResponse,
@@ -35,11 +33,11 @@ export class ApiError extends Error {
   }
 }
 
-export type SaveResult =
+type SaveResult =
   | { status: 'saved'; note: Note; merged: boolean }
   | { status: 'conflict'; current: Note; chunks: MergeChunk[] }
 
-export type SaveTemplateResult =
+type SaveTemplateResult =
   | { status: 'saved'; template: Template; merged: boolean }
   | { status: 'conflict'; current: Template; chunks: MergeChunk[] }
 
@@ -61,10 +59,6 @@ export class Api {
 
   async logout(): Promise<void> {
     await this.send('POST', '/api/auth/logout')
-  }
-
-  me() {
-    return this.call('GET', '/api/me', MeResponse)
   }
 
   setInstanceSettings(settings: InstanceSettings) {
@@ -144,10 +138,6 @@ export class Api {
     return (
       await this.call('GET', `/api/templates/${kind}/pages?${query.toString()}`, NotesResponse)
     ).notes
-  }
-
-  changes(since: number) {
-    return this.call('GET', `/api/changes?since=${since}`, ChangesResponse)
   }
 
   async settings(): Promise<UserSettings> {

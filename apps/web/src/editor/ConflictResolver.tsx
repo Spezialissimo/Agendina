@@ -3,7 +3,7 @@ import { useId, useState } from 'react'
 
 type Choice = 'mine' | 'theirs' | 'both'
 
-export interface ResolverTexts {
+interface ResolverTexts {
   title: string
   hint: string
   mine: string

@@ -5,7 +5,7 @@ import type { User } from '@agendina/contract'
  * split is decided before public launch (ADR 0006). Self-hosted instances enable everything.
  */
 export const FEATURES = ['custom-layouts', 'version-history'] as const
-export type Feature = (typeof FEATURES)[number]
+type Feature = (typeof FEATURES)[number]
 
 export interface EntitlementPolicy {
   isEnabled(user: User, feature: Feature): boolean

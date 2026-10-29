@@ -21,7 +21,6 @@ export class ApiError extends Error {
   constructor(
     readonly status: ContentfulStatusCode,
     readonly code: string,
-    readonly details?: unknown,
   ) {
     super(code)
   }
@@ -32,17 +31,17 @@ export async function readJson<T>(c: Context, schema: z.ZodType<T>): Promise<T> 
   try {
     body = await c.req.json()
   } catch {
-    throw new ApiError(400, 'invalid_request', 'Body must be JSON')
+    throw new ApiError(400, 'invalid_request')
   }
   const result = schema.safeParse(body)
-  if (!result.success) throw new ApiError(400, 'invalid_request', result.error.issues)
+  if (!result.success) throw new ApiError(400, 'invalid_request')
   return result.data
 }
 
 /** Validates path or query parameters; a mismatch is the client's fault (400). */
 export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value)
-  if (!result.success) throw new ApiError(400, 'invalid_request', result.error.issues)
+  if (!result.success) throw new ApiError(400, 'invalid_request')
   return result.data
 }
 

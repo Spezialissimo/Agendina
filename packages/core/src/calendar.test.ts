@@ -7,7 +7,6 @@ import {
   addDays,
   compareDays,
   isDayKey,
-  parseDayKey,
   weekDays,
   weekNumber,
   weekStart,
@@ -39,7 +38,6 @@ function toLocalNoon(day: DayKey): Date {
 describe('DayKey parsing', () => {
   it.each(['2026-10-24', '2024-02-29', '2000-02-29', '1999-12-31'])('accepts %s', (s) => {
     expect(isDayKey(s)).toBe(true)
-    expect(parseDayKey(s)).toBe(s)
   })
 
   it.each([
@@ -53,7 +51,6 @@ describe('DayKey parsing', () => {
     '',
   ])('rejects %j', (s) => {
     expect(isDayKey(s)).toBe(false)
-    expect(() => parseDayKey(s)).toThrow(/Invalid day/)
   })
 })
 

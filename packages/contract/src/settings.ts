@@ -38,11 +38,11 @@ const LayoutSchema = z.unknown().transform((value, ctx): Layout => {
 })
 
 /** Focus mode (ADR 0013): whether it is on, and how long the mouse must rest before it starts. */
-export const FocusModeSettings = z.object({
+const FocusModeSettings = z.object({
   enabled: z.boolean(),
   idleMs: z.number().int().min(500).max(60_000),
 })
-export type FocusModeSettings = z.infer<typeof FocusModeSettings>
+type FocusModeSettings = z.infer<typeof FocusModeSettings>
 
 export const DEFAULT_FOCUS_MODE: FocusModeSettings = { enabled: true, idleMs: 1500 }
 

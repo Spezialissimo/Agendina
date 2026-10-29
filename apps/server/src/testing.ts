@@ -37,7 +37,7 @@ export function createTestServer(handle: DatabaseHandle, options: { now?: () => 
     return sessionCookie(res)
   }
 
-  return { app, db: handle.db, request, signup }
+  return { request, signup }
 }
 
 /** The `name=value` part of the session cookie set by a response. */

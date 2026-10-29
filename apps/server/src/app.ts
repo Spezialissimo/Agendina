@@ -59,9 +59,7 @@ export function createApp({
   api.all('*', (c) => c.json({ error: 'not_found' } satisfies ApiErrorBody, 404))
   api.onError((error, c) => {
     if (error instanceof ApiError) {
-      const body: ApiErrorBody & { details?: unknown } = { error: error.code }
-      if (error.details !== undefined && error.status === 400) body.details = error.details
-      return c.json(body, error.status)
+      return c.json({ error: error.code } satisfies ApiErrorBody, error.status)
     }
     if (error instanceof HTTPException) {
       // Raised by Hono middleware, e.g. the CSRF origin check (403).
