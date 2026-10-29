@@ -1,34 +1,16 @@
-import type { DatabaseHandle } from '@agendina/db'
 import { testDatabases } from '@agendina/db/testing'
 import { unzipSync, strFromU8 } from 'fflate'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createTestServer } from '../testing.ts'
+import { describe, expect, it } from 'vitest'
+import { useSignedInServer } from '../testing.ts'
 
 describe.each(testDatabases())('export on $kind', ({ create }) => {
-  let handle: DatabaseHandle
-  let server: ReturnType<typeof createTestServer>
-  let cookie: string
+  const t = useSignedInServer(create)
 
-  beforeEach(async () => {
-    handle = await create()
-    server = createTestServer(handle, { now: () => new Date('2026-10-26T10:00:00.000Z') })
-    cookie = await server.signup()
-  })
-
-  afterEach(async () => {
-    await handle.close()
-  })
-
-  const save = async (kind: string, key: string, content: string, as = cookie) => {
-    const res = await server.request(`/api/notes/${kind}/${key}`, {
-      method: 'PUT',
-      cookie: as,
-      body: { content, baseRevision: 0 },
-    })
-    expect(res.status).toBe(200)
+  const save = async (kind: string, key: string, content: string, as = t.cookie) => {
+    await t.server.saveNote(kind, key, { content, baseRevision: 0 }, as)
   }
-  const exportZip = async (as = cookie) => {
-    const res = await server.request('/api/export', { cookie: as })
+  const exportZip = async (as = t.cookie) => {
+    const res = await t.server.request('/api/export', { cookie: as })
     expect(res.status).toBe(200)
     const files = unzipSync(new Uint8Array(await res.arrayBuffer()))
     return {
@@ -60,9 +42,9 @@ describe.each(testDatabases())('export on $kind', ({ create }) => {
   })
 
   it('contains the templates, so a backup restores the pre-printed pages too', async () => {
-    await server.request('/api/templates/week', {
+    await t.server.request('/api/templates/week', {
       method: 'PUT',
-      cookie,
+      cookie: t.cookie,
       body: { content: '## Objectives', baseRevision: 0 },
     })
 
@@ -74,7 +56,10 @@ describe.each(testDatabases())('export on $kind', ({ create }) => {
   it('leaves out deleted pages', async () => {
     await save('day', '2026-10-25', 'kept')
     await save('day', '2026-10-26', 'deleted')
-    await server.request('/api/notes/day/2026-10-26?baseRevision=1', { method: 'DELETE', cookie })
+    await t.server.request('/api/notes/day/2026-10-26?baseRevision=1', {
+      method: 'DELETE',
+      cookie: t.cookie,
+    })
 
     const { files } = await exportZip()
 
@@ -82,18 +67,18 @@ describe.each(testDatabases())('export on $kind', ({ create }) => {
   })
 
   it('contains only the signed-in user’s pages', async () => {
-    await server.request('/api/admin/settings', {
+    await t.server.request('/api/admin/settings', {
       method: 'PUT',
-      cookie,
+      cookie: t.cookie,
       body: { signupOpen: true },
     })
-    const other = await server.signup('other@example.com')
+    const other = await t.server.signup('other@example.com')
     await save('day', '2026-10-26', 'mine')
 
     expect((await exportZip(other)).files).toEqual({})
   })
 
   it('requires a signed-in user', async () => {
-    expect((await server.request('/api/export')).status).toBe(401)
+    expect((await t.server.request('/api/export')).status).toBe(401)
   })
 })

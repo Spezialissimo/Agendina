@@ -1,48 +1,32 @@
-import { NoteConflict, NoteResponse, NotesResponse, SaveNoteResponse } from '@agendina/contract'
-import type { DatabaseHandle } from '@agendina/db'
+import { NoteConflict, NoteResponse, NotesResponse } from '@agendina/contract'
 import { testDatabases } from '@agendina/db/testing'
 import { sql } from 'kysely'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createTestServer } from '../testing.ts'
+import { describe, expect, it } from 'vitest'
+import { useSignedInServer } from '../testing.ts'
 
 const lines = (...ls: string[]) => ls.join('\n')
 
 describe.each(testDatabases())('notes on $kind', ({ create }) => {
-  let handle: DatabaseHandle
-  let server: ReturnType<typeof createTestServer>
-  let cookie: string
+  const t = useSignedInServer(create)
 
-  beforeEach(async () => {
-    handle = await create()
-    server = createTestServer(handle, { now: () => new Date('2026-10-26T10:00:00.000Z') })
-    cookie = await server.signup()
-  })
-
-  afterEach(async () => {
-    await handle.close()
-  })
-
-  const get = (path: string, as = cookie) => server.request(path, { cookie: as })
-  const put = (kind: string, key: string, content: string, baseRevision: number, as = cookie) =>
-    server.request(`/api/notes/${kind}/${key}`, {
+  const get = (path: string, as = t.cookie) => t.server.request(path, { cookie: as })
+  const put = (kind: string, key: string, content: string, baseRevision: number, as = t.cookie) =>
+    t.server.request(`/api/notes/${kind}/${key}`, {
       method: 'PUT',
       cookie: as,
       body: { content, baseRevision },
     })
-  const save = async (kind: string, key: string, content: string, baseRevision: number) => {
-    const res = await put(kind, key, content, baseRevision)
-    expect(res.status).toBe(200)
-    return SaveNoteResponse.parse(await res.json())
-  }
+  const save = (kind: string, key: string, content: string, baseRevision: number) =>
+    t.server.saveNote(kind, key, { content, baseRevision }, t.cookie)
 
   it('requires a signed-in user', async () => {
-    expect((await server.request('/api/notes/day/2026-10-26')).status).toBe(401)
-    expect((await server.request('/api/notes?kind=day&from=2026-10-26&to=2026-10-26')).status).toBe(
-      401,
-    )
+    expect((await t.server.request('/api/notes/day/2026-10-26')).status).toBe(401)
+    expect(
+      (await t.server.request('/api/notes?kind=day&from=2026-10-26&to=2026-10-26')).status,
+    ).toBe(401)
     expect(
       (
-        await server.request('/api/notes/day/2026-10-26', {
+        await t.server.request('/api/notes/day/2026-10-26', {
           method: 'PUT',
           body: { content: '', baseRevision: 0 },
         })
@@ -105,7 +89,7 @@ describe.each(testDatabases())('notes on $kind', ({ create }) => {
       await save('day', '2026-10-26', 'v2', 1)
       await save('day', '2026-10-26', 'v3', 2)
 
-      const revisions = await handle.db
+      const revisions = await t.handle.db
         .selectFrom('note_revisions')
         .select(['revision', 'content'])
         .orderBy('revision')
@@ -118,12 +102,12 @@ describe.each(testDatabases())('notes on $kind', ({ create }) => {
     })
 
     it('keeps each user’s notes private', async () => {
-      await server.request('/api/admin/settings', {
+      await t.server.request('/api/admin/settings', {
         method: 'PUT',
-        cookie,
+        cookie: t.cookie,
         body: { signupOpen: true },
       })
-      const other = await server.signup('other@example.com')
+      const other = await t.server.signup('other@example.com')
       await save('day', '2026-10-26', 'mine', 0)
 
       expect((await get('/api/notes/day/2026-10-26', other)).status).toBe(404)
@@ -195,7 +179,7 @@ describe.each(testDatabases())('notes on $kind', ({ create }) => {
     it('loses no edit when saves from the same base arrive concurrently', async () => {
       const original = Array.from({ length: 6 }, (_, i) => `- [ ] task ${i}`)
       await save('day', '2026-10-26', original.join('\n'), 0)
-      await Promise.all(Array.from({ length: 6 }, () => sql`select 1`.execute(handle.db)))
+      await Promise.all(Array.from({ length: 6 }, () => sql`select 1`.execute(t.handle.db)))
 
       const results = await Promise.all(
         original.map((_, i) =>
@@ -253,9 +237,9 @@ describe.each(testDatabases())('notes on $kind', ({ create }) => {
       expect((await get(path)).status).toBe(400)
       expect(
         (
-          await server.request(path, {
+          await t.server.request(path, {
             method: 'PUT',
-            cookie,
+            cookie: t.cookie,
             body: { content: '', baseRevision: 0 },
           })
         ).status,

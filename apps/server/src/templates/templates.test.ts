@@ -2,16 +2,14 @@ import {
   ChangesResponse,
   NoteResponse,
   NotesResponse,
-  SaveNoteResponse,
   SaveTemplateResponse,
   TemplateConflict,
   TemplateResponse,
   TemplateRevisionResponse,
 } from '@agendina/contract'
-import type { DatabaseHandle } from '@agendina/db'
 import { testDatabases } from '@agendina/db/testing'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createTestServer } from '../testing.ts'
+import { describe, expect, it } from 'vitest'
+import { useSignedInServer } from '../testing.ts'
 
 const lines = (...ls: string[]) => ls.join('\n')
 
@@ -24,23 +22,11 @@ const WEEK = lines(
 )
 
 describe.each(testDatabases())('templates on $kind', ({ create }) => {
-  let handle: DatabaseHandle
-  let server: ReturnType<typeof createTestServer>
-  let cookie: string
+  const t = useSignedInServer(create)
 
-  beforeEach(async () => {
-    handle = await create()
-    server = createTestServer(handle, { now: () => new Date('2026-10-26T10:00:00.000Z') })
-    cookie = await server.signup()
-  })
-
-  afterEach(async () => {
-    await handle.close()
-  })
-
-  const get = (path: string, as = cookie) => server.request(path, { cookie: as })
-  const putTemplate = (kind: string, content: string, baseRevision: number, as = cookie) =>
-    server.request(`/api/templates/${kind}`, {
+  const get = (path: string, as = t.cookie) => t.server.request(path, { cookie: as })
+  const putTemplate = (kind: string, content: string, baseRevision: number, as = t.cookie) =>
+    t.server.request(`/api/templates/${kind}`, {
       method: 'PUT',
       cookie: as,
       body: { content, baseRevision },
@@ -50,35 +36,31 @@ describe.each(testDatabases())('templates on $kind', ({ create }) => {
     expect(res.status).toBe(200)
     return SaveTemplateResponse.parse(await res.json())
   }
-  const template = async (kind: string, as = cookie) =>
+  const template = async (kind: string, as = t.cookie) =>
     TemplateResponse.parse(await (await get(`/api/templates/${kind}`, as)).json()).template
   const putPage = (
     kind: string,
     key: string,
     body: { content: string; baseRevision: number; templateRevision?: number },
-  ) => server.request(`/api/notes/${kind}/${key}`, { method: 'PUT', cookie, body })
+  ) => t.server.request(`/api/notes/${kind}/${key}`, { method: 'PUT', cookie: t.cookie, body })
   const savePage = async (
     kind: string,
     key: string,
     body: { content: string; baseRevision: number; templateRevision?: number },
-  ) => {
-    const res = await putPage(kind, key, body)
-    expect(res.status).toBe(200)
-    return SaveNoteResponse.parse(await res.json()).note
-  }
+  ) => (await t.server.saveNote(kind, key, body, t.cookie)).note
 
   it('requires a signed-in user', async () => {
-    expect((await server.request('/api/templates/week')).status).toBe(401)
+    expect((await t.server.request('/api/templates/week')).status).toBe(401)
     expect(
       (
-        await server.request('/api/templates/week', {
+        await t.server.request('/api/templates/week', {
           method: 'PUT',
           body: { content: '', baseRevision: 0 },
         })
       ).status,
     ).toBe(401)
-    expect((await server.request('/api/templates/week/revisions/1')).status).toBe(401)
-    expect((await server.request('/api/templates/week/pages?from=2026-10-26')).status).toBe(401)
+    expect((await t.server.request('/api/templates/week/revisions/1')).status).toBe(401)
+    expect((await t.server.request('/api/templates/week/pages?from=2026-10-26')).status).toBe(401)
   })
 
   describe('writing a template', () => {
@@ -151,12 +133,12 @@ describe.each(testDatabases())('templates on $kind', ({ create }) => {
     })
 
     it('keeps each user’s templates private', async () => {
-      await server.request('/api/admin/settings', {
+      await t.server.request('/api/admin/settings', {
         method: 'PUT',
-        cookie,
+        cookie: t.cookie,
         body: { signupOpen: true },
       })
-      const other = await server.signup('other@example.com')
+      const other = await t.server.signup('other@example.com')
       await saveTemplate('week', WEEK, 0)
 
       expect(await template('week', other)).toBeNull()
@@ -252,9 +234,9 @@ describe.each(testDatabases())('templates on $kind', ({ create }) => {
       await savePage('week', '2026-10-26', fromTemplate)
       await savePage('week', '2026-11-02', { content: 'my own page', baseRevision: 0 })
       await savePage('week', '2026-11-09', fromTemplate)
-      await server.request('/api/notes/week/2026-11-09?baseRevision=1', {
+      await t.server.request('/api/notes/week/2026-11-09?baseRevision=1', {
         method: 'DELETE',
-        cookie,
+        cookie: t.cookie,
       })
 
       const res = await get('/api/templates/week/pages?from=2026-10-26')
