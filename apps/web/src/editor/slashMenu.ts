@@ -74,9 +74,9 @@ export function slashEdit(
  * The completion source: "/" at the start of a line (after indentation) opens the menu; not after
  * other text, so "and/or" or "26/10" stay plain.
  */
-export function slashSource(weekRule: WeekRule | (() => WeekRule)) {
+export function slashSource(weekRule: () => WeekRule) {
   return (context: CompletionContext): CompletionResult | null => {
-    const rule = typeof weekRule === 'function' ? weekRule() : weekRule
+    const rule = weekRule()
     const line = context.state.doc.lineAt(context.pos)
     const match = /^(\s*)\/(\w*)$/.exec(line.text.slice(0, context.pos - line.from))
     if (match === null) return null

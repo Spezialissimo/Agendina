@@ -17,7 +17,7 @@ function state(docWithCursor: string): EditorState {
 
 function complete(docWithCursor: string): CompletionResult | null {
   const s = state(docWithCursor)
-  return slashSource(ISO_WEEK)(new CompletionContext(s, s.selection.main.head, false))
+  return slashSource(() => ISO_WEEK)(new CompletionContext(s, s.selection.main.head, false))
 }
 
 /** Applies a menu item replacing the `/query` before the cursor; shows the cursor as ‸. */

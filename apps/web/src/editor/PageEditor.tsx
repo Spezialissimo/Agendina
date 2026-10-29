@@ -89,7 +89,6 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
         doc: value,
         extensions: [
           history(),
-          // ⌘↩ is the app's "toggle to-do" command (see commands/registry.ts), not "insert blank line".
           keymap.of([
             // Tab moves between table cells; elsewhere it keeps moving keyboard focus.
             {
