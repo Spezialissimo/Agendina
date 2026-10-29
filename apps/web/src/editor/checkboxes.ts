@@ -1,11 +1,10 @@
-import { syntaxTree } from '@codemirror/language'
 import {
   EditorSelection,
   type ChangeSpec,
   type EditorState,
   type TransactionSpec,
 } from '@codemirror/state'
-import { CHECKBOX_CELL, fullTree, splitCells } from './tables.ts'
+import { CHECKBOX_CELL, findTable, fullTree, splitCells } from './tables.ts'
 
 export interface Checkbox {
   /** Range of the `[ ]` / `[x]` brackets. */
@@ -108,10 +107,7 @@ export function toggleAtCursor(state: EditorState): TransactionSpec | undefined 
     boxes.find((b) => b.kind === 'task' && b.from >= line.from && b.to <= line.to)
   if (box !== undefined) return { changes: toggleCheckbox(box) }
 
-  const inTable = syntaxTree(state).resolveInner(head, -1).cursor()
-  do {
-    if (inTable.name === 'Table') return undefined
-  } while (inTable.parent())
+  if (findTable(state, head) !== undefined) return undefined
 
   const item = LIST_ITEM.exec(line.text)
   const at =

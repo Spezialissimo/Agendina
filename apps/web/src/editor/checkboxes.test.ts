@@ -128,6 +128,12 @@ describe('toggleAtCursor (⌘↩)', () => {
     expect(toggleAtCursor(s)).toBeUndefined()
   })
 
+  it('does nothing at the very start of a table', () => {
+    const s = state(`‸${WORKOUT}`)
+
+    expect(toggleAtCursor(s)).toBeUndefined()
+  })
+
   it('keeps the cursor on the same text', () => {
     const s = state('- Fin‸ish report')
     const next = s.update(toggleAtCursor(s) ?? {}).state
