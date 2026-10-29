@@ -1,20 +1,16 @@
+import { addDays } from '@agendina/core'
 import { expect, test } from '@playwright/test'
-import { checkbox, enter, savedOnServer } from './helpers.ts'
+import { checkbox, dayPage, enter, savedOnServer } from './helpers.ts'
 
 /**
  * The pages this attempt writes on: from week 47 (mid-November, away from the other journey), one
  * week later per retry, so a retry never builds on what a failed attempt left on the server.
  */
 function pagesFor(retry: number) {
-  const monday = new Date(Date.UTC(2026, 10, 16 + 7 * retry))
-  const tuesday = new Date(monday.getTime() + 24 * 60 * 60 * 1000)
-  const key = (date: Date) => date.toISOString().slice(0, 10)
-  const month = tuesday.toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' })
-  const date = tuesday.getUTCDate()
+  const monday = addDays('2026-11-16', 7 * retry)
   return {
-    day: key(tuesday),
-    week: key(monday),
-    dayName: new RegExp(`${month} ${String(date)}, 2026|${String(date)} ${month} 2026`),
+    day: addDays(monday, 1),
+    week: monday,
     weekName: `Week ${String(47 + retry)}`,
   }
 }
@@ -24,7 +20,7 @@ test('writing with the editor', async ({ page }, testInfo) => {
   const DAY = pages.day
   await enter(page)
   await page.goto(`/day/${DAY}`)
-  const day = page.getByRole('textbox', { name: pages.dayName })
+  const day = dayPage(page, DAY)
   const week = page.getByRole('textbox', { name: pages.weekName })
 
   await test.step('live preview: markdown renders once you leave the line', async () => {
