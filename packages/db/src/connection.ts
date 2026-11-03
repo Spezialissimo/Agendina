@@ -14,7 +14,7 @@ export interface DatabaseHandle {
   close(): Promise<void>
 }
 
-export interface DatabaseOptions {
+interface DatabaseOptions {
   /**
    * Called when Postgres drops an idle pooled connection (server restart, failover, admin
    * action). The pool replaces it; without a handler, Node would crash on the unhandled error.

@@ -4,7 +4,11 @@ import { usePlatform } from '../app/AppProviders.tsx'
 import type { CommandId } from './registry.ts'
 
 /** Runs commands from key presses anywhere on the page, except while typing in a form field. */
-export function useShortcuts(keymap: KeymapEntry[], run: (id: CommandId) => void, enabled = true) {
+export function useShortcuts(
+  keymap: KeymapEntry<CommandId>[],
+  run: (id: CommandId) => void,
+  enabled: boolean,
+) {
   const platform = usePlatform()
 
   useEffect(() => {
@@ -18,7 +22,7 @@ export function useShortcuts(keymap: KeymapEntry[], run: (id: CommandId) => void
       const id = lookupCommand(keymap, event, context, platform)
       if (id === undefined) return
       event.preventDefault()
-      run(id as CommandId)
+      run(id)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => {

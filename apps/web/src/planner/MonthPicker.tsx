@@ -1,8 +1,8 @@
-import type { DayKey, WeekRule } from '@agendina/core'
+import { dayKey, monthGrid, type DayKey, type WeekRule } from '@agendina/core'
 import { useEffect, useRef, useState } from 'react'
 import { useLocale, useToday } from '../app/AppProviders.tsx'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '../app/icons.tsx'
-import { format, monthGrid } from './weeks.ts'
+import { format } from './weeks.ts'
 
 interface Props {
   focus: DayKey
@@ -58,8 +58,9 @@ function MonthCalendar({ focus, rule, onPick, onClose }: Props & { onClose: () =
   })
   const ref = useRef<HTMLDivElement>(null)
   const weeks = monthGrid(month.year, month.month, rule)
-  const monthKey = `${String(month.year).padStart(4, '0')}-${String(month.month).padStart(2, '0')}`
-  const title = format(`${monthKey}-01`, locale, { month: 'long', year: 'numeric' })
+  const first = dayKey(month.year, month.month, 1)
+  const monthKey = first.slice(0, 7)
+  const title = format(first, locale, { month: 'long', year: 'numeric' })
 
   useEffect(() => {
     const close = (event: KeyboardEvent | PointerEvent) => {

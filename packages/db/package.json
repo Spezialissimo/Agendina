@@ -10,11 +10,11 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "kysely": "^0.29.7",
+    "kysely": "catalog:",
     "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
+    "@types/node": "catalog:",
     "@types/pg": "^8.23.1"
   }
 }

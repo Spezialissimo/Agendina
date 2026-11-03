@@ -1,9 +1,9 @@
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
 import { EditorSelection, type EditorState, type TransactionSpec } from '@codemirror/state'
-import type { SyntaxNode } from '@lezer/common'
+import type { SyntaxNode, Tree } from '@lezer/common'
 
 /** A cell of a markdown table row: its text (trimmed) and its range within the line. */
-export interface Cell {
+interface Cell {
   text: string
   /** Offset of the cell's content (between the pipes) within the line. */
   from: number
@@ -30,7 +30,13 @@ export function splitCells(line: string): Cell[] {
 }
 
 const DELIMITER_ROW = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
-const CHECKBOX_CELL = /^\[[ xX]\]$/
+/** A table cell that is a checkbox: exactly `[ ]` or `[x]`. */
+export const CHECKBOX_CELL = /^\[[ xX]\]$/
+
+/** The whole page's syntax tree: parsing the rest (briefly) if only the visible part is parsed. */
+export function fullTree(state: EditorState): Tree {
+  return ensureSyntaxTree(state, state.doc.length, 200) ?? syntaxTree(state)
+}
 
 type Align = 'none' | 'left' | 'center' | 'right'
 
@@ -42,15 +48,11 @@ interface FormattedTable {
 
 /** Lays a table out with aligned columns, keeping alignment markers (`:--`, `:-:`, `--:`). */
 export function formatTable(text: string): string {
-  return layout(text.split('\n').map((line) => splitCells(line).map((c) => c.text))).text
+  return formatRows(text.split('\n').map((line) => splitCells(line).map((c) => c.text))).text
 }
 
 /** Lays out a table given as rows of cell texts (the delimiter row as `---` cells). */
 export function formatRows(rows: string[][]): FormattedTable {
-  return layout(rows)
-}
-
-function layout(rows: string[][]): FormattedTable {
   const delimiter = delimiterIndex(rows)
   const columns = Math.max(...rows.map((r) => r.length))
   const aligns: Align[] = Array.from({ length: columns }, (_, i) =>
@@ -106,7 +108,7 @@ export function findTable(
   state: EditorState,
   pos: number,
 ): { from: number; to: number } | undefined {
-  const tree = ensureSyntaxTree(state, state.doc.length, 200) ?? syntaxTree(state)
+  const tree = fullTree(state)
   for (const side of [-1, 1] as const) {
     for (
       let node: SyntaxNode | null = tree.resolveInner(pos, side);
@@ -139,16 +141,14 @@ function tableContext(state: EditorState): TableContext | undefined {
   const row = line.number - state.doc.lineAt(table.from).number
   const cells = splitCells(line.text)
   const column = head - line.from
-  const col = Math.max(
-    0,
-    cells.findIndex((c) => column <= c.to),
-  )
+  const col = cells.findIndex((c) => column <= c.to)
   return {
     ...table,
     rows,
     delimiter: delimiterIndex(rows),
     row,
-    col: col === -1 ? cells.length - 1 : col,
+    // Past the last cell (after the closing pipe): the cursor is in the last cell.
+    col: col === -1 ? Math.max(cells.length - 1, 0) : col,
   }
 }
 
@@ -158,7 +158,7 @@ function rewrite(
   rows: string[][],
   target: { row: number; col: number },
 ): TransactionSpec {
-  const formatted = layout(rows)
+  const formatted = formatRows(rows)
   const cell = formatted.cells.find((c) => c.row === target.row && c.col === target.col)
   return {
     changes: { from: context.from, to: context.to, insert: formatted.text },

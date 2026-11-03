@@ -49,14 +49,13 @@ export function NotePage({ view }: { view: NoteView }) {
   const [notice, setNotice] = useState<{ key: string; text: string } | undefined>(undefined)
 
   const title = pageTitle(view.kind, view.key, locale, weekRule)
+  const range = view.kind === 'week' ? formatRange(view.key, addDays(view.key, 6), locale) : ''
 
   return (
     <section className="page" aria-labelledby={titleId} data-editable={view.editable || undefined}>
       <header className="page-header">
         <h2 id={titleId}>{title}</h2>
-        {view.kind === 'week' && (
-          <p className="page-subtitle">{formatRange(view.key, addDays(view.key, 6), locale)}</p>
-        )}
+        {view.kind === 'week' && <p className="page-subtitle">{range}</p>}
         {view.editable && !editingTemplate && (
           <button
             type="button"
@@ -105,7 +104,7 @@ export function NotePage({ view }: { view: NoteView }) {
         <button
           type="button"
           className="page-open"
-          aria-label={`Open ${view.kind === 'day' ? title : `${title} (${formatRange(view.key, addDays(view.key, 6), locale)})`}`}
+          aria-label={`Open ${view.kind === 'day' ? title : `${title} (${range})`}`}
           onClick={() => void navigate(`/day/${view.focusOnClick ?? ''}`)}
         />
       )}

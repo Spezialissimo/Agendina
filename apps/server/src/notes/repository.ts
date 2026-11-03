@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { merge3, type DayKey, type MergeChunk } from '@agendina/core'
 import type { Note, NoteChange, NoteKind } from '@agendina/contract'
-import type { Database, NotesTable } from '@agendina/db'
+import type { DB, Database, NotesTable } from '@agendina/db'
 import type { Selectable, Transaction } from 'kysely'
-import type { DB } from '@agendina/db'
 import { ApiError } from '../http.ts'
 
 type NoteRow = Selectable<NotesTable>
@@ -126,31 +125,17 @@ export async function saveNote(
         throw new NoWrite({ status: 'saved', note: toNote(current), merged })
       }
 
-      const revision = current.revision + 1
-      const updatedAt = now.toISOString()
-      await trx
-        .updateTable('notes')
-        .set({
-          content: next,
-          revision,
-          change_seq: changeSeq,
-          updated_at: updatedAt,
-          deleted_at: null,
-          ...templated,
-        })
-        .where('id', '=', current.id)
-        .execute()
-      await addRevision(trx, current.id, revision, next, now)
-      const row: NoteRow = {
-        ...current,
+      const changes = {
         content: next,
-        revision,
+        revision: current.revision + 1,
         change_seq: changeSeq,
-        updated_at: updatedAt,
+        updated_at: now.toISOString(),
         deleted_at: null,
         ...templated,
       }
-      return { status: 'saved', note: toNote(row), merged }
+      await trx.updateTable('notes').set(changes).where('id', '=', current.id).execute()
+      await addRevision(trx, current.id, changes.revision, next, now)
+      return { status: 'saved', note: toNote({ ...current, ...changes }), merged }
     })
   } catch (error) {
     if (error instanceof NoWrite) return error.result
@@ -221,7 +206,7 @@ export async function listChanges(
 }
 
 export function findRow(
-  db: Database | Transaction<DB>,
+  db: Database,
   userId: string,
   kind: StoredKind,
   key: string,
@@ -237,11 +222,7 @@ export function findRow(
     .executeTakeFirst()
 }
 
-async function revisionContent(
-  db: Database | Transaction<DB>,
-  noteId: string,
-  revision: number,
-): Promise<string> {
+async function revisionContent(db: Database, noteId: string, revision: number): Promise<string> {
   if (revision === 0) return ''
   const row = await db
     .selectFrom('note_revisions')

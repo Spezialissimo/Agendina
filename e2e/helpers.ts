@@ -1,4 +1,5 @@
 import { NoteResponse } from '@agendina/contract'
+import { dayKey } from '@agendina/core'
 import { expect, type Page } from '@playwright/test'
 
 const EMAIL = 'journal@example.com'
@@ -7,8 +8,16 @@ const PASSWORD = 'correct horse battery staple'
 /** Today in the browser's (= this machine's) time zone, as the app computes it. */
 export function localToday(): string {
   const now = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${String(now.getFullYear())}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  return dayKey(now.getFullYear(), now.getMonth() + 1, now.getDate())
+}
+
+/** The editor of the day page `key`, named by its long date: en-US or en-GB, as browsers differ. */
+export function dayPage(page: Page, key: string) {
+  const options = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' } as const
+  const names = ['en-US', 'en-GB'].map((locale) =>
+    new Intl.DateTimeFormat(locale, options).format(new Date(`${key}T00:00:00Z`)),
+  )
+  return page.getByRole('textbox', { name: new RegExp(`\\b(?:${names.join('|')})\\b`) })
 }
 
 /** Waits until the server holds `content` for a page (autosave is debounced); returns its revision. */

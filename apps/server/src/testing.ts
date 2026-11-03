@@ -1,7 +1,12 @@
+import { SaveNoteResponse } from '@agendina/contract'
 import type { DatabaseHandle } from '@agendina/db'
+import { afterEach, beforeEach, expect } from 'vitest'
 import { createApp } from './app.ts'
 
 export const PASSWORD = 'correct horse battery staple'
+
+/** The fixed time the test servers run at, unless a test brings its own clock. */
+export const NOW = new Date('2026-10-26T10:00:00.000Z')
 
 interface RequestOptions {
   method?: string
@@ -9,6 +14,14 @@ interface RequestOptions {
   cookie?: string | undefined
   headers?: Record<string, string>
 }
+
+interface SaveNoteBody {
+  content: string
+  baseRevision: number
+  templateRevision?: number
+}
+
+export type TestServer = ReturnType<typeof createTestServer>
 
 /** An app on a test database, with helpers to call the API like a browser would. */
 export function createTestServer(handle: DatabaseHandle, options: { now?: () => Date } = {}) {
@@ -37,7 +50,54 @@ export function createTestServer(handle: DatabaseHandle, options: { now?: () => 
     return sessionCookie(res)
   }
 
-  return { app, db: handle.db, request, signup }
+  /** PUTs a note as the user of `cookie` and expects it to be saved. */
+  const saveNote = async (
+    kind: string,
+    key: string,
+    body: SaveNoteBody,
+    cookie: string,
+  ): Promise<SaveNoteResponse> => {
+    const res = await request(`/api/notes/${kind}/${key}`, { method: 'PUT', cookie, body })
+    expect(res.status).toBe(200)
+    return SaveNoteResponse.parse(await res.json())
+  }
+
+  return { request, signup, saveNote }
+}
+
+interface TestServerContext {
+  handle: DatabaseHandle
+  server: TestServer
+}
+
+/**
+ * Gives each test a fresh database and server, closed again after the test. The fields are
+ * replaced before every test, so read them inside tests and helpers, not when defining them.
+ */
+export function useTestServer(
+  create: () => Promise<DatabaseHandle>,
+  { now = () => NOW }: { now?: () => Date } = {},
+): TestServerContext {
+  const context = {} as TestServerContext
+  beforeEach(async () => {
+    context.handle = await create()
+    context.server = createTestServer(context.handle, { now })
+  })
+  afterEach(async () => {
+    await context.handle.close()
+  })
+  return context
+}
+
+/** Like `useTestServer`, with the admin signed up and its session cookie in `cookie`. */
+export function useSignedInServer(
+  create: () => Promise<DatabaseHandle>,
+): TestServerContext & { cookie: string } {
+  const context = useTestServer(create) as TestServerContext & { cookie: string }
+  beforeEach(async () => {
+    context.cookie = await context.server.signup()
+  })
+  return context
 }
 
 /** The `name=value` part of the session cookie set by a response. */

@@ -1,4 +1,3 @@
-import { z } from 'zod'
 import { addDays, weekStart, type DayKey, type WeekRule } from './calendar.ts'
 
 /**
@@ -64,33 +63,6 @@ export const OPEN_PLANNER: Layout = {
       node: { type: 'panel', id: 'day', panel: { type: 'note', kind: 'day', offset: 0 } },
     },
   ],
-}
-
-const NotePanelSchema = z.object({
-  type: z.literal('note'),
-  kind: z.enum(['day', 'week']),
-  offset: z.number().int(),
-})
-
-const LayoutSchema: z.ZodType<Layout> = z.lazy(() =>
-  z.discriminatedUnion('type', [
-    z.object({ type: z.literal('panel'), id: z.string().min(1), panel: NotePanelSchema }),
-    z.object({
-      type: z.literal('split'),
-      id: z.string().min(1),
-      direction: z.enum(['row', 'column']),
-      children: z.array(z.object({ node: LayoutSchema, size: z.number().positive() })).min(1),
-    }),
-  ]),
-)
-
-/** Validates a layout from untrusted JSON (e.g. user settings). Throws when it is invalid. */
-export function parseLayout(value: unknown): Layout {
-  const layout = LayoutSchema.parse(value)
-  const ids = collectIds(layout)
-  const duplicate = ids.find((id, i) => ids.indexOf(id) !== i)
-  if (duplicate !== undefined) throw new Error(`Invalid layout: duplicate id "${duplicate}"`)
-  return layout
 }
 
 export function resolveLayout(layout: Layout, focus: DayKey, rule: WeekRule): ResolvedLayout {
@@ -163,11 +135,6 @@ function clampFractions(sizes: number[]): number[] {
     if (tooSmall === -1) return fractions
     clamped.add(tooSmall)
   }
-}
-
-function collectIds(layout: Layout): string[] {
-  if (layout.type === 'panel') return [layout.id]
-  return [layout.id, ...layout.children.flatMap((child) => collectIds(child.node))]
 }
 
 function collectSplitIds(layout: Layout): string[] {

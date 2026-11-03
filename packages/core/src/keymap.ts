@@ -9,15 +9,15 @@ export type Platform = 'mac' | 'other'
 
 export type CommandContext = 'global' | 'editor'
 
-export interface CommandSpec {
-  id: string
+export interface CommandSpec<Id extends string = string> {
+  id: Id
   /** `editor` commands only run while an editor has focus; `global` ones run everywhere. */
   context: CommandContext
-  defaultBindings: Binding[]
+  defaultBindings: readonly Binding[]
 }
 
-export interface KeymapEntry {
-  commandId: string
+export interface KeymapEntry<Id extends string = string> {
+  commandId: Id
   context: CommandContext
   binding: Binding
 }
@@ -174,7 +174,10 @@ export function formatBinding(binding: Binding, platform: Platform): string {
   return [...words.filter(([m]) => modifiers.has(m)).map(([, w]) => w), key].join('+')
 }
 
-export function resolveKeymap(commands: CommandSpec[], overrides: KeymapOverrides): KeymapEntry[] {
+export function resolveKeymap<Id extends string>(
+  commands: readonly CommandSpec<Id>[],
+  overrides: KeymapOverrides,
+): KeymapEntry<Id>[] {
   return commands.flatMap((command) => {
     const bindings = overrides[command.id] ?? command.defaultBindings
     const valid = new Set(bindings.flatMap((b) => tryParseBinding(b) ?? []))
@@ -203,12 +206,12 @@ export function findConflicts(keymap: KeymapEntry[]): { binding: Binding; comman
 }
 
 /** The command to run for a key event. Inside an editor, editor commands win over global ones. */
-export function lookupCommand(
-  keymap: KeymapEntry[],
+export function lookupCommand<Id extends string>(
+  keymap: KeymapEntry<Id>[],
   event: KeyEventLike,
   activeContext: CommandContext,
   platform: Platform,
-): string | undefined {
+): Id | undefined {
   const pressed = bindingFromEvent(event, platform)
   if (pressed === undefined) return undefined
   const matches = keymap.filter((e) => forPlatform(e.binding, platform) === pressed)

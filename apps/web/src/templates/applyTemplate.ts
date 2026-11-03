@@ -12,7 +12,7 @@ export interface PageConflict {
   chunks: MergeChunk[]
 }
 
-export interface Applied {
+interface Applied {
   updated: number
   conflicts: PageConflict[]
 }

@@ -1,31 +1,16 @@
 import { ISO_WEEK, US_WEEK } from '@agendina/core'
 import { describe, expect, it } from 'vitest'
-import { monthGrid } from './weeks.ts'
+import { pageTitle, weekTitle } from './weeks.ts'
 
-describe('monthGrid', () => {
-  it('lays out a month in full weeks starting on the rule’s first day', () => {
-    const grid = monthGrid(2026, 10, ISO_WEEK)
-
-    expect(grid[0]).toEqual([
-      '2026-09-28',
-      '2026-09-29',
-      '2026-09-30',
-      '2026-10-01',
-      '2026-10-02',
-      '2026-10-03',
-      '2026-10-04',
-    ])
-    expect(grid.at(-1)?.at(-1)).toBe('2026-11-01')
-    expect(grid).toHaveLength(5)
+describe('weekTitle', () => {
+  it('names a week by its number under the week rule', () => {
+    expect(weekTitle('2027-01-03', ISO_WEEK)).toBe('Week 53')
+    expect(weekTitle('2027-01-03', US_WEEK)).toBe('Week 2')
   })
 
-  it('follows a Sunday start', () => {
-    expect(monthGrid(2026, 10, US_WEEK)[0]?.[0]).toBe('2026-09-27')
-  })
-
-  it('handles February in a leap year', () => {
-    const grid = monthGrid(2028, 2, ISO_WEEK)
-    expect(grid.flat()).toContain('2028-02-29')
-    expect(grid.flat()).not.toContain('2028-03-06')
+  it('is the title of a week page', () => {
+    expect(pageTitle('week', '2026-10-26', 'en-GB', ISO_WEEK)).toBe(
+      weekTitle('2026-10-26', ISO_WEEK),
+    )
   })
 })

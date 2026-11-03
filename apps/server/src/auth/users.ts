@@ -4,7 +4,7 @@ import type { Database } from '@agendina/db'
 import { ApiError } from '../http.ts'
 
 const ADMIN_CLAIM = 'admin_user_id'
-export const SIGNUP_OPEN = 'signup_open'
+const SIGNUP_OPEN = 'signup_open'
 
 /**
  * Creates an account. The first account becomes the admin: claiming a unique settings row inside
@@ -19,13 +19,6 @@ export async function createUser(
   const id = randomUUID()
   try {
     return await db.transaction().execute(async (trx) => {
-      const taken = await trx
-        .selectFrom('users')
-        .select('id')
-        .where('email', '=', email)
-        .executeTakeFirst()
-      if (taken !== undefined) throw new ApiError(409, 'email_taken')
-
       const claim = await trx
         .insertInto('instance_settings')
         .values({ key: ADMIN_CLAIM, value: JSON.stringify(id) })
@@ -42,7 +35,8 @@ export async function createUser(
       return { id, email, role }
     })
   } catch (error) {
-    // A concurrent signup with the same email can still hit the unique constraint.
+    // A taken email fails the unique constraint. The lookup runs outside the transaction, which
+    // Postgres has aborted by then.
     if (!(error instanceof ApiError)) {
       const taken = await db
         .selectFrom('users')
@@ -62,4 +56,13 @@ export async function isSignupOpen(db: Pick<Database, 'selectFrom'>): Promise<bo
     .where('key', '=', SIGNUP_OPEN)
     .executeTakeFirst()
   return row !== undefined && JSON.parse(row.value) === true
+}
+
+export async function setSignupOpen(db: Database, open: boolean): Promise<void> {
+  const value = JSON.stringify(open)
+  await db
+    .insertInto('instance_settings')
+    .values({ key: SIGNUP_OPEN, value })
+    .onConflict((oc) => oc.column('key').doUpdateSet({ value }))
+    .execute()
 }

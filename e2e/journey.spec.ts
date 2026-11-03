@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { checkbox, enter, localToday, savedOnServer } from './helpers.ts'
+import { checkbox, dayPage, enter, localToday, savedOnServer } from './helpers.ts'
 
 test('a week of journaling', async ({ page }) => {
   const week = page.getByRole('textbox', { name: 'Week 44' })
-  const monday = page.getByRole('textbox', { name: /October 26, 2026|26 October 2026/ })
-  const tuesday = page.getByRole('textbox', { name: /October 27, 2026|27 October 2026/ })
+  const monday = dayPage(page, '2026-10-26')
+  const tuesday = dayPage(page, '2026-10-27')
 
   await test.step('first run: create the admin account and land on today', async () => {
     await enter(page)

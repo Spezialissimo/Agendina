@@ -13,7 +13,7 @@ export interface DB {
   user_settings: UserSettingsTable
 }
 
-export interface UsersTable {
+interface UsersTable {
   id: string
   /** Stored lowercased. */
   email: string
@@ -24,7 +24,7 @@ export interface UsersTable {
   created_at: string
 }
 
-export interface SessionsTable {
+interface SessionsTable {
   /** SHA-256 of the session token; the token itself is only ever in the cookie. */
   id: string
   user_id: string
@@ -32,7 +32,7 @@ export interface SessionsTable {
   expires_at: string
 }
 
-export interface InstanceSettingsTable {
+interface InstanceSettingsTable {
   key: string
   /** JSON. */
   value: string
@@ -55,14 +55,14 @@ export interface NotesTable {
   deleted_at: ColumnType<string | null, string | null | undefined, string | null>
 }
 
-export interface NoteRevisionsTable {
+interface NoteRevisionsTable {
   note_id: string
   revision: number
   content: string
   created_at: string
 }
 
-export interface UserSettingsTable {
+interface UserSettingsTable {
   user_id: string
   /** JSON. */
   value: string

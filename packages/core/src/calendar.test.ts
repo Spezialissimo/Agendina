@@ -6,8 +6,9 @@ import {
   US_WEEK,
   addDays,
   compareDays,
+  dayKey,
   isDayKey,
-  parseDayKey,
+  monthGrid,
   weekDays,
   weekNumber,
   weekStart,
@@ -39,7 +40,6 @@ function toLocalNoon(day: DayKey): Date {
 describe('DayKey parsing', () => {
   it.each(['2026-10-24', '2024-02-29', '2000-02-29', '1999-12-31'])('accepts %s', (s) => {
     expect(isDayKey(s)).toBe(true)
-    expect(parseDayKey(s)).toBe(s)
   })
 
   it.each([
@@ -53,7 +53,31 @@ describe('DayKey parsing', () => {
     '',
   ])('rejects %j', (s) => {
     expect(isDayKey(s)).toBe(false)
-    expect(() => parseDayKey(s)).toThrow(/Invalid day/)
+  })
+})
+
+describe('dayKey', () => {
+  it('zero-pads the year, month and day', () => {
+    expect(dayKey(2026, 10, 24)).toBe('2026-10-24')
+    expect(dayKey(987, 1, 2)).toBe('0987-01-02')
+  })
+
+  it('builds back the key a day was split from', () => {
+    fc.assert(
+      fc.property(anyDay, (day) => {
+        const [y, m, d] = day.split('-').map(Number) as [number, number, number]
+        expect(dayKey(y, m, d)).toBe(day)
+      }),
+    )
+  })
+
+  it('starts each year the day after the previous one ends, for any four-digit year', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 9999 }), (year) => {
+        expect(isDayKey(dayKey(year, 1, 1))).toBe(true)
+        expect(addDays(dayKey(year - 1, 12, 31), 1)).toBe(dayKey(year, 1, 1))
+      }),
+    )
   })
 })
 
@@ -195,6 +219,85 @@ describe('weekNumber', () => {
       fc.property(anyDay, anyRule, (day, rule) => {
         const days = weekDays(day, rule)
         for (const d of days) expect(weekNumber(d, rule)).toEqual(weekNumber(day, rule))
+      }),
+    )
+  })
+})
+
+describe('monthGrid', () => {
+  const anyMonth = fc.record({
+    year: fc.integer({ min: 1900, max: 2199 }),
+    month: fc.integer({ min: 1, max: 12 }),
+  })
+
+  const daysOfMonth = (year: number, month: number): DayKey[] => {
+    const days: DayKey[] = []
+    const prefix = dayKey(year, month, 1).slice(0, 7)
+    for (let day = dayKey(year, month, 1); day.startsWith(prefix); day = addDays(day, 1)) {
+      days.push(day)
+    }
+    return days
+  }
+
+  it('lays out a month in full weeks starting on the rule’s first day', () => {
+    const grid = monthGrid(2026, 10, ISO_WEEK)
+
+    expect(grid[0]).toEqual([
+      '2026-09-28',
+      '2026-09-29',
+      '2026-09-30',
+      '2026-10-01',
+      '2026-10-02',
+      '2026-10-03',
+      '2026-10-04',
+    ])
+    expect(grid.at(-1)?.at(-1)).toBe('2026-11-01')
+    expect(grid).toHaveLength(5)
+  })
+
+  it('follows a Sunday start', () => {
+    expect(monthGrid(2026, 10, US_WEEK)[0]?.[0]).toBe('2026-09-27')
+  })
+
+  it('handles February in a leap year', () => {
+    const grid = monthGrid(2028, 2, ISO_WEEK)
+    expect(grid.flat()).toContain('2028-02-29')
+    expect(grid.flat()).not.toContain('2028-03-06')
+  })
+
+  it('shows every day of the month exactly once', () => {
+    fc.assert(
+      fc.property(anyMonth, anyRule, ({ year, month }, rule) => {
+        const shown = monthGrid(year, month, rule).flat()
+        for (const day of daysOfMonth(year, month)) {
+          expect(shown.filter((d) => d === day)).toHaveLength(1)
+        }
+      }),
+    )
+  })
+
+  it('is made of weeks of 7 consecutive days, each starting on the rule’s first day', () => {
+    fc.assert(
+      fc.property(anyMonth, anyRule, ({ year, month }, rule) => {
+        const grid = monthGrid(year, month, rule)
+        for (const week of grid) {
+          expect(week).toHaveLength(7)
+          expect(week[0]).toBe(weekStart(week[0] as DayKey, rule))
+        }
+        const days = grid.flat()
+        const first = days[0] as DayKey
+        expect(days).toEqual(days.map((_, i) => addDays(first, i)))
+      }),
+    )
+  })
+
+  it('has no week without a day of the month', () => {
+    fc.assert(
+      fc.property(anyMonth, anyRule, ({ year, month }, rule) => {
+        const prefix = dayKey(year, month, 1).slice(0, 7)
+        for (const week of monthGrid(year, month, rule)) {
+          expect(week.some((day) => day.startsWith(prefix))).toBe(true)
+        }
       }),
     )
   })

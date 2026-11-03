@@ -18,16 +18,15 @@ export const US_WEEK: WeekRule = { firstDay: 7, minimalDays: 1 }
 
 const DAY_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
 
+export function dayKey(year: number, month: number, day: number): DayKey {
+  return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`
+}
+
 export function isDayKey(value: string): value is DayKey {
   const match = DAY_KEY_PATTERN.exec(value)
   if (match === null) return false
   const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])]
   return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month)
-}
-
-export function parseDayKey(value: string): DayKey {
-  if (isDayKey(value)) return value
-  throw new Error(`Invalid day ${JSON.stringify(value)}: expected YYYY-MM-DD`)
 }
 
 export function addDays(day: DayKey, days: number): DayKey {
@@ -54,6 +53,20 @@ export function weekDays(day: DayKey, rule: WeekRule): DayKey[] {
   return Array.from({ length: 7 }, (_, i) => addDays(start, i))
 }
 
+/** The weeks shown for a month: full weeks (per the rule) covering every day of the month. */
+export function monthGrid(year: number, month: number, rule: WeekRule): DayKey[][] {
+  const nextMonth = month === 12 ? dayKey(year + 1, 1, 1) : dayKey(year, month + 1, 1)
+  const weeks: DayKey[][] = []
+  for (
+    let start = weekStart(dayKey(year, month, 1), rule);
+    compareDays(start, nextMonth) < 0;
+    start = addDays(start, 7)
+  ) {
+    weeks.push(weekDays(start, rule))
+  }
+  return weeks
+}
+
 /** The week-based year and week number (1–53) of `day`, e.g. `{ year: 2026, week: 43 }`. */
 export function weekNumber(day: DayKey, rule: WeekRule): { year: number; week: number } {
   let year = yearOf(day)
@@ -65,7 +78,7 @@ export function weekNumber(day: DayKey, rule: WeekRule): { year: number; week: n
 
 /** Week 1 is the first week with at least `minimalDays` days in the year: the one containing Jan `minimalDays`. */
 function firstWeekStart(year: number, rule: WeekRule): DayKey {
-  return weekStart(`${pad(year, 4)}-01-${pad(rule.minimalDays, 2)}`, rule)
+  return weekStart(dayKey(year, 1, rule.minimalDays), rule)
 }
 
 function yearOf(day: DayKey): number {
@@ -110,7 +123,7 @@ function fromEpochDay(epochDay: number): DayKey {
   const d = dayOfYear - Math.floor((153 * mp + 2) / 5) + 1
   const m = mp < 10 ? mp + 3 : mp - 9
   const y = yearOfEra + era * 400 + (m <= 2 ? 1 : 0)
-  return `${pad(y, 4)}-${pad(m, 2)}-${pad(d, 2)}`
+  return dayKey(y, m, d)
 }
 
 function mod(n: number, m: number): number {

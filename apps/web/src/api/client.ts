@@ -1,8 +1,7 @@
 import {
+  ApiErrorBody,
   AuthState,
-  ChangesResponse,
   InstanceSettings,
-  MeResponse,
   NoteConflict,
   NoteResponse,
   NotesResponse,
@@ -35,11 +34,11 @@ export class ApiError extends Error {
   }
 }
 
-export type SaveResult =
+type SaveResult =
   | { status: 'saved'; note: Note; merged: boolean }
   | { status: 'conflict'; current: Note; chunks: MergeChunk[] }
 
-export type SaveTemplateResult =
+type SaveTemplateResult =
   | { status: 'saved'; template: Template; merged: boolean }
   | { status: 'conflict'; current: Template; chunks: MergeChunk[] }
 
@@ -63,17 +62,13 @@ export class Api {
     await this.send('POST', '/api/auth/logout')
   }
 
-  me() {
-    return this.call('GET', '/api/me', MeResponse)
-  }
-
   setInstanceSettings(settings: InstanceSettings) {
     return this.call('PUT', '/api/admin/settings', InstanceSettings, settings)
   }
 
   /** The note, or null if nobody wrote that page yet. */
   async getNote(kind: NoteKind, key: string): Promise<Note | null> {
-    const res = await this.fetchFn(`/api/notes/${kind}/${key}`)
+    const res = await this.send('GET', `/api/notes/${kind}/${key}`, undefined, [404])
     if (res.status === 404) return null
     return (await this.parse(res, NoteResponse)).note
   }
@@ -98,19 +93,13 @@ export class Api {
       templateRevision,
     }: { keepalive?: boolean; templateRevision?: number | undefined } = {},
   ): Promise<SaveResult> {
-    const res = await this.send(
-      'PUT',
+    return this.saveOrConflict(
       `/api/notes/${kind}/${key}`,
       { content, baseRevision, ...(templateRevision === undefined ? {} : { templateRevision }) },
-      [409],
+      SaveNoteResponse,
+      NoteConflict,
       keepalive,
     )
-    if (res.status === 409) {
-      const { current, chunks } = NoteConflict.parse(await res.json())
-      return { status: 'conflict', current, chunks }
-    }
-    const { note, merged } = await this.parse(res, SaveNoteResponse)
-    return { status: 'saved', note, merged }
   }
 
   /** The template for `kind` pages, or null if the user has not written one. */
@@ -124,13 +113,12 @@ export class Api {
     content: string,
     baseRevision: number,
   ): Promise<SaveTemplateResult> {
-    const res = await this.send('PUT', `/api/templates/${kind}`, { content, baseRevision }, [409])
-    if (res.status === 409) {
-      const { current, chunks } = TemplateConflict.parse(await res.json())
-      return { status: 'conflict', current, chunks }
-    }
-    const { template, merged } = await this.parse(res, SaveTemplateResponse)
-    return { status: 'saved', template, merged }
+    return this.saveOrConflict(
+      `/api/templates/${kind}`,
+      { content, baseRevision },
+      SaveTemplateResponse,
+      TemplateConflict,
+    )
   }
 
   async templateRevision(kind: NoteKind, revision: number): Promise<string> {
@@ -144,10 +132,6 @@ export class Api {
     return (
       await this.call('GET', `/api/templates/${kind}/pages?${query.toString()}`, NotesResponse)
     ).notes
-  }
-
-  changes(since: number) {
-    return this.call('GET', `/api/changes?since=${since}`, ChangesResponse)
   }
 
   async settings(): Promise<UserSettings> {
@@ -172,6 +156,22 @@ export class Api {
     return this.parse(await this.send(method, path, body), schema)
   }
 
+  /** PUTs `body`; a 409 conflict is returned as a result rather than thrown. */
+  private async saveOrConflict<S extends object, T>(
+    path: string,
+    body: unknown,
+    saved: z.ZodType<S>,
+    conflict: z.ZodType<{ current: T; chunks: MergeChunk[] }>,
+    keepalive = false,
+  ): Promise<({ status: 'saved' } & S) | { status: 'conflict'; current: T; chunks: MergeChunk[] }> {
+    const res = await this.send('PUT', path, body, [409], keepalive)
+    if (res.status === 409) {
+      const { current, chunks } = conflict.parse(await res.json())
+      return { status: 'conflict', current, chunks }
+    }
+    return { status: 'saved', ...(await this.parse(res, saved)) }
+  }
+
   private async send(
     method: string,
     path: string,
@@ -192,22 +192,14 @@ export class Api {
   }
 
   private async parse<T>(res: Response, schema: z.ZodType<T>): Promise<T> {
-    if (!res.ok) throw new ApiError(res.status, await errorCode(res))
     return schema.parse(await res.json())
   }
 }
 
 async function errorCode(res: Response): Promise<string> {
   try {
-    const body: unknown = await res.json()
-    if (
-      typeof body === 'object' &&
-      body !== null &&
-      'error' in body &&
-      typeof body.error === 'string'
-    ) {
-      return body.error
-    }
+    const body = ApiErrorBody.safeParse(await res.json())
+    if (body.success) return body.data.error
   } catch {
     // Not JSON (e.g. a proxy error page).
   }

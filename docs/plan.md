@@ -9,8 +9,8 @@ now. Personal project, but built as a product: self-hostable server, free hosted
 features gated later. Development is test-driven and mostly carried out by AI, so the foundation
 (tooling, tests, rules) matters as much as the features.
 
-The project directory is empty apart from `First moc.png` (the first layout sketch, now superseded
-by layout A below).
+The project directory is empty apart from the first layout sketch
+([`docs/first-mockup.png`](first-mockup.png), now superseded by layout A below).
 
 ## Decisions
 - **Storage**: the database is the source of truth; note content is stored verbatim as markdown.

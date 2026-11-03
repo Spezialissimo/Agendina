@@ -1,19 +1,10 @@
-import {
-  ISO_WEEK,
-  OPEN_PLANNER,
-  parseBinding,
-  parseLayout,
-  type Layout,
-  type WeekRule as CoreWeekRule,
-} from '@agendina/core'
+import { ISO_WEEK, OPEN_PLANNER, parseBinding } from '@agendina/core'
 import { z } from 'zod'
+import { LayoutSchema } from './layout.ts'
 
-const OneToSeven = z.number().int().min(1).max(7)
+const OneToSeven = z.literal([1, 2, 3, 4, 5, 6, 7])
 
-export const WeekRule = z.object({
-  firstDay: OneToSeven.transform((n) => n as CoreWeekRule['firstDay']),
-  minimalDays: OneToSeven.transform((n) => n as CoreWeekRule['minimalDays']),
-})
+export const WeekRule = z.object({ firstDay: OneToSeven, minimalDays: OneToSeven })
 
 /** A key binding, normalized to canonical form (`Mod+Shift+KeyJ`). */
 const Binding = z.string().transform((value, ctx) => {
@@ -25,24 +16,12 @@ const Binding = z.string().transform((value, ctx) => {
   }
 })
 
-const LayoutSchema = z.unknown().transform((value, ctx): Layout => {
-  try {
-    return parseLayout(value)
-  } catch (error) {
-    ctx.addIssue({
-      code: 'custom',
-      message: error instanceof Error ? error.message : 'Invalid layout',
-    })
-    return z.NEVER
-  }
-})
-
 /** Focus mode (ADR 0013): whether it is on, and how long the mouse must rest before it starts. */
-export const FocusModeSettings = z.object({
+const FocusModeSettings = z.object({
   enabled: z.boolean(),
   idleMs: z.number().int().min(500).max(60_000),
 })
-export type FocusModeSettings = z.infer<typeof FocusModeSettings>
+type FocusModeSettings = z.infer<typeof FocusModeSettings>
 
 export const DEFAULT_FOCUS_MODE: FocusModeSettings = { enabled: true, idleMs: 1500 }
 

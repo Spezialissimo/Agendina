@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useApi } from '../app/AppProviders.tsx'
 
-export const SETTINGS_QUERY = ['settings'] as const
+const SETTINGS_QUERY = ['settings'] as const
 const SAVE_DELAY_MS = 400
 
 /** The user's settings, and an `update` that applies immediately and saves shortly after. */

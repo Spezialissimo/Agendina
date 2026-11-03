@@ -8,7 +8,7 @@ export type NoteKind = z.infer<typeof NoteKind>
 export const NoteKey = z.string().refine(isDayKey, 'Expected a day as YYYY-MM-DD')
 
 /** Notes are journal pages; 1 MB of markdown is far beyond any real page. */
-export const MAX_NOTE_LENGTH = 1_000_000
+const MAX_NOTE_LENGTH = 1_000_000
 
 export const Note = z.object({
   kind: NoteKind,
@@ -58,8 +58,6 @@ export const MergeChunk: z.ZodType<CoreMergeChunk> = z.discriminatedUnion('type'
     theirs: z.array(z.string()),
   }),
 ])
-
-export type MergeChunk = CoreMergeChunk
 
 /** 409 body: the edit overlaps changes saved meanwhile; nothing was saved. */
 export const NoteConflict = z.object({

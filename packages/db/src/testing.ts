@@ -3,7 +3,7 @@ import pg from 'pg'
 import { createDatabase, type DatabaseHandle } from './connection.ts'
 import { migrateToLatest } from './migrate.ts'
 
-export interface TestDatabase {
+interface TestDatabase {
   kind: 'sqlite' | 'postgres'
   /** A fresh, migrated, empty database. */
   create: () => Promise<DatabaseHandle>

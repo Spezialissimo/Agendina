@@ -1,40 +1,20 @@
-import { ChangesResponse, NoteResponse, SaveNoteResponse } from '@agendina/contract'
-import type { DatabaseHandle } from '@agendina/db'
+import { ChangesResponse, NoteResponse } from '@agendina/contract'
 import { testDatabases } from '@agendina/db/testing'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createTestServer } from '../testing.ts'
+import { describe, expect, it } from 'vitest'
+import { useSignedInServer } from '../testing.ts'
 
 describe.each(testDatabases())('sync on $kind', ({ create }) => {
-  let handle: DatabaseHandle
-  let server: ReturnType<typeof createTestServer>
-  let cookie: string
+  const t = useSignedInServer(create)
 
-  beforeEach(async () => {
-    handle = await create()
-    server = createTestServer(handle, { now: () => new Date('2026-10-26T10:00:00.000Z') })
-    cookie = await server.signup()
-  })
-
-  afterEach(async () => {
-    await handle.close()
-  })
-
-  const save = async (key: string, content: string, baseRevision: number, as = cookie) => {
-    const res = await server.request(`/api/notes/day/${key}`, {
-      method: 'PUT',
-      cookie: as,
-      body: { content, baseRevision },
-    })
-    expect(res.status).toBe(200)
-    return SaveNoteResponse.parse(await res.json()).note
-  }
+  const save = async (key: string, content: string, baseRevision: number, as = t.cookie) =>
+    (await t.server.saveNote('day', key, { content, baseRevision }, as)).note
   const remove = (key: string, baseRevision: number) =>
-    server.request(`/api/notes/day/${key}?baseRevision=${baseRevision}`, {
+    t.server.request(`/api/notes/day/${key}?baseRevision=${baseRevision}`, {
       method: 'DELETE',
-      cookie,
+      cookie: t.cookie,
     })
-  const changes = async (query: string, as = cookie) => {
-    const res = await server.request(`/api/changes?${query}`, { cookie: as })
+  const changes = async (query: string, as = t.cookie) => {
+    const res = await t.server.request(`/api/changes?${query}`, { cookie: as })
     expect(res.status).toBe(200)
     return ChangesResponse.parse(await res.json())
   }
@@ -49,13 +29,15 @@ describe.each(testDatabases())('sync on $kind', ({ create }) => {
       const res = await remove('2026-10-26', 2)
 
       expect(res.status).toBe(204)
-      expect((await server.request('/api/notes/day/2026-10-26', { cookie })).status).toBe(404)
-      const rows = await handle.db
+      expect(
+        (await t.server.request('/api/notes/day/2026-10-26', { cookie: t.cookie })).status,
+      ).toBe(404)
+      const rows = await t.handle.db
         .selectFrom('notes')
         .select(['content', 'revision', 'deleted_at'])
         .execute()
       expect(rows).toEqual([{ content: '', revision: 3, deleted_at: '2026-10-26T10:00:00.000Z' }])
-      const history = await handle.db
+      const history = await t.handle.db
         .selectFrom('note_revisions')
         .select(['revision', 'content'])
         .execute()
@@ -70,7 +52,9 @@ describe.each(testDatabases())('sync on $kind', ({ create }) => {
 
       expect(res.status).toBe(409)
       expect(await res.json()).toEqual({ error: 'stale_revision' })
-      expect((await server.request('/api/notes/day/2026-10-26', { cookie })).status).toBe(200)
+      expect(
+        (await t.server.request('/api/notes/day/2026-10-26', { cookie: t.cookie })).status,
+      ).toBe(200)
     })
 
     it('answers 404 for a page that does not exist or is already deleted', async () => {
@@ -90,7 +74,7 @@ describe.each(testDatabases())('sync on $kind', ({ create }) => {
       expect(note).toMatchObject({ content: 'fresh start', revision: 3 })
       expect(
         NoteResponse.parse(
-          await (await server.request('/api/notes/day/2026-10-26', { cookie })).json(),
+          await (await t.server.request('/api/notes/day/2026-10-26', { cookie: t.cookie })).json(),
         ).note.content,
       ).toBe('fresh start')
     })
@@ -109,9 +93,9 @@ describe.each(testDatabases())('sync on $kind', ({ create }) => {
       async (query) => {
         await save('2026-10-26', 'v1', 0)
 
-        const res = await server.request(`/api/notes/day/2026-10-26${query}`, {
+        const res = await t.server.request(`/api/notes/day/2026-10-26${query}`, {
           method: 'DELETE',
-          cookie,
+          cookie: t.cookie,
         })
 
         expect(res.status).toBe(400)
@@ -183,9 +167,9 @@ describe.each(testDatabases())('sync on $kind', ({ create }) => {
 
       await save('2026-10-24', 'line', 1)
       await save('2026-10-24', 'line changed', 1)
-      const conflict = await server.request('/api/notes/day/2026-10-24', {
+      const conflict = await t.server.request('/api/notes/day/2026-10-24', {
         method: 'PUT',
-        cookie,
+        cookie: t.cookie,
         body: { content: 'line changed differently', baseRevision: 1 },
       })
       expect(conflict.status).toBe(409)
@@ -196,12 +180,12 @@ describe.each(testDatabases())('sync on $kind', ({ create }) => {
     })
 
     it('shows each user only their own changes', async () => {
-      await server.request('/api/admin/settings', {
+      await t.server.request('/api/admin/settings', {
         method: 'PUT',
-        cookie,
+        cookie: t.cookie,
         body: { signupOpen: true },
       })
-      const other = await server.signup('other@example.com')
+      const other = await t.server.signup('other@example.com')
       await save('2026-10-24', 'mine', 0)
 
       expect(await changes('since=0', other)).toEqual({ changes: [], cursor: 0, hasMore: false })
@@ -210,14 +194,14 @@ describe.each(testDatabases())('sync on $kind', ({ create }) => {
     it.each(['', 'since=-1', 'since=abc', 'since=0&limit=0', 'since=0&limit=1001'])(
       'rejects %j',
       async (query) => {
-        const res = await server.request(`/api/changes?${query}`, { cookie })
+        const res = await t.server.request(`/api/changes?${query}`, { cookie: t.cookie })
 
         expect(res.status).toBe(400)
       },
     )
 
     it('requires a signed-in user', async () => {
-      expect((await server.request('/api/changes?since=0')).status).toBe(401)
+      expect((await t.server.request('/api/changes?since=0')).status).toBe(401)
     })
   })
 })

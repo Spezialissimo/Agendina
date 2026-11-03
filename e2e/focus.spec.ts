@@ -1,38 +1,37 @@
+import { addDays } from '@agendina/core'
 import { expect, test } from '@playwright/test'
-import { enter, revealButtons } from './helpers.ts'
+import { dayPage, enter, revealButtons } from './helpers.ts'
 
 test('focus mode dims everything but the page you are working in', async ({ page }, testInfo) => {
   // Far from the other journeys' pages, one week later per retry.
-  const date = 8 + 7 * testInfo.retry
+  const key = addDays('2026-12-08', 7 * testInfo.retry)
   await enter(page)
-  await page.goto(`/day/2026-12-${String(date).padStart(2, '0')}`)
-  const day = page.getByRole('textbox', {
-    name: new RegExp(`December ${String(date)}, 2026|${String(date)} December 2026`),
-  })
-  const dayPage = page.locator('.page', { has: day })
-  const weekPage = page.locator('.page', { has: page.getByRole('textbox', { name: /^Week / }) })
+  await page.goto(`/day/${key}`)
+  const day = dayPage(page, key)
+  const daySection = page.locator('.page', { has: day })
+  const weekSection = page.locator('.page', { has: page.getByRole('textbox', { name: /^Week / }) })
   const settings = page.getByRole('button', { name: 'Settings' })
 
   await test.step('typing hides the buttons and dims the rest', async () => {
     await day.click()
     await page.keyboard.type('Morning pages')
     await expect(settings).toHaveCSS('opacity', '0')
-    await expect(weekPage).toHaveCSS('opacity', '0.35')
-    await expect(dayPage).toHaveCSS('opacity', '1')
+    await expect(weekSection).toHaveCSS('opacity', '0.35')
+    await expect(daySection).toHaveCSS('opacity', '1')
     await expect(day).toHaveCSS('cursor', 'none')
   })
 
   await test.step('moving the mouse brings them back', async () => {
     await revealButtons(page)
     await expect(settings).toHaveCSS('opacity', '1')
-    await expect(weekPage).toHaveCSS('opacity', '1')
+    await expect(weekSection).toHaveCSS('opacity', '1')
     await expect(day).not.toHaveCSS('cursor', 'none')
   })
 
   await test.step('clicking into the other page starts it at once', async () => {
-    await weekPage.getByRole('textbox').click()
+    await weekSection.getByRole('textbox').click()
     await expect(settings).toHaveCSS('opacity', '0')
-    await expect(dayPage).toHaveCSS('opacity', '0.35')
+    await expect(daySection).toHaveCSS('opacity', '0.35')
     await revealButtons(page)
     await day.click()
     await revealButtons(page)
@@ -74,7 +73,7 @@ test('focus mode dims everything but the page you are working in', async ({ page
 
   await test.step('the template editor keeps Save and Cancel visible', async () => {
     await revealButtons(page)
-    await dayPage.getByRole('button', { name: 'Edit day template' }).click()
+    await daySection.getByRole('button', { name: 'Edit day template' }).click()
     await page.getByRole('textbox', { name: 'Day template' }).click()
     await page.keyboard.type('x')
     await expect(settings).toHaveCSS('opacity', '0')
@@ -89,11 +88,11 @@ test('focus mode dims everything but the page you are working in', async ({ page
     )
     await day.click()
     await page.keyboard.type(' later')
-    const status = dayPage.locator('.save-status')
+    const status = daySection.locator('.save-status')
     await expect(status).toHaveAttribute('data-status', 'offline')
     await expect(settings).toHaveCSS('opacity', '0')
     await expect(status).toHaveCSS('opacity', '1')
-    await expect(dayPage).toHaveCSS('opacity', '1')
+    await expect(daySection).toHaveCSS('opacity', '1')
   })
 })
 
@@ -104,7 +103,7 @@ test.describe('on a touch screen', () => {
     test.skip(browserName === 'firefox', 'Playwright has no touch emulation in desktop Firefox')
     await enter(page)
     await page.goto('/day/2026-12-01')
-    const day = page.getByRole('textbox', { name: /December 1, 2026|1 December 2026/ })
+    const day = dayPage(page, '2026-12-01')
     const settings = page.getByRole('button', { name: 'Settings' })
     await day.click()
     await page.keyboard.type('On the tablet')
