@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
+import { nextTextSize, TEXT_SIZE_LABEL, useTextSize, writeTextSize } from './textSize.ts'
 import { pageLabel, pageSubtitle, pageTitle } from './weeks.ts'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
 import { PageEditor } from '../editor/PageEditor.tsx'
@@ -44,6 +45,7 @@ export function NotePage({ view }: { view: NoteView }) {
     enabled: pageKey !== undefined,
   })
   const template = useTemplate(view.kind)
+  const textSize = useTextSize(view.kind)
   const [editingTemplate, setEditingTemplate] = useState(false)
   const [notice, setNotice] = useState<{ key: string; text: string } | undefined>(undefined)
 
@@ -53,7 +55,13 @@ export function NotePage({ view }: { view: NoteView }) {
   const label = pageLabel(view.kind, view.key, locale, weekRule)
 
   return (
-    <section className="page" aria-label={label} data-editable={view.editable || undefined}>
+    <section
+      className="page"
+      aria-label={label}
+      data-editable={view.editable || undefined}
+      data-page-kind={view.kind}
+      data-text-size={textSize}
+    >
       <header className="page-header">
         <h2>{title}</h2>
         <p className="page-subtitle">{subtitle}</p>
@@ -67,6 +75,20 @@ export function NotePage({ view }: { view: NoteView }) {
             }}
           >
             Edit {view.kind} template
+          </button>
+        )}
+        {view.editable && (
+          <button
+            type="button"
+            className="link page-text-size"
+            // The name starts with the visible "Aa" (WCAG 2.5.3, label in name).
+            aria-label={`Aa, text size: ${TEXT_SIZE_LABEL[textSize]}`}
+            title={`Text size: ${TEXT_SIZE_LABEL[textSize]}`}
+            onClick={() => {
+              writeTextSize(view.kind, nextTextSize(textSize))
+            }}
+          >
+            Aa
           </button>
         )}
       </header>
