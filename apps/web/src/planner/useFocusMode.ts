@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { awaitsUser, isFocusAfterNavigation } from '../editor/focusedEditor.ts'
 
 /** How far the pointer must move on screen to count as the user reaching for the mouse. */
 const MOUSE_THRESHOLD = 3
@@ -12,7 +13,8 @@ const inEditor = (target: EventTarget | null) =>
  * they reach for the mouse, tap, leave the editor or press Escape. Off while `enabled` is false
  * (turned off in the settings, or the command palette or settings are open) and whenever the
  * focused `day` changes: the new day's editor is a new element, and the keyboard focus that was in
- * the old one is gone.
+ * the old one is gone. A cursor a navigation put in a page starts neither, until the user types or
+ * clicks in that page: their hand may still be on the mouse, about to click the week arrow again.
  */
 export function useFocusMode(enabled: boolean, day: string, idleMs: number): boolean {
   const [on, setOn] = useState(false)
@@ -33,7 +35,8 @@ export function useFocusMode(enabled: boolean, day: string, idleMs: number): boo
     const restartIdle = () => {
       clearTimeout(idle)
       idle = setTimeout(() => {
-        if (document.hasFocus() && inEditor(document.activeElement)) set(true)
+        const target = document.activeElement
+        if (document.hasFocus() && inEditor(target) && !awaitsUser(target)) set(true)
       }, idleMs)
     }
 
@@ -71,7 +74,9 @@ export function useFocusMode(enabled: boolean, day: string, idleMs: number): boo
     // Focus moving into a page (a click or Tab into it) starts focus mode at once; focus moving
     // anywhere else ends it.
     const onFocusIn = (event: FocusEvent) => {
-      set(inEditor(event.target))
+      // Not when a navigation put the cursor in the new page: the hand may still be on the mouse
+      // (clicking the week arrows again); typing starts it.
+      if (!isFocusAfterNavigation()) set(inEditor(event.target))
       restartIdle()
     }
 

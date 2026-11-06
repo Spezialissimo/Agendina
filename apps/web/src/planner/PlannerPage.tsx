@@ -7,8 +7,9 @@ import {
   setSplitSizes,
   type DayKey,
 } from '@agendina/core'
+import type { NoteKind } from '@agendina/contract'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useApi, useToday } from '../app/AppProviders.tsx'
 import { SettingsIcon, SignOutIcon } from '../app/icons.tsx'
@@ -22,6 +23,7 @@ import { SettingsDialog } from '../settings/SettingsDialog.tsx'
 import { LayoutView } from './LayoutView.tsx'
 import { useFocusMode } from './useFocusMode.ts'
 import { PlannerContext } from './PlannerContext.tsx'
+import { PageFocus, PageFocusContext, focusTarget, type PageFocusApi } from './pageFocus.ts'
 import { WeekStrip } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { useSettings } from './useSettings.ts'
@@ -45,9 +47,35 @@ function Planner({ focus }: { focus: DayKey }) {
   const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
 
+  const [pageFocus] = useState(() => new PageFocus())
+  useEffect(() => pageFocus.connect(document), [pageFocus])
+  // A request for another day lapses (e.g. the browser's back button went elsewhere meanwhile).
+  useEffect(() => {
+    const request = pageFocus.get()
+    if (request !== undefined && request.day !== focus) pageFocus.cancel(request.id)
+  }, [pageFocus, focus])
+  const focusAfterNavigation = useCallback(
+    (day: DayKey, side?: NoteKind) => {
+      if (settings === undefined || !pageFocus.mayMoveFocus()) return
+      const target = focusTarget(
+        resolveLayout(settings.layout, day, settings.weekRule),
+        side ?? pageFocus.side ?? 'day',
+      )
+      if (target !== undefined) pageFocus.request(target.kind, target.key, day)
+    },
+    [pageFocus, settings],
+  )
+  const pageFocusApi = useMemo<PageFocusApi>(
+    () => ({ store: pageFocus, focusAfterNavigation }),
+    [pageFocus, focusAfterNavigation],
+  )
+
   const run = useCallback(
     (id: CommandId) => {
-      const go = (day: DayKey) => void navigate(`/day/${day}`)
+      const go = (day: DayKey) => {
+        focusAfterNavigation(day)
+        void navigate(`/day/${day}`)
+      }
       switch (id) {
         case 'focus.previousDay':
           go(addDays(currentDay(), -1))
@@ -87,7 +115,7 @@ function Planner({ focus }: { focus: DayKey }) {
           break
       }
     },
-    [currentDay, today, navigate, api, queryClient],
+    [currentDay, today, navigate, api, queryClient, focusAfterNavigation],
   )
 
   useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
@@ -95,73 +123,75 @@ function Planner({ focus }: { focus: DayKey }) {
   const focusMode = useFocusMode(focusModeOn && !paletteOpen && !settingsOpen, focus, idleMs)
 
   return (
-    <div className="planner" data-focus-mode={focusMode || undefined}>
-      <header className="topbar">
-        <span className="brand">Agendina</span>
-        {settings !== undefined && (
-          <WeekStrip
-            focus={focus}
-            rule={settings.weekRule}
-            calendarOpen={calendarOpen}
-            setCalendarOpen={setCalendarOpen}
+    <PageFocusContext value={pageFocusApi}>
+      <div className="planner" data-focus-mode={focusMode || undefined}>
+        <header className="topbar">
+          <span className="brand">Agendina</span>
+          {settings !== undefined && (
+            <WeekStrip
+              focus={focus}
+              rule={settings.weekRule}
+              calendarOpen={calendarOpen}
+              setCalendarOpen={setCalendarOpen}
+            />
+          )}
+          <div className="topbar-actions">
+            <button
+              type="button"
+              className="icon"
+              aria-label="Settings"
+              title="Settings"
+              onClick={() => {
+                run('settings.open')
+              }}
+            >
+              <SettingsIcon />
+            </button>
+            <button
+              type="button"
+              className="icon"
+              aria-label="Sign out"
+              title="Sign out"
+              onClick={() => {
+                run('account.signOut')
+              }}
+            >
+              <SignOutIcon />
+            </button>
+          </div>
+        </header>
+        <main className="pages">
+          {isError && <p role="alert">Your settings could not be loaded.</p>}
+          {settings !== undefined && (
+            <PlannerContext value={{ weekRule: settings.weekRule }}>
+              <LayoutView
+                layout={resolveLayout(settings.layout, focus, settings.weekRule)}
+                onResize={(splitId, sizes) => {
+                  update({ ...settings, layout: setSplitSizes(settings.layout, splitId, sizes) })
+                }}
+              />
+            </PlannerContext>
+          )}
+        </main>
+        {settingsOpen && settings !== undefined && (
+          <SettingsDialog
+            settings={settings}
+            onChange={update}
+            onClose={() => {
+              setSettingsOpen(false)
+            }}
           />
         )}
-        <div className="topbar-actions">
-          <button
-            type="button"
-            className="icon"
-            aria-label="Settings"
-            title="Settings"
-            onClick={() => {
-              run('settings.open')
+        {paletteOpen && (
+          <CommandPalette
+            keymap={keymap}
+            onRun={run}
+            onClose={() => {
+              setPaletteOpen(false)
             }}
-          >
-            <SettingsIcon />
-          </button>
-          <button
-            type="button"
-            className="icon"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={() => {
-              run('account.signOut')
-            }}
-          >
-            <SignOutIcon />
-          </button>
-        </div>
-      </header>
-      <main className="pages">
-        {isError && <p role="alert">Your settings could not be loaded.</p>}
-        {settings !== undefined && (
-          <PlannerContext value={{ weekRule: settings.weekRule }}>
-            <LayoutView
-              layout={resolveLayout(settings.layout, focus, settings.weekRule)}
-              onResize={(splitId, sizes) => {
-                update({ ...settings, layout: setSplitSizes(settings.layout, splitId, sizes) })
-              }}
-            />
-          </PlannerContext>
+          />
         )}
-      </main>
-      {settingsOpen && settings !== undefined && (
-        <SettingsDialog
-          settings={settings}
-          onChange={update}
-          onClose={() => {
-            setSettingsOpen(false)
-          }}
-        />
-      )}
-      {paletteOpen && (
-        <CommandPalette
-          keymap={keymap}
-          onRun={run}
-          onClose={() => {
-            setPaletteOpen(false)
-          }}
-        />
-      )}
-    </div>
+      </div>
+    </PageFocusContext>
   )
 }
