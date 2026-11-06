@@ -42,7 +42,7 @@ export const COMMANDS = [
     context: 'global',
     defaultBindings: ['Mod+KeyK'],
   },
-  { id: 'page.nextTextSize', title: 'Text size', context: 'global', defaultBindings: [] },
+  { id: 'page.nextTextSize', title: 'Text size (cycle)', context: 'global', defaultBindings: [] },
   { id: 'settings.open', title: 'Settings…', context: 'global', defaultBindings: [] },
   { id: 'account.signOut', title: 'Sign out', context: 'global', defaultBindings: [] },
   {

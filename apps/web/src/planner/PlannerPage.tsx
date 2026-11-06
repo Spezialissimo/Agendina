@@ -25,14 +25,7 @@ import { PlannerContext } from './PlannerContext.tsx'
 import { WeekStrip } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { useSettings } from './useSettings.ts'
-import {
-  nextTextSize,
-  readTextSize,
-  TEXT_SIZE_LABEL,
-  useTextSize,
-  writeTextSize,
-  type PageKind,
-} from './textSize.ts'
+import { nextTextSize, readTextSize, writeTextSize, type PageKind } from './textSize.ts'
 
 /** The page being typed in (or last typed in), else the day page. Read when a command runs. */
 function targetPageKind(): PageKind {
@@ -109,8 +102,6 @@ function Planner({ focus }: { focus: DayKey }) {
     [currentDay, today, navigate, api, queryClient],
   )
 
-  // The palette takes focus from the editor; the editor last used still tells which page it is.
-  const textSize = useTextSize(paletteOpen ? targetPageKind() : 'day')
   useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
   const { enabled: focusModeOn, idleMs } = settings?.focusMode ?? DEFAULT_FOCUS_MODE
   const focusMode = useFocusMode(focusModeOn && !paletteOpen && !settingsOpen, focus, idleMs)
@@ -177,7 +168,6 @@ function Planner({ focus }: { focus: DayKey }) {
       {paletteOpen && (
         <CommandPalette
           keymap={keymap}
-          titles={{ 'page.nextTextSize': `Text size (${TEXT_SIZE_LABEL[textSize]})` }}
           onRun={run}
           onClose={() => {
             setPaletteOpen(false)

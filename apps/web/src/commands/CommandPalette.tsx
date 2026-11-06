@@ -5,19 +5,17 @@ import { COMMANDS, type CommandId } from './registry.ts'
 
 interface Props {
   keymap: KeymapEntry[]
-  /** Titles that differ from the registry's, such as one showing the current state. */
-  titles?: Partial<Record<CommandId, string>>
   onRun: (id: CommandId) => void
   onClose: () => void
 }
 
 /** ⌘K: find any command by name, see its shortcut, run it. */
-export function CommandPalette({ keymap, titles = {}, onRun, onClose }: Props) {
+export function CommandPalette({ keymap, onRun, onClose }: Props) {
   const platform = usePlatform()
   const listId = useId()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
-  const matches = COMMANDS.map((c) => ({ ...c, title: titles[c.id] ?? c.title })).filter(
+  const matches = COMMANDS.filter(
     (c) => c.id !== 'palette.open' && c.title.toLowerCase().includes(query.trim().toLowerCase()),
   )
   const selected = Math.min(active, matches.length - 1)

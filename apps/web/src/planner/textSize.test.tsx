@@ -160,14 +160,14 @@ describe('text size', () => {
   })
 
   describe('"Text size" command', () => {
-    /** Opens the palette, checks the entry's title and that it shows no shortcut, runs it. */
-    const runCommand = async (user: ReturnType<typeof renderApp>['user'], title: string) => {
+    /** Opens the palette, checks it is the one match, without a shortcut, runs it. */
+    const runCommand = async (user: ReturnType<typeof renderApp>['user']) => {
       await user.keyboard('{Meta>}{k}{/Meta}')
       await user.keyboard('text size')
       const options = within(screen.getByRole('dialog', { name: 'Commands' })).getAllByRole(
         'option',
       )
-      expect(options.map((o) => o.textContent)).toEqual([title])
+      expect(options.map((o) => o.textContent)).toEqual(['Text size (cycle)'])
       await user.keyboard('{Enter}')
     }
 
@@ -177,21 +177,21 @@ describe('text size', () => {
       expect(command?.defaultBindings).toEqual([])
     })
 
-    it('shows the size of the day page in the palette when no editor has focus, and cycles it', async () => {
+    it('cycles the day page when no editor has focus', async () => {
       const { user } = await open()
 
-      await runCommand(user, 'Text size (Medium)')
+      await runCommand(user)
 
       expect(size(DAY)).toBe('large')
       expect(size(WEEK)).toBe('medium')
     })
 
-    it('cycles the page whose editor has focus, shown with that page’s size', async () => {
+    it('cycles the page whose editor has focus', async () => {
       localStorage.setItem(WEEK_KEY, 'small')
       const { user } = await open()
       placeCursor(screen.getByRole('textbox', { name: WEEK }), 0)
 
-      await runCommand(user, 'Text size (Small)')
+      await runCommand(user)
 
       expect(size(WEEK)).toBe('medium')
       expect(size(DAY)).toBe('medium')
@@ -203,7 +203,7 @@ describe('text size', () => {
       const { user } = await open()
       placeCursor(screen.getByRole('textbox', { name: DAY }), 0)
 
-      await runCommand(user, 'Text size (Large)')
+      await runCommand(user)
 
       expect(size(DAY)).toBe('small')
       expect(size(WEEK)).toBe('medium')
@@ -216,7 +216,7 @@ describe('text size', () => {
       expect(screen.getByRole('combobox')).toHaveFocus()
       await user.keyboard('{Escape}')
 
-      await runCommand(user, 'Text size (Medium)')
+      await runCommand(user)
 
       expect(size(WEEK)).toBe('large')
       expect(size(DAY)).toBe('medium')
