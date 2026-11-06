@@ -129,10 +129,64 @@ describe('livePreview', () => {
     expect(lineClasses(items, s)).toEqual(['2:cm-task-done'])
   })
 
-  it('keeps a to-do’s list mark on the cursor line, but still shows its checkbox', () => {
+  it('keeps a to-do’s list mark hidden while the cursor is elsewhere on its line', () => {
     const s = state('- [ ] call ‸dentist')
 
+    expect(rendered(s, livePreview(s))).toBe('☐ call dentist')
+  })
+
+  it('keeps a to-do’s list mark hidden with the cursor right after the checkbox', () => {
+    const s = state('- [ ]‸ call dentist')
+
+    expect(rendered(s, livePreview(s))).toBe('☐ call dentist')
+  })
+
+  it('reveals a to-do’s list mark when the cursor is at the start of the line or inside the mark', () => {
+    for (const doc of ['‸- [ ] call dentist', '-‸ [ ] call dentist', '- ‸[ ] call dentist']) {
+      const s = state(doc)
+
+      expect(rendered(s, livePreview(s))).toBe('- ☐ call dentist')
+    }
+  })
+
+  it('reveals the list mark of an indented to-do when the cursor touches it', () => {
+    const s = state('- parent\n  ‸- [ ] child')
+
+    expect(rendered(s, livePreview(s))).toBe('• parent\n  - ☐ child')
+  })
+
+  it('keeps the number of an ordered to-do visible on its cursor line only', () => {
+    const on = state('1. [ ] call ‸dentist\n2) [ ] other')
+    const off = state('1. [ ] call dentist\n2) [ ] ‸other')
+
+    expect(rendered(on, livePreview(on))).toBe('1. ☐ call dentist\n☐ other')
+    expect(rendered(off, livePreview(off))).toBe('☐ call dentist\n2) ☐ other')
+  })
+
+  it('hides the list mark of a quoted to-do but keeps the quote mark raw on the cursor line', () => {
+    const away = state('> - [ ] call ‸dentist')
+    const start = state('> ‸- [ ] call dentist')
+
+    expect(rendered(away, livePreview(away))).toBe('> ☐ call dentist')
+    expect(rendered(start, livePreview(start))).toBe('> - ☐ call dentist')
+  })
+
+  it('reveals a to-do’s list mark when a selection covers it', () => {
+    const s = state('- [ ] call dentist').update({ selection: EditorSelection.range(0, 8) }).state
+
     expect(rendered(s, livePreview(s))).toBe('- ☐ call dentist')
+  })
+
+  it('hides a to-do’s list mark in an unfocused editor', () => {
+    const s = state('‸- [ ] call dentist')
+
+    expect(rendered(s, livePreview(s, { focused: false }))).toBe('☐ call dentist')
+  })
+
+  it('still keeps a plain bullet raw while the cursor is on its line', () => {
+    const s = state('- call ‸dentist')
+
+    expect(rendered(s, livePreview(s))).toBe('- call dentist')
   })
 
   it('shows the brackets when the cursor is inside them', () => {
@@ -192,6 +246,9 @@ describe('livePreview', () => {
       '> quote',
       '---',
       '- [ ] task',
+      '  - [x] done',
+      '1. [ ] task',
+      '> - [ ] task',
       'plain words',
       '',
     )
@@ -208,7 +265,16 @@ describe('livePreview', () => {
         hidden.forEach((item, index) => {
           expect(item.from).toBeLessThan(item.to)
           if (index > 0) expect(item.from).toBeGreaterThanOrEqual(hidden[index - 1]?.to ?? 0)
-          expect(item.to <= cursorLine.from || item.from > cursorLine.to).toBe(true)
+          // A bullet to-do's list mark (and one space) is the one syntax that stays hidden on the
+          // cursor line, while the cursor is past the checkbox's closing bracket.
+          const task = /^((?:\s*>)?\s*)([-*+]) \[[ xX]\]/.exec(cursorLine.text)
+          const markFrom = cursorLine.from + (task?.[1]?.length ?? 0)
+          const todoMark =
+            task !== null &&
+            item.from === markFrom &&
+            item.to <= markFrom + (task[2]?.length ?? 0) + 1 &&
+            cursor >= cursorLine.from + task[0].length
+          expect(todoMark || item.to <= cursorLine.from || item.from > cursorLine.to).toBe(true)
         })
       }),
       { numRuns: 500 },

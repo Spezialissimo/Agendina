@@ -29,7 +29,8 @@ const INLINE: Record<string, { className: string; mark: string }> = {
  * Live preview of a page (ADR 0004): headings, emphasis, links, bullets, quotes and rules are
  * rendered; on every line holding a cursor (in a focused editor) the syntax stays visible so it
  * can be edited. To-dos and checkbox cells become checkboxes (raw only while the cursor is inside
- * their brackets). Tables are grids, and aligned text while the cursor is in them.
+ * their brackets; a to-do's `- ` shows only while the cursor touches it). Tables are grids, and
+ * aligned text while the cursor is in them.
  */
 export function livePreview(state: EditorState, { focused = true } = {}): PreviewItem[] {
   const tree = fullTree(state)
@@ -48,9 +49,12 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
   const items: PreviewItem[] = []
   /** Tables shown as grids: their checkboxes are drawn by the grid. */
   const grids: { from: number; to: number }[] = []
-  /** Hides a syntax mark, plus the space after it when there is one (`## `, `> `). */
-  const hide = (node: SyntaxNode, withSpace = false) => {
-    if (raw(node.from)) return
+  /**
+   * Hides a syntax mark, plus the space after it when there is one (`## `, `> `). Marks on a
+   * cursor line stay raw, unless `evenWithCursor`.
+   */
+  const hide = (node: SyntaxNode, withSpace = false, evenWithCursor = false) => {
+    if (!evenWithCursor && raw(node.from)) return
     const to =
       withSpace && state.doc.sliceString(node.to, node.to + 1) === ' ' ? node.to + 1 : node.to
     items.push({ kind: 'hide', from: node.from, to })
@@ -113,8 +117,20 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
           const task = node.getChild('Task')
           if (mark === null) return
           if (task !== null) {
-            if (!raw(mark.from)) hide(mark, true)
             const marker = task.getChild('TaskMarker')
+            // A bullet is hidden even on the cursor line (the checkbox says it is a to-do); shown
+            // only while a cursor or selection is between the start of the line and the checkbox's
+            // `]`. The number of an ordered to-do stays raw on the cursor line like any other mark.
+            if (node.parent?.name !== 'BulletList') hide(mark, true)
+            else {
+              const touched =
+                focused &&
+                marker !== null &&
+                state.selection.ranges.some(
+                  (r) => r.to >= state.doc.lineAt(mark.from).from && r.from < marker.to,
+                )
+              if (!touched) hide(mark, true, true)
+            }
             if (marker !== null && isChecked(state.doc.sliceString(marker.from, marker.to))) {
               items.push({
                 kind: 'line',
