@@ -47,6 +47,29 @@ describe('checkboxes in a real browser', () => {
     await expect.poll(reported).toBe('- [ ] Finish report\n- [ ] Call dentist\nnotes')
   })
 
+  it('hides the list mark of a to-do while typing in it, and keeps the text verbatim', async () => {
+    await render(<Harness initial={'- [ ] Call dentist'} />)
+    const view = EditorView.findFromDOM(
+      page.getByRole('textbox', { name: 'Today' }).element() as HTMLElement,
+    )
+    if (view === null) throw new Error('no editor')
+    view.focus()
+    view.dispatch({ selection: { anchor: view.state.doc.length } })
+
+    await userEvent.keyboard(' now')
+
+    await expect.poll(reported).toBe('- [ ] Call dentist now')
+    expect(view.contentDOM.querySelector('.cm-line')?.textContent).not.toContain('- ')
+
+    view.dispatch({ selection: { anchor: 0 } })
+
+    await vi.waitFor(() => {
+      expect(view.contentDOM.querySelector('.cm-line')?.textContent).toContain('- ')
+    })
+    await userEvent.keyboard('{Delete}')
+    await expect.poll(reported).toBe(' [ ] Call dentist now')
+  })
+
   it('ticks a workout cell by row and column', async () => {
     await render(
       <Harness initial={'| Exercise | Mo | We |\n|---|---|---|\n| Squat | [ ] | [ ] |'} />,
