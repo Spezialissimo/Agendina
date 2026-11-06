@@ -1,6 +1,7 @@
 import {
   ApiErrorBody,
   AuthState,
+  ChangesResponse,
   InstanceSettings,
   NoteConflict,
   NoteResponse,
@@ -132,6 +133,15 @@ export class Api {
     return (
       await this.call('GET', `/api/templates/${kind}/pages?${query.toString()}`, NotesResponse)
     ).notes
+  }
+
+  /**
+   * What changed after `since`, oldest first. Without `since`, no changes, only the current cursor:
+   * where to follow the feed from.
+   */
+  changes(since?: number): Promise<ChangesResponse> {
+    const query = since === undefined ? '' : `?since=${String(since)}`
+    return this.call('GET', `/api/changes${query}`, ChangesResponse)
   }
 
   async settings(): Promise<UserSettings> {

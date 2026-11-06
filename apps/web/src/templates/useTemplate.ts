@@ -10,6 +10,5 @@ export function useTemplate(kind: NoteKind) {
   return useQuery({
     queryKey: templateQueryKey(kind),
     queryFn: () => api.template(kind),
-    refetchOnWindowFocus: true,
   })
 }

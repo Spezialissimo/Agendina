@@ -24,6 +24,7 @@ import { useFocusMode } from './useFocusMode.ts'
 import { PlannerContext } from './PlannerContext.tsx'
 import { WeekStrip } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
+import { useLiveUpdates } from './useLiveUpdates.ts'
 import { useSettings } from './useSettings.ts'
 
 export function PlannerPage() {
@@ -39,6 +40,7 @@ function Planner({ focus }: { focus: DayKey }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { settings, isError, update } = useSettings()
+  const live = useLiveUpdates()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -98,7 +100,7 @@ function Planner({ focus }: { focus: DayKey }) {
     <div className="planner" data-focus-mode={focusMode || undefined}>
       <header className="topbar">
         <span className="brand">Agendina</span>
-        {settings !== undefined && (
+        {settings !== undefined && live && (
           <WeekStrip
             focus={focus}
             rule={settings.weekRule}
@@ -133,7 +135,7 @@ function Planner({ focus }: { focus: DayKey }) {
       </header>
       <main className="pages">
         {isError && <p role="alert">Your settings could not be loaded.</p>}
-        {settings !== undefined && (
+        {settings !== undefined && live && (
           <PlannerContext value={{ weekRule: settings.weekRule }}>
             <LayoutView
               layout={resolveLayout(settings.layout, focus, settings.weekRule)}
