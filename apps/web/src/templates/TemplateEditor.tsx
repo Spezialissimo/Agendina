@@ -6,7 +6,7 @@ import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
 import { PageEditor } from '../editor/PageEditor.tsx'
 import { usePlannerContext } from '../planner/PlannerContext.tsx'
-import { pageTitle } from '../planner/weeks.ts'
+import { pageLabel } from '../planner/weeks.ts'
 import { applyTemplate, savePage, type PageConflict } from './applyTemplate.ts'
 import { templateQueryKey } from './useTemplate.ts'
 
@@ -129,7 +129,7 @@ export function TemplateEditor({ kind, pageKey, template, pageText, onClose }: P
           <ConflictResolver
             key={`${conflict.key}@${String(conflict.revision)}`}
             chunks={conflict.chunks}
-            texts={{ ...PAGE_CLASH_TEXTS, title: pageTitle(kind, conflict.key, locale, weekRule) }}
+            texts={{ ...PAGE_CLASH_TEXTS, title: pageLabel(kind, conflict.key, locale, weekRule) }}
             onResolve={(resolved) => {
               void savePage(api, kind, conflict, conflict.base, resolved, next).then((again) => {
                 done(conflict.key, again)

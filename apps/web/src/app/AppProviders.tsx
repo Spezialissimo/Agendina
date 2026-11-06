@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import type { Platform } from '@agendina/core'
 import { Api } from '../api/client.ts'
+import { UI_LOCALE } from '../locale.ts'
 import { dayKeyFromDate } from '../time.ts'
 
 interface Environment {
@@ -24,7 +25,7 @@ const EnvironmentContext = createContext<Environment | undefined>(undefined)
 export function AppProviders({
   api = new Api(),
   now = () => new Date(),
-  locale = navigator.language,
+  locale = UI_LOCALE,
   platform = detectPlatform(),
   currentPath = () => window.location.pathname,
   children,

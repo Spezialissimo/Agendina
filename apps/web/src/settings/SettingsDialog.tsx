@@ -13,7 +13,7 @@ interface Props {
 }
 
 const WEEKDAYS: Weekday[] = [1, 2, 3, 4, 5, 6, 7]
-// Monday 26 October 2026, to name the weekdays in the user's language.
+// Monday 26 October 2026, to name the weekdays in the UI language.
 const A_MONDAY = '2026-10-26'
 
 const RESTING_TIMES_MS = [1000, 1500, 2000, 3000, 5000, 10_000]
@@ -22,7 +22,7 @@ const seconds = (ms: number) => `${String(ms / 1000)} ${ms === 1000 ? 'second' :
 
 const NUMBERING: { minimalDays: WeekRule['minimalDays']; label: string }[] = [
   { minimalDays: 4, label: 'The first week with four days of the new year (ISO)' },
-  { minimalDays: 1, label: 'The week with 1 January' },
+  { minimalDays: 1, label: 'The week with January 1' },
 ]
 
 /** The user's preferences; changes apply right away and are saved shortly after. */

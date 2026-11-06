@@ -1,10 +1,10 @@
 import { addDays, compareDays, type DayKey, type NoteView } from '@agendina/core'
 import { useQuery } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
-import { formatRange, pageTitle } from './weeks.ts'
+import { pageLabel, pageSubtitle, pageTitle } from './weeks.ts'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
 import { PageEditor } from '../editor/PageEditor.tsx'
 import { useNoteDocument, type SaveStatus } from '../editor/useNoteDocument.ts'
@@ -37,7 +37,6 @@ export function NotePage({ view }: { view: NoteView }) {
   const locale = useLocale()
   const navigate = useNavigate()
   const { weekRule } = usePlannerContext()
-  const titleId = useId()
   const pageKey = usePageKey(view)
   const note = useQuery({
     queryKey: ['note', view.kind, pageKey],
@@ -49,13 +48,15 @@ export function NotePage({ view }: { view: NoteView }) {
   const [notice, setNotice] = useState<{ key: string; text: string } | undefined>(undefined)
 
   const title = pageTitle(view.kind, view.key, locale, weekRule)
-  const range = view.kind === 'week' ? formatRange(view.key, addDays(view.key, 6), locale) : ''
+  const subtitle = pageSubtitle(view.kind, view.key, locale)
+  // The heading is only the weekday for a day: the section is named by the whole date.
+  const label = pageLabel(view.kind, view.key, locale, weekRule)
 
   return (
-    <section className="page" aria-labelledby={titleId} data-editable={view.editable || undefined}>
+    <section className="page" aria-label={label} data-editable={view.editable || undefined}>
       <header className="page-header">
-        <h2 id={titleId}>{title}</h2>
-        {view.kind === 'week' && <p className="page-subtitle">{range}</p>}
+        <h2>{title}</h2>
+        <p className="page-subtitle">{subtitle}</p>
         {view.editable && !editingTemplate && (
           <button
             type="button"
@@ -93,7 +94,7 @@ export function NotePage({ view }: { view: NoteView }) {
         <EditablePage
           key={`${view.kind}/${pageKey}`}
           view={{ ...view, key: pageKey }}
-          label={title}
+          label={label}
         />
       ) : (
         <div className="page-content">
@@ -104,7 +105,7 @@ export function NotePage({ view }: { view: NoteView }) {
         <button
           type="button"
           className="page-open"
-          aria-label={`Open ${view.kind === 'day' ? title : `${title} (${range})`}`}
+          aria-label={`Open ${view.kind === 'day' ? label : `${label} (${subtitle})`}`}
           onClick={() => void navigate(`/day/${view.focusOnClick ?? ''}`)}
         />
       )}
