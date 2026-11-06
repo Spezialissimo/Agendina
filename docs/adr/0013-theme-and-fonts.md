@@ -18,8 +18,8 @@ Layout stays as in ADR 0005; this is about the theme only.
   brand colour; "today" and the current day are marked by weight and a grey chip. Only
   `--danger` keeps a colour, so problems stand out. Shadows remain only on what floats above the
   pages (popovers, dialogs).
-- **Bundled fonts:** Inter (interface, headings) and Source Serif 4 (the text you write, read-only
-  pages, editor headings), both variable fonts from the `@fontsource-variable` npm packages,
+- **Bundled fonts:** Inter (interface, headings) and Source Serif 4 (the text you write, page
+  titles, read-only pages, editor headings), both variable fonts from the `@fontsource-variable` npm packages,
   imported in `main.tsx`, so Vite emits the `.woff2` files into the build and the instance serves
   them. Both are under the **SIL Open Font License 1.1**: bundling and redistribution are allowed,
   the licence text ships in each package, the fonts are used unmodified. This replaces the earlier
