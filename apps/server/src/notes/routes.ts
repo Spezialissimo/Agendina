@@ -15,7 +15,14 @@ import {
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import { ApiError, parse, readJson, requireUser, type AppEnv } from '../http.ts'
-import { deleteNote, getNote, listChanges, listNotes, saveNote } from './repository.ts'
+import {
+  deleteNote,
+  getNote,
+  latestChange,
+  listChanges,
+  listNotes,
+  saveNote,
+} from './repository.ts'
 
 /** The week strip and a year view are the largest ranges the app needs. */
 const MAX_RANGE_DAYS = 366
@@ -80,7 +87,11 @@ export function notesRoutes() {
   routes.get('/changes', async (c) => {
     const user = requireUser(c)
     const { since, limit } = parse(ChangesQuery, c.req.query())
-    return c.json((await listChanges(c.get('db'), user.id, since, limit)) satisfies ChangesResponse)
+    const feed =
+      since === undefined
+        ? { changes: [], cursor: await latestChange(c.get('db'), user.id), hasMore: false }
+        : await listChanges(c.get('db'), user.id, since, limit)
+    return c.json(feed satisfies ChangesResponse)
   })
 
   return routes

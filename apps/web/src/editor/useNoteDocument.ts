@@ -37,7 +37,6 @@ export function useNoteDocument(kind: NoteKind, key: string) {
   const note = useQuery({
     queryKey,
     queryFn: () => api.getNote(kind, key),
-    refetchOnWindowFocus: true,
   })
   const template = useTemplate(kind)
   const [text, setText] = useState('')
@@ -63,7 +62,8 @@ export function useNoteDocument(kind: NoteKind, key: string) {
   }
 
   // Load the note (or the template for a page not written yet), and later adopt newer revisions
-  // from the server while the page is clean.
+  // from the server while the page is clean. Also checked again when the page becomes clean (the
+  // status turns to saved): a newer revision may have arrived while it was not.
   useEffect(() => {
     const s = sync.current
     if (note.data === undefined || template.data === undefined) return
@@ -81,7 +81,7 @@ export function useNoteDocument(kind: NoteKind, key: string) {
       show(content)
       setStatus('saved')
     }
-  }, [note.data, template.data])
+  }, [note.data, template.data, status])
 
   // Retries and follow-up saves call the latest `save` through this ref.
   const saveLater = useRef<() => void>(() => undefined)
@@ -92,14 +92,23 @@ export function useNoteDocument(kind: NoteKind, key: string) {
     s.base = current.revision
     s.saved = current.content
     s.retries = 0
-    queryClient.setQueryData(queryKey, current)
+    // A late answer must not replace a newer revision fetched meanwhile; the page adopts that one
+    // once it is clean.
+    queryClient.setQueryData<Note | null>(queryKey, (cached) =>
+      cached != null && cached.revision > current.revision ? cached : current,
+    )
   }
 
   const save = useCallback(
     async ({ keepalive = false }: { keepalive?: boolean } = {}): Promise<void> => {
       const s = sync.current
       clearTimeout(s.timer)
-      if (!s.loaded || s.inflight || s.conflicted || s.text === s.saved) return
+      if (!s.loaded || s.inflight || s.conflicted) return
+      if (s.text === s.saved) {
+        // Typed and erased again: nothing to save, and the page is clean once more.
+        setStatus('saved')
+        return
+      }
       s.inflight = true
       const sent = s.text
       setStatus('saving')
