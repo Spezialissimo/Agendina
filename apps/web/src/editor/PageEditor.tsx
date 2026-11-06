@@ -6,7 +6,7 @@ import { Annotation, EditorState, type TransactionSpec } from '@codemirror/state
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { livePreviewExtension } from './livePreview.ts'
-import { rememberFocus } from './focusedEditor.ts'
+import { focusAfterNavigation, rememberFocus } from './focusedEditor.ts'
 import { nestListItems } from './lists.ts'
 import { slashSource } from './slashMenu.ts'
 import { moveToCell } from './tables.ts'
@@ -19,6 +19,12 @@ interface Props {
   onChange: (value: string) => void
   /** For the slash menu's week tracker; ISO weeks if not given. */
   weekRule?: WeekRule
+  /** The cursor and selection to start with; the start of the text if not given. */
+  initialSelection?: { anchor: number; head: number }
+  /** Called when the user moves the cursor or edits, while the editor has focus. */
+  onSelectionChange?: (selection: { anchor: number; head: number }) => void
+  /** Takes keyboard focus when given a new request id, then calls `done`. */
+  focusRequest?: { id: number; done: () => void } | undefined
 }
 
 /** Applies an editor command if it applies here; false lets the key do its usual job. */
@@ -75,18 +81,30 @@ const External = Annotation.define<boolean>()
  * The editing surface of a page: CodeMirror 6 on the page's markdown (ADR 0004). The text is the
  * markdown exactly as stored. `data-editor` tells the shortcut handler that editor commands apply.
  */
-export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Props) {
+export function PageEditor({
+  label,
+  value,
+  onChange,
+  weekRule = ISO_WEEK,
+  initialSelection,
+  onSelectionChange,
+  focusRequest,
+}: Props) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | undefined>(undefined)
   const latestOnChange = useRef(onChange)
   const latestWeekRule = useRef(weekRule)
+  const latestOnSelectionChange = useRef(onSelectionChange)
+  const latestFocusRequest = useRef(focusRequest)
   /** Texts reported through onChange since the parent last caught up with the editor. */
   const reported = useRef(new Set<string>())
 
   useLayoutEffect(() => {
     latestOnChange.current = onChange
     latestWeekRule.current = weekRule
-  }, [onChange, weekRule])
+    latestOnSelectionChange.current = onSelectionChange
+    latestFocusRequest.current = focusRequest
+  }, [onChange, weekRule, onSelectionChange, focusRequest])
 
   useEffect(() => {
     if (host.current === null) return
@@ -94,6 +112,7 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
       parent: host.current,
       state: EditorState.create({
         doc: value,
+        ...(initialSelection === undefined ? {} : { selection: initialSelection }),
         extensions: [
           history(),
           keymap.of([
@@ -126,6 +145,10 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
               reported.current.add(text)
               latestOnChange.current(text)
             }
+            if ((update.selectionSet || update.docChanged) && update.view.hasFocus) {
+              const { anchor, head } = update.state.selection.main
+              latestOnSelectionChange.current?.({ anchor, head })
+            }
           }),
         ],
       }),
@@ -155,6 +178,14 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
     const change = minimalChange(current, value)
     if (change !== undefined) editor.dispatch({ changes: change, annotations: External.of(true) })
   }, [value])
+
+  // After the editor is created (effects run in order), so a page that just loaded takes focus.
+  const focusRequestId = focusRequest?.id
+  useEffect(() => {
+    if (focusRequestId === undefined || view.current === undefined) return
+    focusAfterNavigation(view.current)
+    latestFocusRequest.current?.done()
+  }, [focusRequestId])
 
   return <div ref={host} className="editor" data-editor="" />
 }

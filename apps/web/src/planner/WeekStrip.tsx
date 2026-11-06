@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { useApi, useLocale, useToday } from '../app/AppProviders.tsx'
 import { ChevronLeftIcon, ChevronRightIcon } from '../app/icons.tsx'
 import { MonthPicker } from './MonthPicker.tsx'
+import { usePageFocus } from './pageFocus.ts'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { format, formatRange, weekTitle } from './weeks.ts'
 
@@ -28,18 +29,32 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
       return new Set(notes.filter((n) => n.content.trim() !== '').map((n) => n.key))
     },
   })
-  const go = (day: DayKey) => void navigate(`/day/${day}`)
+  const { focusAfterNavigation } = usePageFocus()
+  /** Picking a day writes in that day. */
+  const pick = (day: DayKey) => {
+    focusAfterNavigation(day, 'day')
+    void navigate(`/day/${day}`)
+  }
+  /**
+   * The week arrows and Today keep the side the user was writing on. Pressed with Enter or Space
+   * (a click without a press count), focus stays on the button, to press it again.
+   */
+  const step = (event: { detail: number }, day: DayKey) => {
+    if (event.detail !== 0) focusAfterNavigation(day)
+    void navigate(`/day/${day}`)
+  }
   const currentDay = useCurrentDay(focus)
 
   return (
-    <nav className="week-strip" aria-label="Week">
+    // Clicks here keep the side the user was writing on, for the week arrows.
+    <nav className="week-strip" aria-label="Week" data-keeps-page-side="">
       <button
         type="button"
         className="icon"
         aria-label="Previous week"
         title="Previous week"
-        onClick={() => {
-          go(addDays(currentDay(), -7))
+        onClick={(event) => {
+          step(event, addDays(currentDay(), -7))
         }}
       >
         <ChevronLeftIcon />
@@ -64,6 +79,10 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
                 aria-label={label}
                 aria-current={day === focus ? 'date' : undefined}
                 data-today={day === today || undefined}
+                onClick={(event) => {
+                  const plain = !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+                  if (event.button === 0 && plain) focusAfterNavigation(day, 'day')
+                }}
               >
                 <span className="week-day-name">{weekday}</span>
                 <span className="week-day-date">{date}</span>
@@ -78,8 +97,8 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
         className="icon"
         aria-label="Next week"
         title="Next week"
-        onClick={() => {
-          go(addDays(currentDay(), 7))
+        onClick={(event) => {
+          step(event, addDays(currentDay(), 7))
         }}
       >
         <ChevronRightIcon />
@@ -87,8 +106,8 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
       <button
         type="button"
         className="link"
-        onClick={() => {
-          go(today)
+        onClick={(event) => {
+          step(event, today)
         }}
       >
         Today
@@ -96,7 +115,9 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
       <MonthPicker
         focus={focus}
         rule={rule}
-        onPick={go}
+        onPick={(day) => {
+          pick(day)
+        }}
         open={calendarOpen}
         setOpen={setCalendarOpen}
       />

@@ -1,12 +1,22 @@
 import { addDays, compareDays, type DayKey, type NoteView } from '@agendina/core'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
+import { useFocusRequest, usePageFocus } from './pageFocus.ts'
 import { pageLabel, pageSubtitle, pageTitle } from './weeks.ts'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
 import { PageEditor } from '../editor/PageEditor.tsx'
+import {
+  browserStorage,
+  loadPositions,
+  placeSelection,
+  recallPosition,
+  rememberPosition,
+  savePositions,
+  type PageSelection,
+} from '../editor/pagePositions.ts'
 import { useNoteDocument, type SaveStatus } from '../editor/useNoteDocument.ts'
 import { TemplateEditor } from '../templates/TemplateEditor.tsx'
 import { useTemplate } from '../templates/useTemplate.ts'
@@ -45,6 +55,8 @@ export function NotePage({ view }: { view: NoteView }) {
   })
   const template = useTemplate(view.kind)
   const [editingTemplate, setEditingTemplate] = useState(false)
+  const focusRequest = useFocusRequest(view)
+  const { focusAfterNavigation } = usePageFocus()
   const [notice, setNotice] = useState<{ key: string; text: string } | undefined>(undefined)
 
   const title = pageTitle(view.kind, view.key, locale, weekRule)
@@ -53,7 +65,12 @@ export function NotePage({ view }: { view: NoteView }) {
   const label = pageLabel(view.kind, view.key, locale, weekRule)
 
   return (
-    <section className="page" aria-label={label} data-editable={view.editable || undefined}>
+    <section
+      className="page"
+      aria-label={label}
+      data-editable={view.editable || undefined}
+      data-page-kind={view.kind}
+    >
       <header className="page-header">
         <h2>{title}</h2>
         <p className="page-subtitle">{subtitle}</p>
@@ -84,6 +101,7 @@ export function NotePage({ view }: { view: NoteView }) {
             pageKey={pageKey}
             template={template.data}
             pageText={note.data?.content ?? ''}
+            focusRequest={focusRequest}
             onClose={(text) => {
               setEditingTemplate(false)
               if (text !== undefined) setNotice({ key: pageKey, text })
@@ -95,6 +113,7 @@ export function NotePage({ view }: { view: NoteView }) {
           key={`${view.kind}/${pageKey}`}
           view={{ ...view, key: pageKey }}
           label={label}
+          focusRequest={focusRequest}
         />
       ) : (
         <div className="page-content">
@@ -106,7 +125,11 @@ export function NotePage({ view }: { view: NoteView }) {
           type="button"
           className="page-open"
           aria-label={`Open ${view.kind === 'day' ? label : `${label} (${subtitle})`}`}
-          onClick={() => void navigate(`/day/${view.focusOnClick ?? ''}`)}
+          onClick={() => {
+            if (view.focusOnClick === undefined) return
+            focusAfterNavigation(view.focusOnClick, 'day')
+            void navigate(`/day/${view.focusOnClick}`)
+          }}
         />
       )}
     </section>
@@ -122,9 +145,27 @@ const STATUS_TEXT: Record<SaveStatus, string> = {
   conflict: 'Conflict: this page changed elsewhere',
 }
 
-function EditablePage({ view, label }: { view: NoteView; label: string }) {
+function EditablePage({
+  view,
+  label,
+  focusRequest,
+}: {
+  view: NoteView
+  label: string
+  focusRequest: { id: number; done: () => void } | undefined
+}) {
   const document = useNoteDocument(view.kind, view.key)
   const { weekRule } = usePlannerContext()
+  const { kind, key } = view
+  // Where the cursor was when this page was last used on this device (never sent to the server).
+  const [recalled] = useState(() => recallPosition(loadPositions(browserStorage), { kind, key }))
+  const rememberSelection = useCallback(
+    (selection: PageSelection) => {
+      const positions = loadPositions(browserStorage)
+      savePositions(browserStorage, rememberPosition(positions, { kind, key }, selection))
+    },
+    [kind, key],
+  )
   return (
     <>
       {document.isError && document.status === 'loading' && (
@@ -137,6 +178,9 @@ function EditablePage({ view, label }: { view: NoteView; label: string }) {
           value={document.text}
           onChange={document.edit}
           weekRule={weekRule}
+          initialSelection={placeSelection(recalled, document.text.length)}
+          onSelectionChange={rememberSelection}
+          focusRequest={focusRequest}
         />
       ) : (
         <ConflictResolver

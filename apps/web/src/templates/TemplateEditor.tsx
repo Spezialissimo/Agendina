@@ -19,6 +19,8 @@ interface Props {
   pageText: string
   /** Back to the page, with a summary of what changed (undefined when nothing was saved). */
   onClose: (notice?: string) => void
+  /** Takes keyboard focus for a navigation that arrived at this page (see planner/pageFocus.ts). */
+  focusRequest?: { id: number; done: () => void } | undefined
 }
 
 type Phase =
@@ -35,7 +37,14 @@ const PAGE_CLASH_TEXTS = {
 }
 
 /** Edits the day or week template from a page, then applies the change (ADR 0008). */
-export function TemplateEditor({ kind, pageKey, template, pageText, onClose }: Props) {
+export function TemplateEditor({
+  kind,
+  pageKey,
+  template,
+  pageText,
+  onClose,
+  focusRequest,
+}: Props) {
   const api = useApi()
   const queryClient = useQueryClient()
   const locale = useLocale()
@@ -151,7 +160,14 @@ export function TemplateEditor({ kind, pageKey, template, pageText, onClose }: P
         New {kind} pages start from this. Saving also updates this page and the later pages made
         from the template; earlier pages stay as they are.
       </p>
-      <PageEditor label={label} value={text} onChange={setText} weekRule={weekRule} />
+      <PageEditor
+        label={label}
+        value={text}
+        onChange={setText}
+        weekRule={weekRule}
+        initialSelection={{ anchor: text.length, head: text.length }}
+        focusRequest={focusRequest}
+      />
       {failed && (
         <p role="alert">The template could not be saved. Check your connection and try again.</p>
       )}
