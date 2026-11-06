@@ -431,6 +431,7 @@ button {
 .page-header h2,
 .page-header .page-subtitle {
   grid-column: 1;
+  font-family: var(--font-serif);
 }
 
 .page-header h2 {
