@@ -89,14 +89,18 @@ describe('tables in a real browser', () => {
     await expect.poll(reported).toBe(gym.replace('|[ ]| Chest press', '|[x]| Chest press'))
   })
 
-  it('leaves Tab alone outside tables, so keyboard focus can move on', async () => {
+  it('leaves the text alone when Tab is pressed outside the table, and focus stays in the editor', async () => {
     await render(<Harness initial={WORKOUT} />)
     const view = editorView()
     view.focus()
     view.dispatch({ selection: { anchor: view.state.doc.length } })
+    const cancelled: boolean[] = []
+    document.addEventListener('keydown', (event) => cancelled.push(event.defaultPrevented))
 
     await userEvent.keyboard('{Tab}')
 
+    expect(cancelled.filter(Boolean)).toHaveLength(1)
     expect(reported()).toBe(WORKOUT)
+    expect(document.activeElement).toBe(view.contentDOM)
   })
 })
