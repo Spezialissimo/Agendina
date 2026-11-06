@@ -47,6 +47,22 @@ describe('checkboxes in a real browser', () => {
     await expect.poll(reported).toBe('- [ ] Finish report\n- [ ] Call dentist\nnotes')
   })
 
+  it('keeps the focus and the selection of an editor that already has them', async () => {
+    await render(<Harness initial={'- [ ] Call dentist\nnotes'} />)
+    const view = EditorView.findFromDOM(
+      page.getByRole('textbox', { name: 'Today' }).element() as HTMLElement,
+    )
+    if (view === null) throw new Error('no editor')
+    view.focus()
+    view.dispatch({ selection: { anchor: view.state.doc.length } })
+
+    await userEvent.click(await checkbox('Call dentist'))
+
+    await expect.poll(reported).toBe('- [x] Call dentist\nnotes')
+    expect(view.hasFocus).toBe(true)
+    expect(view.state.selection.main.head).toBe(view.state.doc.length)
+  })
+
   it('hides the list mark of a to-do while typing in it, and keeps the text verbatim', async () => {
     await render(<Harness initial={'- [ ] Call dentist'} />)
     const view = EditorView.findFromDOM(
