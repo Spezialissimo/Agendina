@@ -108,6 +108,18 @@ export function setSplitSizes(layout: Layout, splitId: string, sizes: number[]):
   return update(layout)
 }
 
+/** The page of `kind` that can be written in, if the layout shows one. */
+export function editableNote(layout: ResolvedLayout, kind: NoteView['kind']): NoteView | undefined {
+  if (layout.type === 'panel') {
+    return layout.view.kind === kind && layout.view.editable ? layout.view : undefined
+  }
+  for (const child of layout.children) {
+    const found = editableNote(child.node, kind)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
+
 function resolveNote(panel: NotePanel, focus: DayKey, rule: WeekRule): NoteView {
   const days = panel.kind === 'day' ? panel.offset : panel.offset * 7
   const target = addDays(focus, days)

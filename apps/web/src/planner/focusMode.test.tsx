@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { DEFAULT_SETTINGS } from '@agendina/contract'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Api } from '../api/client.ts'
@@ -198,8 +198,8 @@ describe('focus mode', () => {
 
   it('starts in the template editor too', async () => {
     const { user, planner } = await open()
-    const dayPage = screen.getByRole('region', { name: 'Monday, October 26, 2026' })
-    await user.click(within(dayPage).getByRole('button', { name: 'Edit day template' }))
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    await user.click(screen.getByRole('button', { name: 'Edit day template' }))
     const template = await screen.findByRole('textbox', { name: 'Day template' })
     placeCursor(template, 0)
 
