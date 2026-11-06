@@ -118,15 +118,19 @@ export function livePreview(state: EditorState, { focused = true } = {}): Previe
           if (mark === null) return
           if (task !== null) {
             const marker = task.getChild('TaskMarker')
-            // Hidden even on the cursor line (the checkbox says it is a to-do); shown only while a
-            // cursor or selection is between the start of the line and the checkbox's `]`.
-            const touched =
-              focused &&
-              marker !== null &&
-              state.selection.ranges.some(
-                (r) => r.to >= state.doc.lineAt(mark.from).from && r.from < marker.to,
-              )
-            if (!touched) hide(mark, true, true)
+            // A bullet is hidden even on the cursor line (the checkbox says it is a to-do); shown
+            // only while a cursor or selection is between the start of the line and the checkbox's
+            // `]`. The number of an ordered to-do stays raw on the cursor line like any other mark.
+            if (node.parent?.name !== 'BulletList') hide(mark, true)
+            else {
+              const touched =
+                focused &&
+                marker !== null &&
+                state.selection.ranges.some(
+                  (r) => r.to >= state.doc.lineAt(mark.from).from && r.from < marker.to,
+                )
+              if (!touched) hide(mark, true, true)
+            }
             if (marker !== null && isChecked(state.doc.sliceString(marker.from, marker.to))) {
               items.push({
                 kind: 'line',

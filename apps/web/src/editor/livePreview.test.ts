@@ -155,12 +155,12 @@ describe('livePreview', () => {
     expect(rendered(s, livePreview(s))).toBe('• parent\n  - ☐ child')
   })
 
-  it('hides the list mark of an ordered to-do, and reveals it at the line start', () => {
-    const away = state('1. [ ] call ‸dentist')
-    const start = state('‸1. [ ] call dentist')
+  it('keeps the number of an ordered to-do visible on its cursor line only', () => {
+    const on = state('1. [ ] call ‸dentist\n2) [ ] other')
+    const off = state('1. [ ] call dentist\n2) [ ] ‸other')
 
-    expect(rendered(away, livePreview(away))).toBe('☐ call dentist')
-    expect(rendered(start, livePreview(start))).toBe('1. ☐ call dentist')
+    expect(rendered(on, livePreview(on))).toBe('1. ☐ call dentist\n☐ other')
+    expect(rendered(off, livePreview(off))).toBe('☐ call dentist\n2) ☐ other')
   })
 
   it('hides the list mark of a quoted to-do but keeps the quote mark raw on the cursor line', () => {
@@ -265,9 +265,9 @@ describe('livePreview', () => {
         hidden.forEach((item, index) => {
           expect(item.from).toBeLessThan(item.to)
           if (index > 0) expect(item.from).toBeGreaterThanOrEqual(hidden[index - 1]?.to ?? 0)
-          // A to-do's list mark (and one space) is the one syntax that stays hidden on the cursor
-          // line, while the cursor is past the checkbox's closing bracket.
-          const task = /^((?:\s*>)?\s*)([-*+]|\d+[.)]) \[[ xX]\]/.exec(cursorLine.text)
+          // A bullet to-do's list mark (and one space) is the one syntax that stays hidden on the
+          // cursor line, while the cursor is past the checkbox's closing bracket.
+          const task = /^((?:\s*>)?\s*)([-*+]) \[[ xX]\]/.exec(cursorLine.text)
           const markFrom = cursorLine.from + (task?.[1]?.length ?? 0)
           const todoMark =
             task !== null &&
