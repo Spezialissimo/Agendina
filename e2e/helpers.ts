@@ -1,6 +1,7 @@
 import { NoteResponse } from '@agendina/contract'
 import { dayKey } from '@agendina/core'
 import { expect, type Page } from '@playwright/test'
+import { UI_LOCALE } from '../apps/web/src/locale.ts'
 
 const EMAIL = 'journal@example.com'
 const PASSWORD = 'correct horse battery staple'
@@ -11,13 +12,11 @@ export function localToday(): string {
   return dayKey(now.getFullYear(), now.getMonth() + 1, now.getDate())
 }
 
-/** The editor of the day page `key`, named by its long date: en-US or en-GB, as browsers differ. */
+/** The editor of the day page `key`, named by its long date; the UI's dates are always en-US. */
 export function dayPage(page: Page, key: string) {
   const options = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' } as const
-  const names = ['en-US', 'en-GB'].map((locale) =>
-    new Intl.DateTimeFormat(locale, options).format(new Date(`${key}T00:00:00Z`)),
-  )
-  return page.getByRole('textbox', { name: new RegExp(`\\b(?:${names.join('|')})\\b`) })
+  const name = new Intl.DateTimeFormat(UI_LOCALE, options).format(new Date(`${key}T00:00:00Z`))
+  return page.getByRole('textbox', { name: new RegExp(`\\b${name}\\b`) })
 }
 
 /** Waits until the server holds `content` for a page (autosave is debounced); returns its revision. */

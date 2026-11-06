@@ -6,7 +6,7 @@ import { editorText, placeCursor, replaceText, typeInto } from '../test/editor.t
 import { renderApp } from '../test/render.tsx'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
-const TODAY = 'Monday, 26 October 2026'
+const TODAY = 'Monday, October 26, 2026'
 
 describe('writing on a page', () => {
   let server: TestServer

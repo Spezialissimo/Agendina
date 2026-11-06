@@ -33,7 +33,7 @@ describe('planner', () => {
       renderApp(server, '/day/2026-10-26')
 
       const week = await screen.findByRole('textbox', { name: 'Week 44' })
-      const day = await screen.findByRole('textbox', { name: 'Monday, 26 October 2026' })
+      const day = await screen.findByRole('textbox', { name: 'Monday, October 26, 2026' })
       expect(page('Week 44')).toContainElement(week)
       expect(editorText(week)).toBe('| Squat | [x] |')
       expect(editorText(day)).toBe('- [ ] Finish report')
@@ -43,7 +43,7 @@ describe('planner', () => {
       renderApp(server, '/day/2026-10-27')
 
       expect(
-        await screen.findByRole('region', { name: 'Tuesday, 27 October 2026' }),
+        await screen.findByRole('region', { name: 'Tuesday, October 27, 2026' }),
       ).toBeInTheDocument()
       expect(page('Week 44')).toBeInTheDocument()
     })
@@ -84,14 +84,14 @@ describe('planner', () => {
       await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
       const { user, router } = renderApp(server, '/day/2026-10-26')
 
-      const yesterday = await screen.findByRole('region', { name: 'Sunday, 25 October 2026' })
+      const yesterday = await screen.findByRole('region', { name: 'Sunday, October 25, 2026' })
       await user.click(
-        within(yesterday).getByRole('button', { name: 'Open Sunday, 25 October 2026' }),
+        within(yesterday).getByRole('button', { name: 'Open Sunday, October 25, 2026' }),
       )
 
       expect(router.state.location.pathname).toBe('/day/2026-10-25')
       expect(
-        await screen.findByRole('region', { name: 'Saturday, 24 October 2026' }),
+        await screen.findByRole('region', { name: 'Saturday, October 24, 2026' }),
       ).toBeInTheDocument()
     })
   })
@@ -147,7 +147,7 @@ describe('planner', () => {
 
       expect(router.state.location.pathname).toBe('/day/2026-10-29')
       expect(
-        await screen.findByRole('region', { name: 'Thursday, 29 October 2026' }),
+        await screen.findByRole('region', { name: 'Thursday, October 29, 2026' }),
       ).toBeInTheDocument()
     })
 
@@ -175,7 +175,7 @@ describe('planner', () => {
       const calendar = screen.getByRole('dialog', { name: 'October 2026' })
       await user.click(within(calendar).getByRole('button', { name: 'Next month' }))
       const november = screen.getByRole('dialog', { name: 'November 2026' })
-      await user.click(within(november).getByRole('button', { name: '3 November 2026' }))
+      await user.click(within(november).getByRole('button', { name: 'November 3, 2026' }))
 
       expect(router.state.location.pathname).toBe('/day/2026-11-03')
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

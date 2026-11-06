@@ -20,7 +20,7 @@ describe('focus mode', () => {
 
   const open = async () => {
     const view = renderApp(server, '/day/2026-10-26')
-    const day = await screen.findByRole('textbox', { name: 'Monday, 26 October 2026' })
+    const day = await screen.findByRole('textbox', { name: 'Monday, October 26, 2026' })
     placeCursor(day, 0)
     // Moving the cursor into the page starts focus mode; start each test with it off.
     moveMouse(0, 50)
@@ -198,7 +198,7 @@ describe('focus mode', () => {
 
   it('starts in the template editor too', async () => {
     const { user, planner } = await open()
-    const dayPage = screen.getByRole('region', { name: 'Monday, 26 October 2026' })
+    const dayPage = screen.getByRole('region', { name: 'Monday, October 26, 2026' })
     await user.click(within(dayPage).getByRole('button', { name: 'Edit day template' }))
     const template = await screen.findByRole('textbox', { name: 'Day template' })
     placeCursor(template, 0)

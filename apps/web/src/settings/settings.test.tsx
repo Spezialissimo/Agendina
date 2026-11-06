@@ -86,7 +86,7 @@ describe('settings', () => {
       const numbering = within(dialog).getByRole('combobox', { name: 'Week 1 is' })
       expect(within(weekStrip()).getByText('Week 53')).toBeInTheDocument()
 
-      await user.selectOptions(numbering, 'The week with 1 January')
+      await user.selectOptions(numbering, 'The week with January 1')
       expect(within(weekStrip()).getByText('Week 1')).toBeInTheDocument()
 
       await user.selectOptions(numbering, 'The first week with four days of the new year (ISO)')
@@ -165,7 +165,7 @@ describe('settings', () => {
 
       const week = await screen.findByRole('textbox', { name: 'Week 44' })
       expect(editorText(week)).toBe('Plans')
-      expect(screen.getByRole('region', { name: 'Week 44' })).toHaveTextContent('25 – 31 Oct 2026')
+      expect(screen.getByRole('region', { name: 'Week 44' })).toHaveTextContent('Oct 25 – 31, 2026')
 
       typeInto(week, ' and more')
       await waitFor(async () => {

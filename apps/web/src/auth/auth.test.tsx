@@ -27,7 +27,7 @@ describe('signing in', () => {
       await user.click(screen.getByRole('button', { name: 'Create account' }))
 
       expect(
-        await screen.findByRole('heading', { name: 'Monday, 26 October 2026' }),
+        await screen.findByRole('region', { name: 'Monday, October 26, 2026' }),
       ).toBeInTheDocument()
       expect(router.state.location.pathname).toBe('/day/2026-10-26')
       const admins = await server.db.selectFrom('users').select('role').execute()
@@ -63,7 +63,7 @@ describe('signing in', () => {
       await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
       expect(
-        await screen.findByRole('heading', { name: 'Tuesday, 20 October 2026' }),
+        await screen.findByRole('region', { name: 'Tuesday, October 20, 2026' }),
       ).toBeInTheDocument()
       expect(router.state.location.pathname).toBe('/day/2026-10-20')
     })
@@ -106,7 +106,7 @@ describe('signing in', () => {
       await user.click(screen.getByRole('button', { name: 'Create account' }))
 
       expect(
-        await screen.findByRole('heading', { name: 'Monday, 26 October 2026' }),
+        await screen.findByRole('region', { name: 'Monday, October 26, 2026' }),
       ).toBeInTheDocument()
       const roles = await server.db
         .selectFrom('users')
@@ -150,7 +150,7 @@ describe('routing', () => {
       const { router } = renderApp(server, path, { now: new Date('2026-10-26T23:30:00') })
 
       expect(
-        await screen.findByRole('heading', { name: 'Monday, 26 October 2026' }),
+        await screen.findByRole('region', { name: 'Monday, October 26, 2026' }),
       ).toBeInTheDocument()
       expect(router.state.location.pathname).toBe('/day/2026-10-26')
     },

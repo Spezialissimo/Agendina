@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router'
 import { Api } from '../api/client.ts'
 import { AppProviders } from '../app/AppProviders.tsx'
+import { UI_LOCALE } from '../locale.ts'
 import { routes } from '../app/routes.tsx'
 import type { TestServer } from './server.ts'
 
@@ -13,7 +14,7 @@ export function renderApp(
   path: string,
   {
     now = new Date('2026-10-26T10:00:00'),
-    locale = 'en-GB',
+    locale = UI_LOCALE,
     platform = 'mac',
   }: { now?: Date; locale?: string; platform?: Platform } = {},
 ) {

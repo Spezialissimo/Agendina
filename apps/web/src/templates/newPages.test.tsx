@@ -7,7 +7,7 @@ import { editorText, replaceText, typeInto } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
-const TODAY = 'Monday, 26 October 2026'
+const TODAY = 'Monday, October 26, 2026'
 const WEEK_TEMPLATE =
   '## Objectives\n\n| Exercise | Mo | We |\n|---|---|---|\n| Squat | [ ] | [ ] |'
 
@@ -119,7 +119,7 @@ describe('new pages start from the template', () => {
     await api.saveTemplate('day', '## Today', 0)
     renderApp(server, '/day/2026-10-26')
 
-    const yesterday = await screen.findByRole('region', { name: 'Sunday, 25 October 2026' })
+    const yesterday = await screen.findByRole('region', { name: 'Sunday, October 25, 2026' })
 
     expect(await within(yesterday).findByText('## Today')).toBeInTheDocument()
   })

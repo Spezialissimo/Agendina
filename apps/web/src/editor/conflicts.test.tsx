@@ -5,7 +5,7 @@ import { editorText, replaceText } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
-const TODAY = 'Monday, 26 October 2026'
+const TODAY = 'Monday, October 26, 2026'
 
 describe('resolving a conflict', () => {
   let server: TestServer
