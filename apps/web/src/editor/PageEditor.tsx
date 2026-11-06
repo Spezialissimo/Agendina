@@ -7,6 +7,7 @@ import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { livePreviewExtension } from './livePreview.ts'
 import { rememberFocus } from './focusedEditor.ts'
+import { nestListItems } from './lists.ts'
 import { slashSource } from './slashMenu.ts'
 import { moveToCell } from './tables.ts'
 import { minimalChange } from './textChange.ts'
@@ -24,6 +25,12 @@ interface Props {
 function apply(view: EditorView, spec: TransactionSpec | undefined): boolean {
   if (spec === undefined) return false
   view.dispatch(spec, { userEvent: 'input' })
+  return true
+}
+
+/** Always consumes the key, so focus never leaves the editor by accident. */
+function tab(view: EditorView, direction: 1 | -1): boolean {
+  apply(view, moveToCell(view.state, direction) ?? nestListItems(view.state, direction))
   return true
 }
 
@@ -90,11 +97,13 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
         extensions: [
           history(),
           keymap.of([
-            // Tab moves between table cells; elsewhere it keeps moving keyboard focus.
+            // Tab moves between table cells, nests list items, and elsewhere does nothing but stays
+            // in the editor. Esc then Tab still leaves it (CodeMirror checks that before keymaps);
+            // with the slash menu open, the first Esc only closes the menu: Esc, Esc, Tab.
             {
               key: 'Tab',
-              run: (view) => apply(view, moveToCell(view.state, 1)),
-              shift: (view) => apply(view, moveToCell(view.state, -1)),
+              run: (view) => tab(view, 1),
+              shift: (view) => tab(view, -1),
             },
             // ⌘↩ is the app's "toggle to-do" command (see commands/registry.ts), not "insert blank line".
             ...defaultKeymap.filter((binding) => binding.key !== 'Mod-Enter'),
