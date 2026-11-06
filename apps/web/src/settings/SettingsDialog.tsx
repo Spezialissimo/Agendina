@@ -1,4 +1,4 @@
-import type { AuthState, UserSettings } from '@agendina/contract'
+import type { AuthState, NoteKind, UserSettings } from '@agendina/contract'
 import { addDays, type WeekRule, type Weekday } from '@agendina/core'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId, type KeyboardEvent } from 'react'
@@ -9,6 +9,9 @@ import { format } from '../planner/weeks.ts'
 interface Props {
   settings: UserSettings
   onChange: (settings: UserSettings) => void
+  /** The page kinds whose template can be edited from the pages on show. */
+  templateKinds: readonly NoteKind[]
+  onEditTemplate: (kind: NoteKind) => void
   onClose: () => void
 }
 
@@ -26,7 +29,13 @@ const NUMBERING: { minimalDays: WeekRule['minimalDays']; label: string }[] = [
 ]
 
 /** The user's preferences; changes apply right away and are saved shortly after. */
-export function SettingsDialog({ settings, onChange, onClose }: Props) {
+export function SettingsDialog({
+  settings,
+  onChange,
+  templateKinds,
+  onEditTemplate,
+  onClose,
+}: Props) {
   const locale = useLocale()
   const titleId = useId()
   const { weekRule, focusMode } = settings
@@ -144,6 +153,27 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
             </select>
           </label>
         </fieldset>
+        {templateKinds.length > 0 && (
+          <fieldset>
+            <legend>Templates</legend>
+            <p className="settings-hint">
+              New pages start from their template. Edit it on the page you are looking at.
+            </p>
+            <div className="settings-actions">
+              {templateKinds.map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => {
+                    onEditTemplate(kind)
+                  }}
+                >
+                  Edit {kind} template
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
         <fieldset>
           <legend>Your pages</legend>
           <p>
