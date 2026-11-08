@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
+import { nextTextSize, TEXT_SIZE_LABEL, useTextSize, writeTextSize } from './textSize.ts'
 import { pageLabel, pageSubtitle, pageTitle } from './weeks.ts'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
 import { PageEditor } from '../editor/PageEditor.tsx'
@@ -36,7 +37,7 @@ export function NotePage({ view }: { view: NoteView }) {
   const api = useApi()
   const locale = useLocale()
   const navigate = useNavigate()
-  const { weekRule } = usePlannerContext()
+  const { weekRule, editingTemplate, closeTemplate } = usePlannerContext()
   const pageKey = usePageKey(view)
   const note = useQuery({
     queryKey: ['note', view.kind, pageKey],
@@ -44,7 +45,7 @@ export function NotePage({ view }: { view: NoteView }) {
     enabled: pageKey !== undefined,
   })
   const template = useTemplate(view.kind)
-  const [editingTemplate, setEditingTemplate] = useState(false)
+  const textSize = useTextSize(view.kind)
   const [notice, setNotice] = useState<{ key: string; text: string } | undefined>(undefined)
 
   const title = pageTitle(view.kind, view.key, locale, weekRule)
@@ -53,20 +54,28 @@ export function NotePage({ view }: { view: NoteView }) {
   const label = pageLabel(view.kind, view.key, locale, weekRule)
 
   return (
-    <section className="page" aria-label={label} data-editable={view.editable || undefined}>
+    <section
+      className="page"
+      aria-label={label}
+      data-editable={view.editable || undefined}
+      data-page-kind={view.kind}
+      data-text-size={textSize}
+    >
       <header className="page-header">
         <h2>{title}</h2>
         <p className="page-subtitle">{subtitle}</p>
-        {view.editable && !editingTemplate && (
+        {view.editable && (
           <button
             type="button"
-            className="link page-template"
+            className="link page-text-size"
+            // The name starts with the visible "Aa" (WCAG 2.5.3, label in name).
+            aria-label={`Aa, text size: ${TEXT_SIZE_LABEL[textSize]}`}
+            title={`Text size: ${TEXT_SIZE_LABEL[textSize]}`}
             onClick={() => {
-              setNotice(undefined)
-              setEditingTemplate(true)
+              writeTextSize(view.kind, nextTextSize(textSize))
             }}
           >
-            Edit {view.kind} template
+            Aa
           </button>
         )}
       </header>
@@ -75,7 +84,9 @@ export function NotePage({ view }: { view: NoteView }) {
           {notice.text}
         </p>
       )}
-      {pageKey === undefined ? null : view.editable && editingTemplate ? (
+      {pageKey === undefined ? null : view.editable &&
+        editingTemplate?.kind === view.kind &&
+        editingTemplate.key === view.key ? (
         template.data !== undefined &&
         note.data !== undefined && (
           <TemplateEditor
@@ -85,7 +96,7 @@ export function NotePage({ view }: { view: NoteView }) {
             template={template.data}
             pageText={note.data?.content ?? ''}
             onClose={(text) => {
-              setEditingTemplate(false)
+              closeTemplate({ kind: view.kind, key: view.key })
               if (text !== undefined) setNotice({ key: pageKey, text })
             }}
           />

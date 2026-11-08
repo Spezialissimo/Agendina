@@ -73,7 +73,8 @@ test('focus mode dims everything but the page you are working in', async ({ page
 
   await test.step('the template editor keeps Save and Cancel visible', async () => {
     await revealButtons(page)
-    await daySection.getByRole('button', { name: 'Edit day template' }).click()
+    await settings.click()
+    await page.getByRole('button', { name: 'Edit day template' }).click()
     await page.getByRole('textbox', { name: 'Day template' }).click()
     await page.keyboard.type('x')
     await expect(settings).toHaveCSS('opacity', '0')

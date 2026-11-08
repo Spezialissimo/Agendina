@@ -151,7 +151,7 @@ export function TemplateEditor({ kind, pageKey, template, pageText, onClose }: P
         New {kind} pages start from this. Saving also updates this page and the later pages made
         from the template; earlier pages stay as they are.
       </p>
-      <PageEditor label={label} value={text} onChange={setText} weekRule={weekRule} />
+      <PageEditor label={label} value={text} onChange={setText} weekRule={weekRule} autoFocus />
       {failed && (
         <p role="alert">The template could not be saved. Check your connection and try again.</p>
       )}
