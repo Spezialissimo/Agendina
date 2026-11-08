@@ -72,7 +72,9 @@ docs/adr/       one ADR per decision above
 
 **Sync-shaped API** (used by the web app now, by offline mobile later):
 `GET /notes?kind&from&to` · `PUT /notes/:kind/:periodKey {content, baseRevision}` → `200 {revision}`,
-or a merge result, or `409 {conflict: base/mine/theirs}` · `GET /changes?since=cursor`.
+or a merge result, or `409 {conflict: base/mine/theirs}` · `GET /changes?since=cursor` (without
+`since`: only the current cursor). The web app polls it while visible to show edits from other
+devices (ADR 0014).
 
 ## AI-driven TDD workflow
 - **Per feature**: short spec with acceptance criteria → AI writes **failing tests first** → a

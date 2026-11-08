@@ -49,3 +49,8 @@ export function selectionOf(editor: HTMLElement): { anchor: number; head: number
   const { anchor, head } = view(editor).state.selection.main
   return { anchor, head }
 }
+
+/** Where the cursor is (the head of the main selection). */
+export function cursorPosition(editor: HTMLElement): number {
+  return view(editor).state.selection.main.head
+}

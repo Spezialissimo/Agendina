@@ -25,6 +25,8 @@ interface Props {
   onSelectionChange?: (selection: { anchor: number; head: number }) => void
   /** Takes keyboard focus when given a new request id, then calls `done`. */
   focusRequest?: { id: number; done: () => void } | undefined
+  /** Puts the cursor in the editor when it appears. */
+  autoFocus?: boolean
 }
 
 /** Applies an editor command if it applies here; false lets the key do its usual job. */
@@ -89,6 +91,7 @@ export function PageEditor({
   initialSelection,
   onSelectionChange,
   focusRequest,
+  autoFocus = false,
 }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | undefined>(undefined)
@@ -154,6 +157,7 @@ export function PageEditor({
       }),
     })
     view.current = editor
+    if (autoFocus) editor.focus()
     return () => {
       editor.destroy()
       view.current = undefined

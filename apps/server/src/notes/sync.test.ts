@@ -191,14 +191,31 @@ describe.each(testDatabases())('sync on $kind', ({ create }) => {
       expect(await changes('since=0', other)).toEqual({ changes: [], cursor: 0, hasMore: false })
     })
 
-    it.each(['', 'since=-1', 'since=abc', 'since=0&limit=0', 'since=0&limit=1001'])(
-      'rejects %j',
-      async (query) => {
-        const res = await t.server.request(`/api/changes?${query}`, { cookie: t.cookie })
+    it('without a cursor, tells only where the feed is now, to follow it from there', async () => {
+      expect(await changes('')).toEqual({ changes: [], cursor: 0, hasMore: false })
+      await save('2026-10-24', 'a', 0)
+      await save('2026-10-24', 'a2', 1)
 
-        expect(res.status).toBe(400)
-      },
-    )
+      const now = await changes('')
+      await save('2026-10-25', 'b', 0)
+
+      expect(now).toEqual({ changes: [], cursor: 2, hasMore: false })
+      expect(summary(await changes(`since=${now.cursor}`))).toEqual(['2026-10-25@1'])
+    })
+
+    it.each([
+      'since=',
+      'since=%20',
+      'since=1.5',
+      'since=-1',
+      'since=abc',
+      'since=0&limit=0',
+      'since=0&limit=1001',
+    ])('rejects %j', async (query) => {
+      const res = await t.server.request(`/api/changes?${query}`, { cookie: t.cookie })
+
+      expect(res.status).toBe(400)
+    })
 
     it('requires a signed-in user', async () => {
       expect((await t.server.request('/api/changes?since=0')).status).toBe(401)

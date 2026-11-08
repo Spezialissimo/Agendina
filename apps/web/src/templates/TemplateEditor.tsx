@@ -167,6 +167,7 @@ export function TemplateEditor({
         weekRule={weekRule}
         initialSelection={{ anchor: text.length, head: text.length }}
         focusRequest={focusRequest}
+        autoFocus
       />
       {failed && (
         <p role="alert">The template could not be saved. Check your connection and try again.</p>

@@ -97,7 +97,11 @@ describe('commands', () => {
 
       await user.keyboard('week')
       const options = within(palette).getAllByRole('option')
-      expect(options.map((o) => o.textContent)).toEqual(['Previous week⌥⇧⌘,', 'Next week⌥⇧⌘.'])
+      expect(options.map((o) => o.textContent)).toEqual([
+        'Previous week⌥⇧⌘,',
+        'Next week⌥⇧⌘.',
+        'Edit week template',
+      ])
 
       await user.keyboard('{ArrowDown}{Enter}')
 

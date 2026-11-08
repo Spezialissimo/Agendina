@@ -33,6 +33,23 @@ describe('Api against the real server', () => {
     })
   })
 
+  it('reads the changes feed from a cursor', async () => {
+    await api.saveNote('day', '2026-10-26', 'Run 5km', 0)
+    await api.saveTemplate('week', '## Goals', 0)
+
+    const first = await api.changes(0)
+    expect(first.changes.map((c) => [c.kind, c.key, c.revision])).toEqual([
+      ['day', '2026-10-26', 1],
+      ['template', 'week', 1],
+    ])
+    expect(first.hasMore).toBe(false)
+
+    await api.saveNote('day', '2026-10-26', 'Run 10km', 1)
+    const next = await api.changes(first.cursor)
+    expect(next.changes).toMatchObject([{ key: '2026-10-26', revision: 2, content: 'Run 10km' }])
+    expect((await api.changes(next.cursor)).changes).toEqual([])
+  })
+
   it('raises the server’s error code', async () => {
     await expect(api.saveNote('day', '2026-10-26', 'x', 7)).rejects.toEqual(
       new ApiError(400, 'invalid_base_revision'),

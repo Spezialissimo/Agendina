@@ -5,18 +5,23 @@ import { COMMANDS, type CommandId } from './registry.ts'
 
 interface Props {
   keymap: KeymapEntry[]
+  /** Commands that cannot do anything right now are not listed. */
+  isAvailable?: (id: CommandId) => boolean
   onRun: (id: CommandId) => void
   onClose: () => void
 }
 
 /** ⌘K: find any command by name, see its shortcut, run it. */
-export function CommandPalette({ keymap, onRun, onClose }: Props) {
+export function CommandPalette({ keymap, isAvailable = () => true, onRun, onClose }: Props) {
   const platform = usePlatform()
   const listId = useId()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const matches = COMMANDS.filter(
-    (c) => c.id !== 'palette.open' && c.title.toLowerCase().includes(query.trim().toLowerCase()),
+    (c) =>
+      c.id !== 'palette.open' &&
+      isAvailable(c.id) &&
+      c.title.toLowerCase().includes(query.trim().toLowerCase()),
   )
   const selected = Math.min(active, matches.length - 1)
 

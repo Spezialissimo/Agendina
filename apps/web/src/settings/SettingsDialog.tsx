@@ -1,4 +1,4 @@
-import type { AuthState, UserSettings } from '@agendina/contract'
+import type { AuthState, NoteKind, UserSettings } from '@agendina/contract'
 import { addDays, type WeekRule, type Weekday } from '@agendina/core'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId, type KeyboardEvent } from 'react'
@@ -9,6 +9,9 @@ import { format } from '../planner/weeks.ts'
 interface Props {
   settings: UserSettings
   onChange: (settings: UserSettings) => void
+  /** The page kinds whose template can be edited from the pages on show. */
+  templateKinds: readonly NoteKind[]
+  onEditTemplate: (kind: NoteKind) => void
   onClose: () => void
 }
 
@@ -21,12 +24,18 @@ const RESTING_TIMES_MS = [1000, 1500, 2000, 3000, 5000, 10_000]
 const seconds = (ms: number) => `${String(ms / 1000)} ${ms === 1000 ? 'second' : 'seconds'}`
 
 const NUMBERING: { minimalDays: WeekRule['minimalDays']; label: string }[] = [
-  { minimalDays: 4, label: 'The first week with four days of the new year (ISO)' },
-  { minimalDays: 1, label: 'The week with January 1' },
+  { minimalDays: 4, label: 'First week with 4 days (ISO)' },
+  { minimalDays: 1, label: 'Week with January 1' },
 ]
 
 /** The user's preferences; changes apply right away and are saved shortly after. */
-export function SettingsDialog({ settings, onChange, onClose }: Props) {
+export function SettingsDialog({
+  settings,
+  onChange,
+  templateKinds,
+  onEditTemplate,
+  onClose,
+}: Props) {
   const locale = useLocale()
   const titleId = useId()
   const { weekRule, focusMode } = settings
@@ -46,7 +55,7 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
         ...NUMBERING,
         {
           minimalDays: weekRule.minimalDays,
-          label: `The first week with ${String(weekRule.minimalDays)} days of the new year`,
+          label: `First week with ${String(weekRule.minimalDays)} days`,
         },
       ]
 
@@ -123,7 +132,7 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
             />
             Focus mode
           </label>
-          <p className="settings-hint">
+          <p>
             While you write, everything but the page fades and the buttons hide until you move the
             mouse.
           </p>
@@ -144,13 +153,32 @@ export function SettingsDialog({ settings, onChange, onClose }: Props) {
             </select>
           </label>
         </fieldset>
+        {templateKinds.length > 0 && (
+          <fieldset>
+            <legend>Templates</legend>
+            <p>New pages start from their template. Edit it on the page you are looking at.</p>
+            <div className="settings-actions">
+              {templateKinds.map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => {
+                    onEditTemplate(kind)
+                  }}
+                >
+                  Edit {kind} template
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
         <fieldset>
           <legend>Your pages</legend>
           <p>
             <a href="/api/export" download>
               Download all pages
             </a>{' '}
-            <span className="settings-hint">as markdown files in a zip</span>
+            <span>as markdown files in a zip</span>
           </p>
         </fieldset>
         <SignupSetting />

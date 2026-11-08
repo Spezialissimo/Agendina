@@ -86,10 +86,10 @@ describe('settings', () => {
       const numbering = within(dialog).getByRole('combobox', { name: 'Week 1 is' })
       expect(within(weekStrip()).getByText('Week 53')).toBeInTheDocument()
 
-      await user.selectOptions(numbering, 'The week with January 1')
+      await user.selectOptions(numbering, 'Week with January 1')
       expect(within(weekStrip()).getByText('Week 1')).toBeInTheDocument()
 
-      await user.selectOptions(numbering, 'The first week with four days of the new year (ISO)')
+      await user.selectOptions(numbering, 'First week with 4 days (ISO)')
       expect(within(weekStrip()).getByText('Week 53')).toBeInTheDocument()
       await waitFor(async () => {
         expect((await api.settings()).weekRule.minimalDays).toBe(4)

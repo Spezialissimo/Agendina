@@ -205,6 +205,16 @@ export async function listChanges(
   }
 }
 
+/** The user's latest change sequence number: the cursor of a feed that is up to date. */
+export async function latestChange(db: Database, userId: string): Promise<number> {
+  const row = await db
+    .selectFrom('users')
+    .select('change_seq')
+    .where('id', '=', userId)
+    .executeTakeFirstOrThrow()
+  return row.change_seq
+}
+
 export function findRow(
   db: Database,
   userId: string,

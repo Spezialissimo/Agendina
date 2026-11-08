@@ -4,6 +4,7 @@ import { ISO_WEEK, US_WEEK, isDayKey } from './calendar.ts'
 import {
   MIN_PANE_SIZE,
   OPEN_PLANNER,
+  editableNote,
   resolveLayout,
   setSplitSizes,
   type Layout,
@@ -222,5 +223,25 @@ describe('setSplitSizes', () => {
   it('rejects an unknown split or the wrong number of sizes', () => {
     expect(() => setSplitSizes(OPEN_PLANNER, 'nope', [1, 1])).toThrow(/split "nope"/)
     expect(() => setSplitSizes(OPEN_PLANNER, 'pages', [1, 1, 1])).toThrow(/2 sizes/)
+  })
+})
+
+describe('editableNote', () => {
+  const rule = ISO_WEEK
+
+  it('finds the page of a kind that can be written in', () => {
+    const layout = resolveLayout(OPEN_PLANNER, '2026-10-28', rule)
+    expect(editableNote(layout, 'week')).toMatchObject({ kind: 'week', key: '2026-10-26' })
+    expect(editableNote(layout, 'day')).toMatchObject({ kind: 'day', key: '2026-10-28' })
+  })
+
+  it('ignores read-only neighbours and kinds the layout does not show', () => {
+    const layout = resolveLayout(
+      row('r', [note('prev', 'day', -1), 1], [note('w', 'week', 1), 1]),
+      '2026-10-28',
+      rule,
+    )
+    expect(editableNote(layout, 'day')).toBeUndefined()
+    expect(editableNote(layout, 'week')).toBeUndefined()
   })
 })

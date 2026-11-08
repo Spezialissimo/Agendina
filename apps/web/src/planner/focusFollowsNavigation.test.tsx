@@ -532,38 +532,34 @@ describe('focus follows navigation', () => {
   })
 
   describe('template editing', () => {
-    const editDayTemplate = async (user: ReturnType<typeof renderApp>['user'], name: string) => {
-      await user.click(
-        within(screen.getByRole('region', { name })).getByRole('button', {
-          name: 'Edit day template',
-        }),
-      )
+    const editDayTemplate = async (user: ReturnType<typeof renderApp>['user']) => {
+      await user.click(screen.getByRole('button', { name: 'Settings' }))
+      await user.click(screen.getByRole('button', { name: 'Edit day template' }))
       return editor('Day template')
     }
 
-    it('keeps typing in the template editor when you were editing the template', async () => {
+    // A template edit ends when its page is no longer shown (it is tied to that page).
+    it('focuses the next day once the template edit on this day has ended', async () => {
       const { user } = await open('/day/2026-10-28')
       await editor('Wednesday, October 28, 2026')
-      placeCursor(await editDayTemplate(user, 'Wednesday, October 28, 2026'), 0)
+      placeCursor(await editDayTemplate(user), 0)
 
       await user.keyboard(NEXT_DAY)
 
-      await editor('Week 44')
-      const thursday = await screen.findByRole('region', { name: 'Thursday, October 29, 2026' })
-      const template = await expectFocusIn('Day template')
-      expect(thursday).toContainElement(template)
+      await expectFocusIn('Thursday, October 29, 2026')
+      expect(screen.queryByRole('textbox', { name: 'Day template' })).toBeNull()
     })
 
-    it('leaves the template editor on the other side open, focusing the week page', async () => {
+    it('focuses the week page when moving on a week ends the template edit', async () => {
       const { user } = await open('/day/2026-10-28')
       await editor('Wednesday, October 28, 2026')
-      await editDayTemplate(user, 'Wednesday, October 28, 2026')
+      await editDayTemplate(user)
       placeCursor(await editor('Week 44'), 0)
 
       await user.keyboard(NEXT_WEEK)
 
       await expectFocusIn('Week 45')
-      expect(screen.getByRole('textbox', { name: 'Day template' })).toBeInTheDocument()
+      expect(screen.queryByRole('textbox', { name: 'Day template' })).toBeNull()
     })
   })
 
