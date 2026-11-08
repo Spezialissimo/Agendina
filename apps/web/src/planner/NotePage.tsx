@@ -1,13 +1,23 @@
 import { addDays, compareDays, type DayKey, type NoteView } from '@agendina/core'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
+import { useFocusRequest, usePageFocus } from './pageFocus.ts'
 import { nextTextSize, TEXT_SIZE_LABEL, useTextSize, writeTextSize } from './textSize.ts'
 import { pageLabel, pageSubtitle, pageTitle } from './weeks.ts'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
 import { PageEditor } from '../editor/PageEditor.tsx'
+import {
+  browserStorage,
+  loadPositions,
+  placeSelection,
+  recallPosition,
+  rememberPosition,
+  savePositions,
+  type PageSelection,
+} from '../editor/pagePositions.ts'
 import { useNoteDocument, type SaveStatus } from '../editor/useNoteDocument.ts'
 import { TemplateEditor } from '../templates/TemplateEditor.tsx'
 import { useTemplate } from '../templates/useTemplate.ts'
@@ -37,7 +47,7 @@ export function NotePage({ view }: { view: NoteView }) {
   const api = useApi()
   const locale = useLocale()
   const navigate = useNavigate()
-  const { weekRule, editingTemplate, closeTemplate } = usePlannerContext()
+  const { weekRule, editingTemplate, closeTemplate, setTemplateDraft } = usePlannerContext()
   const pageKey = usePageKey(view)
   const note = useQuery({
     queryKey: ['note', view.kind, pageKey],
@@ -45,6 +55,8 @@ export function NotePage({ view }: { view: NoteView }) {
     enabled: pageKey !== undefined,
   })
   const template = useTemplate(view.kind)
+  const focusRequest = useFocusRequest(view)
+  const { focusAfterNavigation } = usePageFocus()
   const textSize = useTextSize(view.kind)
   const [notice, setNotice] = useState<{ key: string; text: string } | undefined>(undefined)
 
@@ -84,19 +96,23 @@ export function NotePage({ view }: { view: NoteView }) {
           {notice.text}
         </p>
       )}
-      {pageKey === undefined ? null : view.editable &&
-        editingTemplate?.kind === view.kind &&
-        editingTemplate.key === view.key ? (
+      {pageKey === undefined ? null : view.editable && editingTemplate?.kind === view.kind ? (
         template.data !== undefined &&
         note.data !== undefined && (
           <TemplateEditor
-            key={`${view.kind}/${pageKey}`}
+            key={`${view.kind}/${editingTemplate.key}`}
             kind={view.kind}
-            pageKey={pageKey}
+            pageKey={editingTemplate.key}
             template={template.data}
             pageText={note.data?.content ?? ''}
+            draft={editingTemplate.draft}
+            autoFocus={pageKey === editingTemplate.key}
+            onDraftChange={(text) => {
+              setTemplateDraft(editingTemplate, text)
+            }}
+            focusRequest={focusRequest}
             onClose={(text) => {
-              closeTemplate({ kind: view.kind, key: view.key })
+              closeTemplate(editingTemplate)
               if (text !== undefined) setNotice({ key: pageKey, text })
             }}
           />
@@ -106,6 +122,7 @@ export function NotePage({ view }: { view: NoteView }) {
           key={`${view.kind}/${pageKey}`}
           view={{ ...view, key: pageKey }}
           label={label}
+          focusRequest={focusRequest}
         />
       ) : (
         <div className="page-content">
@@ -117,7 +134,11 @@ export function NotePage({ view }: { view: NoteView }) {
           type="button"
           className="page-open"
           aria-label={`Open ${view.kind === 'day' ? label : `${label} (${subtitle})`}`}
-          onClick={() => void navigate(`/day/${view.focusOnClick ?? ''}`)}
+          onClick={() => {
+            if (view.focusOnClick === undefined) return
+            focusAfterNavigation(view.focusOnClick, 'day')
+            void navigate(`/day/${view.focusOnClick}`)
+          }}
         />
       )}
     </section>
@@ -133,9 +154,27 @@ const STATUS_TEXT: Record<SaveStatus, string> = {
   conflict: 'Conflict: this page changed elsewhere',
 }
 
-function EditablePage({ view, label }: { view: NoteView; label: string }) {
+function EditablePage({
+  view,
+  label,
+  focusRequest,
+}: {
+  view: NoteView
+  label: string
+  focusRequest: { id: number; done: () => void } | undefined
+}) {
   const document = useNoteDocument(view.kind, view.key)
   const { weekRule } = usePlannerContext()
+  const { kind, key } = view
+  // Where the cursor was when this page was last used on this device (never sent to the server).
+  const [recalled] = useState(() => recallPosition(loadPositions(browserStorage), { kind, key }))
+  const rememberSelection = useCallback(
+    (selection: PageSelection) => {
+      const positions = loadPositions(browserStorage)
+      savePositions(browserStorage, rememberPosition(positions, { kind, key }, selection))
+    },
+    [kind, key],
+  )
   return (
     <>
       {document.isError && document.status === 'loading' && (
@@ -148,6 +187,9 @@ function EditablePage({ view, label }: { view: NoteView; label: string }) {
           value={document.text}
           onChange={document.edit}
           weekRule={weekRule}
+          initialSelection={placeSelection(recalled, document.text.length)}
+          onSelectionChange={rememberSelection}
+          focusRequest={focusRequest}
         />
       ) : (
         <ConflictResolver

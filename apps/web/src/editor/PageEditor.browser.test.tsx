@@ -72,4 +72,35 @@ describe('PageEditor in a real browser', () => {
 
     await expect.poll(() => reported()).toBe('FIRST LINE\nsecond!')
   })
+
+  it('scrolls the cursor into view when it takes focus after a navigation', async () => {
+    const text = Array.from({ length: 80 }, (_, i) => `Line ${String(i + 1)}`).join('\n')
+    // Like a planner page: the page scrolls, not the editor.
+    await render(
+      <div data-testid="page" style={{ height: '200px', overflow: 'auto' }}>
+        <PageEditor
+          label="Today"
+          value={text}
+          onChange={() => undefined}
+          initialSelection={{ anchor: text.length, head: text.length }}
+          focusRequest={{ id: 1, done: () => undefined }}
+        />
+      </div>,
+    )
+    const scroller = page.getByTestId('page').element()
+
+    await expect.poll(() => document.activeElement?.getAttribute('aria-label')).toBe('Today')
+    await expect
+      .poll(() => {
+        // Looked up each time: CodeMirror redraws the lines it shows as the page scrolls.
+        const lastLine = [...scroller.querySelectorAll('.cm-line')].find(
+          (l) => l.textContent === 'Line 80',
+        )
+        if (lastLine === undefined) return false
+        const box = scroller.getBoundingClientRect()
+        const line = lastLine.getBoundingClientRect()
+        return line.top >= box.top && line.bottom <= box.bottom
+      })
+      .toBe(true)
+  })
 })

@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { DEFAULT_SETTINGS } from '@agendina/contract'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Api } from '../api/client.ts'
@@ -142,6 +142,74 @@ describe('focus mode', () => {
 
     expect(router.state.location.pathname).toBe('/day/2026-10-27')
     expect(planner()).not.toHaveAttribute('data-focus-mode')
+  })
+
+  it('does not start when a click on the week strip puts the cursor in the new page', async () => {
+    const { user, planner } = await open()
+
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Week' })).getByRole('link', {
+        name: /^Tue 27/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Tuesday, October 27, 2026' })).toHaveFocus()
+    })
+    expect(planner()).not.toHaveAttribute('data-focus-mode')
+  })
+
+  // Real timers with the shortest wait the settings allow: the new page loads (through timers)
+  // between the click and the wait, which fake timers would hold up.
+  describe('after a click on the week arrows put the cursor in the new page', () => {
+    const IDLE_MS = 500
+    const rest = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+    const openAndClickNextWeek = async () => {
+      await new Api(server.fetch).saveSettings({
+        ...DEFAULT_SETTINGS,
+        focusMode: { enabled: true, idleMs: IDLE_MS },
+      })
+      const view = await open()
+      await view.user.click(
+        within(screen.getByRole('navigation', { name: 'Week' })).getByRole('button', {
+          name: 'Next week',
+        }),
+      )
+      const next = await screen.findByRole('textbox', { name: 'Monday, November 2, 2026' })
+      await waitFor(() => {
+        expect(next).toHaveFocus()
+      })
+      return { ...view, next }
+    }
+
+    it('does not start while the mouse rests on the arrow', async () => {
+      const { planner } = await openAndClickNextWeek()
+
+      await rest(IDLE_MS * 2)
+
+      expect(planner()).not.toHaveAttribute('data-focus-mode')
+    })
+
+    it('starts as usual once you type', async () => {
+      const { planner, next } = await openAndClickNextWeek()
+
+      fireEvent.keyDown(next, { key: 'a' })
+
+      expect(planner()).toHaveAttribute('data-focus-mode')
+    })
+
+    it('starts on a resting mouse again once you click in the page', async () => {
+      const { planner, next } = await openAndClickNextWeek()
+
+      fireEvent.pointerDown(next)
+
+      await waitFor(
+        () => {
+          expect(planner()).toHaveAttribute('data-focus-mode')
+        },
+        { timeout: IDLE_MS * 4 },
+      )
+    })
   })
 
   it('ends on pointer down', async () => {

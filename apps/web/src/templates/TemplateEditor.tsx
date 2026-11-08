@@ -17,8 +17,15 @@ interface Props {
   /** The template as loaded (null if there is none yet) and the page's text to start one from. */
   template: Template | null
   pageText: string
+  /** The unsaved text kept by the planner, when the editor is reopened on another page. */
+  draft?: string | undefined
+  onDraftChange?: (text: string) => void
   /** Back to the page, with a summary of what changed (undefined when nothing was saved). */
   onClose: (notice?: string) => void
+  /** Takes keyboard focus for a navigation that arrived at this page (see planner/pageFocus.ts). */
+  focusRequest?: { id: number; done: () => void } | undefined
+  /** Puts the cursor in the editor when it appears (not when it follows the user to another page). */
+  autoFocus?: boolean
 }
 
 type Phase =
@@ -35,14 +42,24 @@ const PAGE_CLASH_TEXTS = {
 }
 
 /** Edits the day or week template from a page, then applies the change (ADR 0008). */
-export function TemplateEditor({ kind, pageKey, template, pageText, onClose }: Props) {
+export function TemplateEditor({
+  kind,
+  pageKey,
+  template,
+  pageText,
+  draft,
+  onDraftChange,
+  onClose,
+  focusRequest,
+  autoFocus = false,
+}: Props) {
   const api = useApi()
   const queryClient = useQueryClient()
   const locale = useLocale()
   const { weekRule } = usePlannerContext()
   const titleId = useId()
   // A first template starts as a copy of this page: the usual way to make one.
-  const [text, setText] = useState(template?.content ?? pageText)
+  const [text, setText] = useState(draft ?? template?.content ?? pageText)
   const [phase, setPhase] = useState<Phase>({ type: 'editing' })
   const [failed, setFailed] = useState(false)
   const label = `${kind === 'day' ? 'Day' : 'Week'} template`
@@ -151,7 +168,18 @@ export function TemplateEditor({ kind, pageKey, template, pageText, onClose }: P
         New {kind} pages start from this. Saving also updates this page and the later pages made
         from the template; earlier pages stay as they are.
       </p>
-      <PageEditor label={label} value={text} onChange={setText} weekRule={weekRule} autoFocus />
+      <PageEditor
+        label={label}
+        value={text}
+        onChange={(next) => {
+          setText(next)
+          onDraftChange?.(next)
+        }}
+        weekRule={weekRule}
+        initialSelection={{ anchor: text.length, head: text.length }}
+        focusRequest={focusRequest}
+        autoFocus={autoFocus}
+      />
       {failed && (
         <p role="alert">The template could not be saved. Check your connection and try again.</p>
       )}

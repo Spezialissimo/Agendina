@@ -35,13 +35,19 @@ export function replaceText(editor: HTMLElement, text: string): void {
   })
 }
 
-/** Focuses the editor with the cursor at `position`. */
-export function placeCursor(editor: HTMLElement, position: number): void {
+/** Focuses the editor with the cursor at `position`, or a selection from `position` to `head`. */
+export function placeCursor(editor: HTMLElement, position: number, head = position): void {
   const v = view(editor)
   act(() => {
     v.focus()
-    v.dispatch({ selection: { anchor: position } })
+    v.dispatch({ selection: { anchor: position, head }, userEvent: 'select' })
   })
+}
+
+/** The editor's main selection; `anchor` equals `head` for a plain cursor. */
+export function selectionOf(editor: HTMLElement): { anchor: number; head: number } {
+  const { anchor, head } = view(editor).state.selection.main
+  return { anchor, head }
 }
 
 /** Where the cursor is (the head of the main selection). */

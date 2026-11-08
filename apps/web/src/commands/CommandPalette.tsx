@@ -46,7 +46,8 @@ export function CommandPalette({ keymap, isAvailable = () => true, onRun, onClos
   }
 
   return (
-    <div className="palette-backdrop" onPointerDown={onClose}>
+    // Keeps the side the user was writing on, for the navigation commands run from here.
+    <div className="palette-backdrop" onPointerDown={onClose} data-keeps-page-side="">
       <div
         className="palette"
         role="dialog"

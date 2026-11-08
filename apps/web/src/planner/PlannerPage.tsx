@@ -9,7 +9,7 @@ import {
   type DayKey,
 } from '@agendina/core'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useApi, useToday } from '../app/AppProviders.tsx'
 import { SettingsIcon, SignOutIcon } from '../app/icons.tsx'
@@ -24,6 +24,7 @@ import { LayoutView } from './LayoutView.tsx'
 import { useFocusMode } from './useFocusMode.ts'
 import { closeEdit, type TemplateEdit } from './templateEdit.ts'
 import { PlannerContext } from './PlannerContext.tsx'
+import { PageFocus, PageFocusContext, focusTarget, type PageFocusApi } from './pageFocus.ts'
 import { WeekStrip } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { useLiveUpdates } from './useLiveUpdates.ts'
@@ -53,7 +54,7 @@ function Planner({ focus }: { focus: DayKey }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // Tied to the page it was opened on: a day edit ends on another day, a week edit on another week.
+  // Stays open across navigation: the editor shows on the page of its kind that is being edited.
   const [templateEdit, setTemplateEdit] = useState<TemplateEdit | undefined>()
   const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
@@ -74,19 +75,37 @@ function Planner({ focus }: { focus: DayKey }) {
     },
     [pageOf, currentDay],
   )
-  // An edit ends when its page is no longer the one shown for editing; coming back starts afresh.
-  if (
-    templateEdit !== undefined &&
-    settings !== undefined &&
-    pageOf(templateEdit.kind, focus)?.key !== templateEdit.key
-  ) {
-    setTemplateEdit(undefined)
-  }
   const templateKinds = (['day', 'week'] as const).filter((kind) => pageOf(kind, focus))
+
+  const [pageFocus] = useState(() => new PageFocus())
+  useEffect(() => pageFocus.connect(document), [pageFocus])
+  // A request for another day lapses (e.g. the browser's back button went elsewhere meanwhile).
+  useEffect(() => {
+    const request = pageFocus.get()
+    if (request !== undefined && request.day !== focus) pageFocus.cancel(request.id)
+  }, [pageFocus, focus])
+  const focusAfterNavigation = useCallback(
+    (day: DayKey, side?: NoteKind) => {
+      if (settings === undefined || !pageFocus.mayMoveFocus()) return
+      const target = focusTarget(
+        resolveLayout(settings.layout, day, settings.weekRule),
+        side ?? pageFocus.side ?? 'day',
+      )
+      if (target !== undefined) pageFocus.request(target.kind, target.key, day)
+    },
+    [pageFocus, settings],
+  )
+  const pageFocusApi = useMemo<PageFocusApi>(
+    () => ({ store: pageFocus, focusAfterNavigation }),
+    [pageFocus, focusAfterNavigation],
+  )
 
   const run = useCallback(
     (id: CommandId) => {
-      const go = (day: DayKey) => void navigate(`/day/${day}`)
+      const go = (day: DayKey) => {
+        focusAfterNavigation(day)
+        void navigate(`/day/${day}`)
+      }
       switch (id) {
         case 'focus.previousDay':
           go(addDays(currentDay(), -1))
@@ -137,7 +156,7 @@ function Planner({ focus }: { focus: DayKey }) {
           break
       }
     },
-    [currentDay, today, navigate, api, queryClient, editTemplate],
+    [currentDay, today, navigate, api, queryClient, editTemplate, focusAfterNavigation],
   )
 
   useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
@@ -145,90 +164,99 @@ function Planner({ focus }: { focus: DayKey }) {
   const focusMode = useFocusMode(focusModeOn && !paletteOpen && !settingsOpen, focus, idleMs)
 
   return (
-    <div className="planner" data-focus-mode={focusMode || undefined}>
-      <header className="topbar">
-        <span className="brand">Agendina</span>
-        {settings !== undefined && live && (
-          <WeekStrip
-            focus={focus}
-            rule={settings.weekRule}
-            calendarOpen={calendarOpen}
-            setCalendarOpen={setCalendarOpen}
+    <PageFocusContext value={pageFocusApi}>
+      <div className="planner" data-focus-mode={focusMode || undefined}>
+        <header className="topbar">
+          <span className="brand">Agendina</span>
+          {settings !== undefined && live && (
+            <WeekStrip
+              focus={focus}
+              rule={settings.weekRule}
+              calendarOpen={calendarOpen}
+              setCalendarOpen={setCalendarOpen}
+            />
+          )}
+          <div className="topbar-actions">
+            <button
+              type="button"
+              className="icon"
+              aria-label="Settings"
+              title="Settings"
+              onClick={() => {
+                run('settings.open')
+              }}
+            >
+              <SettingsIcon />
+            </button>
+            <button
+              type="button"
+              className="icon"
+              aria-label="Sign out"
+              title="Sign out"
+              onClick={() => {
+                run('account.signOut')
+              }}
+            >
+              <SignOutIcon />
+            </button>
+          </div>
+        </header>
+        <main className="pages">
+          {isError && <p role="alert">Your settings could not be loaded.</p>}
+          {settings !== undefined && live && (
+            <PlannerContext
+              value={{
+                weekRule: settings.weekRule,
+                editingTemplate: templateEdit,
+                closeTemplate: (edit) => {
+                  setTemplateEdit((current) => closeEdit(current, edit))
+                },
+                setTemplateDraft: (edit, draft) => {
+                  setTemplateEdit((current) =>
+                    current?.kind === edit.kind && current.key === edit.key
+                      ? { ...current, draft }
+                      : current,
+                  )
+                },
+              }}
+            >
+              <LayoutView
+                layout={resolveLayout(settings.layout, focus, settings.weekRule)}
+                onResize={(splitId, sizes) => {
+                  update({ ...settings, layout: setSplitSizes(settings.layout, splitId, sizes) })
+                }}
+              />
+            </PlannerContext>
+          )}
+        </main>
+        {settingsOpen && settings !== undefined && (
+          <SettingsDialog
+            settings={settings}
+            onChange={update}
+            templateKinds={templateKinds}
+            onEditTemplate={(kind) => {
+              setSettingsOpen(false)
+              run(kind === 'day' ? 'template.editDay' : 'template.editWeek')
+            }}
+            onClose={() => {
+              setSettingsOpen(false)
+            }}
           />
         )}
-        <div className="topbar-actions">
-          <button
-            type="button"
-            className="icon"
-            aria-label="Settings"
-            title="Settings"
-            onClick={() => {
-              run('settings.open')
+        {paletteOpen && (
+          <CommandPalette
+            keymap={keymap}
+            isAvailable={(id) =>
+              (id !== 'template.editDay' || templateKinds.includes('day')) &&
+              (id !== 'template.editWeek' || templateKinds.includes('week'))
+            }
+            onRun={run}
+            onClose={() => {
+              setPaletteOpen(false)
             }}
-          >
-            <SettingsIcon />
-          </button>
-          <button
-            type="button"
-            className="icon"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={() => {
-              run('account.signOut')
-            }}
-          >
-            <SignOutIcon />
-          </button>
-        </div>
-      </header>
-      <main className="pages">
-        {isError && <p role="alert">Your settings could not be loaded.</p>}
-        {settings !== undefined && live && (
-          <PlannerContext
-            value={{
-              weekRule: settings.weekRule,
-              editingTemplate: templateEdit,
-              closeTemplate: (edit) => {
-                setTemplateEdit((current) => closeEdit(current, edit))
-              },
-            }}
-          >
-            <LayoutView
-              layout={resolveLayout(settings.layout, focus, settings.weekRule)}
-              onResize={(splitId, sizes) => {
-                update({ ...settings, layout: setSplitSizes(settings.layout, splitId, sizes) })
-              }}
-            />
-          </PlannerContext>
+          />
         )}
-      </main>
-      {settingsOpen && settings !== undefined && (
-        <SettingsDialog
-          settings={settings}
-          onChange={update}
-          templateKinds={templateKinds}
-          onEditTemplate={(kind) => {
-            setSettingsOpen(false)
-            run(kind === 'day' ? 'template.editDay' : 'template.editWeek')
-          }}
-          onClose={() => {
-            setSettingsOpen(false)
-          }}
-        />
-      )}
-      {paletteOpen && (
-        <CommandPalette
-          keymap={keymap}
-          isAvailable={(id) =>
-            (id !== 'template.editDay' || templateKinds.includes('day')) &&
-            (id !== 'template.editWeek' || templateKinds.includes('week'))
-          }
-          onRun={run}
-          onClose={() => {
-            setPaletteOpen(false)
-          }}
-        />
-      )}
-    </div>
+      </div>
+    </PageFocusContext>
   )
 }

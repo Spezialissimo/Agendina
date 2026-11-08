@@ -7,6 +7,8 @@ interface Planner {
   editingTemplate: TemplateEdit | undefined
   /** Called when the editor for `edit` is done. */
   closeTemplate: (edit: TemplateEdit) => void
+  /** Keeps the unsaved text of the edit, so it survives navigation. */
+  setTemplateDraft: (edit: TemplateEdit, draft: string) => void
 }
 
 export const PlannerContext = createContext<Planner | undefined>(undefined)
