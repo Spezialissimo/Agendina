@@ -243,27 +243,19 @@ describe('editing a template', () => {
     })
 
     it.each([
-      ['day', '2026-10-27', '2026-10-28', 'Day template', 'Tuesday, October 27, 2026'],
-      ['week', '2026-10-27', '2026-11-03', 'Week template', 'Week 44'],
+      ['day', '2026-10-27', '2026-10-28', 'Day template'],
+      ['week', '2026-10-27', '2026-11-03', 'Week template'],
     ])(
-      'going back to the page does not reopen the template editor: %s',
-      async (kind, from, away, name, page) => {
+      'stays open with its unsaved text when going to another %s',
+      async (kind, from, away, name) => {
         const { user, router } = renderApp(server, `/day/${from}`)
         await user.click(await screen.findByRole('button', { name: 'Settings' }))
         await user.click(screen.getByRole('button', { name: `Edit ${kind} template` }))
         replaceText(await editor(name), 'draft')
+
         await act(() => router.navigate(`/day/${away}`))
-        await waitFor(() => {
-          expect(screen.queryByRole('textbox', { name })).not.toBeInTheDocument()
-        })
-        const settings = screen.getByRole('button', { name: 'Settings' })
-        settings.focus()
 
-        await act(() => router.navigate(`/day/${from}`))
-
-        await screen.findByRole('textbox', { name: page })
-        expect(screen.queryByRole('textbox', { name })).not.toBeInTheDocument()
-        expect(settings).toHaveFocus()
+        expect(editorText(await editor(name))).toBe('draft')
       },
     )
 
@@ -286,7 +278,6 @@ describe('editing a template', () => {
       replaceText(await editor('Week template'), 'first')
       await user.click(screen.getByRole('button', { name: 'Save template' }))
       await act(() => router.navigate('/day/2026-11-03'))
-      await screen.findByRole('textbox', { name: 'Week 45' })
       await user.keyboard('{Meta>}k{/Meta}')
       await user.type(
         screen.getByRole('combobox', { name: 'Search commands' }),
@@ -301,18 +292,6 @@ describe('editing a template', () => {
       await act(() => new Promise((resolve) => setTimeout(resolve, 300)))
 
       expect(screen.getByRole('textbox', { name: 'Week template' })).toBeInTheDocument()
-    })
-
-    it('closes when going to another week', async () => {
-      const { user, router } = renderApp(server, '/day/2026-10-27')
-      await user.click(await screen.findByRole('button', { name: 'Settings' }))
-      await user.click(screen.getByRole('button', { name: 'Edit week template' }))
-      await editor('Week template')
-
-      await act(() => router.navigate('/day/2026-11-03'))
-
-      expect(await screen.findByRole('textbox', { name: 'Week 45' })).toBeInTheDocument()
-      expect(screen.queryByRole('textbox', { name: 'Week template' })).not.toBeInTheDocument()
     })
 
     it('puts the cursor in the template editor, from Settings and from the palette', async () => {
@@ -349,20 +328,6 @@ describe('editing a template', () => {
       await user.type(screen.getByRole('combobox', { name: 'Search commands' }), 'template')
 
       expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Edit day template'])
-    })
-
-    it('closes when going to another day', async () => {
-      const { user, router } = renderApp(server, '/day/2026-10-27')
-      await user.click(await screen.findByRole('button', { name: 'Settings' }))
-      await user.click(screen.getByRole('button', { name: 'Edit day template' }))
-      await editor('Day template')
-
-      await act(() => router.navigate('/day/2026-10-28'))
-
-      expect(
-        await screen.findByRole('textbox', { name: 'Wednesday, October 28, 2026' }),
-      ).toBeInTheDocument()
-      expect(screen.queryByRole('textbox', { name: 'Day template' })).not.toBeInTheDocument()
     })
   })
 })

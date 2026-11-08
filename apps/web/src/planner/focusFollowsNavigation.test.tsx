@@ -538,19 +538,20 @@ describe('focus follows navigation', () => {
       return editor('Day template')
     }
 
-    // A template edit ends when its page is no longer shown (it is tied to that page).
-    it('focuses the next day once the template edit on this day has ended', async () => {
+    it('keeps typing in the template editor when you were editing the template', async () => {
       const { user } = await open('/day/2026-10-28')
       await editor('Wednesday, October 28, 2026')
       placeCursor(await editDayTemplate(user), 0)
 
       await user.keyboard(NEXT_DAY)
 
-      await expectFocusIn('Thursday, October 29, 2026')
-      expect(screen.queryByRole('textbox', { name: 'Day template' })).toBeNull()
+      await editor('Week 44')
+      const thursday = await screen.findByRole('region', { name: 'Thursday, October 29, 2026' })
+      const template = await expectFocusIn('Day template')
+      expect(thursday).toContainElement(template)
     })
 
-    it('focuses the week page when moving on a week ends the template edit', async () => {
+    it('leaves the template editor on the other side open, focusing the week page', async () => {
       const { user } = await open('/day/2026-10-28')
       await editor('Wednesday, October 28, 2026')
       await editDayTemplate(user)
@@ -559,7 +560,7 @@ describe('focus follows navigation', () => {
       await user.keyboard(NEXT_WEEK)
 
       await expectFocusIn('Week 45')
-      expect(screen.queryByRole('textbox', { name: 'Day template' })).toBeNull()
+      expect(screen.getByRole('textbox', { name: 'Day template' })).toBeInTheDocument()
     })
   })
 

@@ -54,7 +54,7 @@ function Planner({ focus }: { focus: DayKey }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // Tied to the page it was opened on: a day edit ends on another day, a week edit on another week.
+  // Stays open across navigation: the editor shows on the page of its kind that is being edited.
   const [templateEdit, setTemplateEdit] = useState<TemplateEdit | undefined>()
   const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
@@ -75,14 +75,6 @@ function Planner({ focus }: { focus: DayKey }) {
     },
     [pageOf, currentDay],
   )
-  // An edit ends when its page is no longer the one shown for editing; coming back starts afresh.
-  if (
-    templateEdit !== undefined &&
-    settings !== undefined &&
-    pageOf(templateEdit.kind, focus)?.key !== templateEdit.key
-  ) {
-    setTemplateEdit(undefined)
-  }
   const templateKinds = (['day', 'week'] as const).filter((kind) => pageOf(kind, focus))
 
   const [pageFocus] = useState(() => new PageFocus())
@@ -218,6 +210,13 @@ function Planner({ focus }: { focus: DayKey }) {
                 editingTemplate: templateEdit,
                 closeTemplate: (edit) => {
                   setTemplateEdit((current) => closeEdit(current, edit))
+                },
+                setTemplateDraft: (edit, draft) => {
+                  setTemplateEdit((current) =>
+                    current?.kind === edit.kind && current.key === edit.key
+                      ? { ...current, draft }
+                      : current,
+                  )
                 },
               }}
             >

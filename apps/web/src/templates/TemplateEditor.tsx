@@ -17,10 +17,15 @@ interface Props {
   /** The template as loaded (null if there is none yet) and the page's text to start one from. */
   template: Template | null
   pageText: string
+  /** The unsaved text kept by the planner, when the editor is reopened on another page. */
+  draft?: string | undefined
+  onDraftChange?: (text: string) => void
   /** Back to the page, with a summary of what changed (undefined when nothing was saved). */
   onClose: (notice?: string) => void
   /** Takes keyboard focus for a navigation that arrived at this page (see planner/pageFocus.ts). */
   focusRequest?: { id: number; done: () => void } | undefined
+  /** Puts the cursor in the editor when it appears (not when it follows the user to another page). */
+  autoFocus?: boolean
 }
 
 type Phase =
@@ -42,8 +47,11 @@ export function TemplateEditor({
   pageKey,
   template,
   pageText,
+  draft,
+  onDraftChange,
   onClose,
   focusRequest,
+  autoFocus = false,
 }: Props) {
   const api = useApi()
   const queryClient = useQueryClient()
@@ -51,7 +59,7 @@ export function TemplateEditor({
   const { weekRule } = usePlannerContext()
   const titleId = useId()
   // A first template starts as a copy of this page: the usual way to make one.
-  const [text, setText] = useState(template?.content ?? pageText)
+  const [text, setText] = useState(draft ?? template?.content ?? pageText)
   const [phase, setPhase] = useState<Phase>({ type: 'editing' })
   const [failed, setFailed] = useState(false)
   const label = `${kind === 'day' ? 'Day' : 'Week'} template`
@@ -163,11 +171,14 @@ export function TemplateEditor({
       <PageEditor
         label={label}
         value={text}
-        onChange={setText}
+        onChange={(next) => {
+          setText(next)
+          onDraftChange?.(next)
+        }}
         weekRule={weekRule}
         initialSelection={{ anchor: text.length, head: text.length }}
         focusRequest={focusRequest}
-        autoFocus
+        autoFocus={autoFocus}
       />
       {failed && (
         <p role="alert">The template could not be saved. Check your connection and try again.</p>

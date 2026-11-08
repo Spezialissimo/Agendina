@@ -47,7 +47,7 @@ export function NotePage({ view }: { view: NoteView }) {
   const api = useApi()
   const locale = useLocale()
   const navigate = useNavigate()
-  const { weekRule, editingTemplate, closeTemplate } = usePlannerContext()
+  const { weekRule, editingTemplate, closeTemplate, setTemplateDraft } = usePlannerContext()
   const pageKey = usePageKey(view)
   const note = useQuery({
     queryKey: ['note', view.kind, pageKey],
@@ -96,20 +96,23 @@ export function NotePage({ view }: { view: NoteView }) {
           {notice.text}
         </p>
       )}
-      {pageKey === undefined ? null : view.editable &&
-        editingTemplate?.kind === view.kind &&
-        editingTemplate.key === view.key ? (
+      {pageKey === undefined ? null : view.editable && editingTemplate?.kind === view.kind ? (
         template.data !== undefined &&
         note.data !== undefined && (
           <TemplateEditor
-            key={`${view.kind}/${pageKey}`}
+            key={`${view.kind}/${editingTemplate.key}`}
             kind={view.kind}
-            pageKey={pageKey}
+            pageKey={editingTemplate.key}
             template={template.data}
             pageText={note.data?.content ?? ''}
+            draft={editingTemplate.draft}
+            autoFocus={pageKey === editingTemplate.key}
+            onDraftChange={(text) => {
+              setTemplateDraft(editingTemplate, text)
+            }}
             focusRequest={focusRequest}
             onClose={(text) => {
-              closeTemplate({ kind: view.kind, key: view.key })
+              closeTemplate(editingTemplate)
               if (text !== undefined) setNotice({ key: pageKey, text })
             }}
           />
