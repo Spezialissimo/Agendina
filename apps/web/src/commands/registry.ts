@@ -43,6 +43,8 @@ export const COMMANDS = [
     defaultBindings: ['Mod+KeyK'],
   },
   { id: 'settings.open', title: 'Settings…', context: 'global', defaultBindings: [] },
+  { id: 'template.editDay', title: 'Edit day template', context: 'global', defaultBindings: [] },
+  { id: 'template.editWeek', title: 'Edit week template', context: 'global', defaultBindings: [] },
   { id: 'account.signOut', title: 'Sign out', context: 'global', defaultBindings: [] },
   {
     id: 'editor.toggleCheckbox',
