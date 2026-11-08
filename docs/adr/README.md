@@ -17,3 +17,4 @@ One file per decision: context, decision, consequences. Superseded ADRs stay, ma
 | 0011 | [Accounts and sessions](0011-authentication.md)                              | Accepted |
 | 0012 | [Hosting on Cloud Run + Neon, continuous deployment](0012-hosting.md)        | Accepted |
 | 0013 | [Crisp monochrome theme, bundled fonts, focus mode](0013-theme-and-fonts.md) | Accepted |
+| 0014 | [Live updates by polling the changes feed](0014-live-updates.md)             | Accepted |

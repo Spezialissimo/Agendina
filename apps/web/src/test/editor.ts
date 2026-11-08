@@ -43,3 +43,8 @@ export function placeCursor(editor: HTMLElement, position: number): void {
     v.dispatch({ selection: { anchor: position } })
   })
 }
+
+/** Where the cursor is (the head of the main selection). */
+export function cursorPosition(editor: HTMLElement): number {
+  return view(editor).state.selection.main.head
+}

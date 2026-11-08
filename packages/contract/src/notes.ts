@@ -81,7 +81,14 @@ export const NoteChange = Note.extend({
 export type NoteChange = z.infer<typeof NoteChange>
 
 export const ChangesQuery = z.object({
-  since: z.coerce.number().int().nonnegative(),
+  /** Omitted: no changes, only the current cursor, to follow the feed from now on. */
+  // Digits only: a blank `since=` must not read as 0, which would send the whole feed.
+  since: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .pipe(z.number().int().nonnegative())
+    .optional(),
   limit: z.coerce.number().int().min(1).max(1000).default(500),
 })
 export type ChangesQuery = z.infer<typeof ChangesQuery>
