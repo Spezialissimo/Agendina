@@ -44,6 +44,8 @@ export const COMMANDS = [
   },
   { id: 'page.nextTextSize', title: 'Text size (cycle)', context: 'global', defaultBindings: [] },
   { id: 'settings.open', title: 'Settings…', context: 'global', defaultBindings: [] },
+  { id: 'template.editDay', title: 'Edit day template', context: 'global', defaultBindings: [] },
+  { id: 'template.editWeek', title: 'Edit week template', context: 'global', defaultBindings: [] },
   { id: 'account.signOut', title: 'Sign out', context: 'global', defaultBindings: [] },
   {
     id: 'editor.toggleCheckbox',

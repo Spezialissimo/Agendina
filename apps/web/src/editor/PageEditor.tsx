@@ -19,6 +19,8 @@ interface Props {
   onChange: (value: string) => void
   /** For the slash menu's week tracker; ISO weeks if not given. */
   weekRule?: WeekRule
+  /** Puts the cursor in the editor when it appears. */
+  autoFocus?: boolean
 }
 
 /** Applies an editor command if it applies here; false lets the key do its usual job. */
@@ -75,7 +77,13 @@ const External = Annotation.define<boolean>()
  * The editing surface of a page: CodeMirror 6 on the page's markdown (ADR 0004). The text is the
  * markdown exactly as stored. `data-editor` tells the shortcut handler that editor commands apply.
  */
-export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Props) {
+export function PageEditor({
+  label,
+  value,
+  onChange,
+  weekRule = ISO_WEEK,
+  autoFocus = false,
+}: Props) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | undefined>(undefined)
   const latestOnChange = useRef(onChange)
@@ -131,6 +139,7 @@ export function PageEditor({ label, value, onChange, weekRule = ISO_WEEK }: Prop
       }),
     })
     view.current = editor
+    if (autoFocus) editor.focus()
     return () => {
       editor.destroy()
       view.current = undefined
