@@ -1,6 +1,6 @@
 import { addDays } from '@agendina/core'
 import { expect, test } from '@playwright/test'
-import { dayPage, enter, revealButtons } from './helpers.ts'
+import { checkbox, dayPage, enter, revealButtons, savedOnServer } from './helpers.ts'
 
 test('focus mode dims everything but the page you are working in', async ({ page }, testInfo) => {
   // Far from the other journeys' pages, one week later per retry.
@@ -116,5 +116,44 @@ test.describe('on a touch screen', () => {
 
     await expect(settings).toHaveCSS('opacity', '1')
     await expect(page.getByRole('dialog', { name: 'Settings' })).toBeHidden()
+  })
+
+  // Guards that a tap ticks the box exactly once and leaves the editor unfocused, in emulation. It
+  // passed before the touchend handling too: it does not reproduce the on-screen keyboard bug.
+  test('a tap on a checkbox ticks it once and does not focus the editor', async ({
+    page,
+    browserName,
+  }, testInfo) => {
+    test.skip(browserName === 'firefox', 'Playwright has no touch emulation in desktop Firefox')
+    const key = addDays('2026-12-21', 7 * testInfo.retry)
+    await enter(page)
+    const text = '- [ ] Finish report\n\n| Exercise | Done |\n|---|---|\n| Squat | [ ] |'
+    const put = await page.request.put(`/api/notes/day/${key}`, {
+      data: { content: text, baseRevision: 0 },
+    })
+    expect(put.ok()).toBe(true)
+    await page.goto(`/day/${key}`)
+    await expect(checkbox(page, 'Finish report')).toBeVisible()
+    await expect(page.locator('.cm-content').first()).not.toBeFocused()
+
+    const tap = async (label: string) => {
+      const box = await checkbox(page, label).boundingBox()
+      if (box === null) throw new Error(`${label} has no box`)
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
+    }
+    const editorHasFocus = () =>
+      page
+        .locator('.cm-editor:focus-within')
+        .count()
+        .then((n) => n > 0)
+
+    await tap('Finish report')
+    const ticked = text.replace('- [ ]', '- [x]')
+    await savedOnServer(page, `day/${key}`, ticked)
+    expect(await editorHasFocus()).toBe(false)
+
+    await tap('Squat, Done')
+    await savedOnServer(page, `day/${key}`, ticked.replace('| [ ] |', '| [x] |'))
+    expect(await editorHasFocus()).toBe(false)
   })
 })
