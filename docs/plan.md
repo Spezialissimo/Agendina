@@ -9,8 +9,7 @@ now. Personal project, but built as a product: self-hostable server, free hosted
 features gated later. Development is test-driven and mostly carried out by AI, so the foundation
 (tooling, tests, rules) matters as much as the features.
 
-The project directory is empty apart from the first layout sketch
-([`docs/first-mockup.png`](first-mockup.png), now superseded by layout A below).
+The first layout sketch ([`docs/first-mockup.png`](first-mockup.png)) is superseded by layout A below.
 
 ## Decisions
 - **Storage**: the database is the source of truth; note content is stored verbatim as markdown.
@@ -36,7 +35,7 @@ The project directory is empty apart from the first layout sketch
   overrides stored in settings + command palette (cmd+K). Match on `event.code`. Defaults use
   **cmd** (opt is taken by AeroSpace). Combos the browser/OS keeps (cmd+T/W/N/Q/H) can't be bound;
   risky ones (cmd+L, cmd+[ ]) show a warning. Defaults verified by Playwright in Chromium, WebKit
-  and Firefox. Shortcut editor UI right after the MVP.
+  and Firefox.
 - **Templates (MVP)**: a template is a note (`kind=template`, one each for day and week) with
   revisions. Pages record `templateId + templateRevision` when created from a template; an empty new
   page gets the template applied. An "Edit template" button on every page → save → three-way merge
@@ -76,49 +75,56 @@ or a merge result, or `409 {conflict: base/mine/theirs}` · `GET /changes?since=
 `since`: only the current cursor). The web app polls it while visible to show edits from other
 devices (ADR 0014).
 
-## AI-driven TDD workflow
-- **Per feature**: short spec with acceptance criteria → AI writes **failing tests first** → a
-  human reviews the tests (cheaper than reviewing code, and the tests are the spec) → implement →
-  refactor → all gates green → small PR.
-- **Test layers**:
-  - `core`: Vitest unit tests + property-based tests (fast-check) for merge and date math, e.g.
-    "merging non-overlapping edits keeps both" and "next(prev(x)) = x across year boundaries";
-    high coverage threshold, mutation testing (Stryker) on merge later.
-  - `server`: Hono `app.request` integration tests on in-memory SQLite; the same suite runs on
-    Postgres (Testcontainers) in CI.
-  - `web`: Vitest + Testing Library for components; Vitest browser mode for CodeMirror behaviour.
-  - `e2e`: Playwright user journeys on 3 browsers + screenshot tests for the layout.
-- **Gates**: TS strict, ESLint, Prettier, typecheck + tests + e2e in GitHub Actions, conventional
-  commits.
-- **CLAUDE.md rules**: tests first; never weaken or delete a test to make it pass without saying
-  so; run lint, typecheck and tests before claiming done; record new architectural choices as
-  ADRs; keep `core` pure.
+## How we work
+Test-driven, small PRs: see `CLAUDE.md` (rules and commands) and `docs/developer-guide.md`
+(planning, sizing, review). Every roadmap item below starts from its acceptance criteria, and
+gets an ADR when it makes an architectural choice.
 
-## Roadmap
-**Phase 0 — Foundation** ✅: monorepo, tooling, CI, CLAUDE.md, ADRs for the decisions above, health
-endpoint, a Playwright smoke test, Dockerfile skeleton.
-**Phase 1 — Core domain** ✅: period keys and week math (configurable week start), focus navigation,
-diff3 merge, layout tree + resolver, keymap matching + reserved combos, template propagation logic.
-**Phase 2 — Server** ✅ (PRs #9–#15): schema + migrations (SQLite + PG), auth (first user = admin, signup toggle),
-notes API with revisions/merge/409, changes feed, settings, entitlements stub, export as a .md zip.
-**Phase 3 — Web shell** ✅ (PRs #16–#21): login, layout A renderer, week strip + month popover, command registry
-+ default cmd shortcuts + palette, autosave (debounced) with revision handling, conflict resolve UI.
-**Phase 4 — Editor** ✅ (PRs #22–#28): CodeMirror live-preview steps (see Decisions).
-**Phase 5 — Templates** ✅ (PRs #31–#35): day/week templates, auto-apply on new pages, "Edit template" button +
-propagation to current and existing future pages + conflict list.
-**Phase 6 — MVP release** ✅ (PRs #36–#40): week-start setting (old week pages stay visible), export
-and sign-ups in Settings, Docker image released to GHCR on `v*` tags (amd64 + arm64, smoke-tested
-across a container replacement), self-hosting guide (`docs/self-hosting.md`). Next: daily use.
-**Post-MVP (rough order)**: shortcut editor UI → extra layout presets + layout editor → mobile
-view (journal scroll, week header ↔ day footer) + PWA → offline sync with client-side merge →
-Capacitor app → freemium entitlements + hosted deployment → table-aware merge → E2E encryption;
-license decision before public launch.
+## Status
+**MVP released** (Phases 0–6, 2026-10): monorepo and CI, core domain (week math, diff3 merge,
+layout resolver), server (auth, notes with revisions/merge/409, changes feed, export), web shell
+and live-preview editor, day/week templates with propagation, week-start setting, Docker image
+on GHCR, self-hosting guide (`docs/self-hosting.md`). History: `git log` and `docs/adr/`.
 
-## Verification
-- Each phase ends with green `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` in CI.
-- MVP acceptance (Playwright + manual): sign up as the first user (becomes admin) → week template
-  with workout table appears on a new week → write today's note, tick boxes, reload → content
-  persists → cmd-shortcuts move day/week → edit the template on the current page → the change
-  appears on the current page and existing future pages, with ticks preserved → edit the same
-  line in two tabs → resolve prompt → export a zip of .md files → `docker run` a fresh instance
-  with a SQLite volume and repeat the smoke test.
+Since then: daily use. Small fixes and wishes are logged and triaged in `docs/feedback.md`;
+they do not belong here. Only features big enough to need acceptance criteria get a roadmap item.
+
+## Roadmap (in this order)
+1. **Layout presets and a layout editor** (next, detailed below). Right after it: remove focus
+   mode.
+2. **Mobile view and PWA**: journal-scroll style, tapping the week header opens the week note,
+   the current day is selectable in a footer; installable, works as a standalone app. Ideally a
+   layout (item 1), not a special case.
+3. **Offline sync with client-side merge**: needs an ADR first; must say how merging would work
+   under E2E encryption (the server cannot merge what it cannot read). Before starting: review
+   merge correctness (property tests in `core`), as merges become far more frequent.
+4. **Shortcut editor UI**: per-user overrides already exist in settings (ADR 0007).
+5. **Table-aware merge**: per-cell merge for tables, also for template propagation.
+6. **E2E encryption**. Before starting: check that no server feature reads note content.
+7. **License decision** (likely AGPL), before any public launch
+8. **Freemium entitlements and hosted deployment**. Before starting: a security review of
+   auth, sessions and export.
+9. **Capacitor app**: only if the PWA turns out not to be enough
+
+### 1. Layout presets and a layout editor
+Layouts are already data (ADR 0005): a JSON tree stored in the user's settings and validated by
+`LayoutSchema`; today only `OPEN_PLANNER` is offered. Keep it small: a few presets and a minimal
+editor, not a general design tool.
+
+Acceptance criteria (to be refined with the user before writing tests):
+- Settings lists the available presets (Open planner plus a few more, chosen when this item
+  starts; a seven-day weekly spread would need a new panel type, see ADR 0005); choosing one
+  applies immediately and is kept after reload and on other devices.
+- A preset needs no new rendering code unless it introduces a new panel type; presets live in
+  `packages/core` as data, with tests that each resolves for any focus day and week rule.
+- A minimal editor can change a split's direction, replace a panel's content (kind and offset),
+  add and remove panels, and reset to a preset. Invalid trees are impossible to build in the UI
+  and still rejected by `LayoutSchema` on the server.
+- Every layout has at least one editable page and at most one per kind (day, week), so a note
+  never has two editors. Layouts without a day page or without a week page stay valid, as today.
+- Switching presets never loses note content.
+- To decide first, as it changes the settings data model: settings hold one layout tree, with
+  the splitter sizes inside it. Can users keep several layouts (named, or one custom next to the
+  presets)? Only then can sizes be remembered per layout; with a single tree, choosing a preset
+  replaces the sizes too.
+- Open question: does the editor live in Settings or in place on the page?
