@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
 import { editorText } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
-import { startTestServer, type TestServer } from '../test/server.ts'
+import { PASSWORD, startTestServer, type TestServer } from '../test/server.ts'
 
 describe('planner', () => {
   let server: TestServer
@@ -219,6 +219,34 @@ describe('planner', () => {
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       expect(button).toHaveFocus()
+    })
+  })
+
+  describe('signing out', () => {
+    it('says so when it could not sign out, and stays in the planner', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const signOut = await screen.findByRole('button', { name: 'Sign out' })
+      server.setOffline(true)
+
+      await user.click(signOut)
+
+      expect(await screen.findByText(/could not sign out/i)).toHaveAttribute('role', 'alert')
+      expect(weekStrip()).toBeInTheDocument()
+    })
+
+    it('saves a setting changed just before', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      separator.focus()
+      await user.keyboard('{ArrowRight}')
+
+      await user.click(screen.getByRole('button', { name: 'Sign out' }))
+      await screen.findByRole('button', { name: 'Sign in' })
+
+      await api.login({ email: 'me@example.com', password: PASSWORD })
+      expect((await api.settings()).layout).toMatchObject({
+        children: [{ size: 0.5 }, { size: 0.5 }],
+      })
     })
   })
 

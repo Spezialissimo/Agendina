@@ -49,13 +49,14 @@ function Planner({ focus }: { focus: DayKey }) {
   const api = useApi()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { settings, isError, saveFailed, update } = useSettings()
+  const { settings, isError, saveFailed, update, flush } = useSettings()
   const live = useLiveUpdates()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Stays open across navigation: the editor shows on the page of its kind that is being edited.
   const [templateEdits, setTemplateEdits] = useState<TemplateEdits>({})
+  const [signOutFailed, setSignOutFailed] = useState(false)
   const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
 
@@ -101,6 +102,18 @@ function Planner({ focus }: { focus: DayKey }) {
     [pageFocus, focusAfterNavigation],
   )
 
+  const signOut = useCallback(async () => {
+    setSignOutFailed(false)
+    try {
+      // First, while still signed in: a setting changed a moment ago is not saved yet.
+      await flush()
+      await api.logout()
+      await queryClient.resetQueries()
+    } catch {
+      setSignOutFailed(true)
+    }
+  }, [api, queryClient, flush])
+
   const run = useCallback(
     (id: CommandId) => {
       const go = (day: DayKey) => {
@@ -144,7 +157,7 @@ function Planner({ focus }: { focus: DayKey }) {
           editTemplate('week')
           break
         case 'account.signOut':
-          void api.logout().then(() => queryClient.resetQueries())
+          void signOut()
           break
         case 'editor.toggleCheckbox':
           applyToFocusedEditor(toggleAtCursor)
@@ -157,7 +170,7 @@ function Planner({ focus }: { focus: DayKey }) {
           break
       }
     },
-    [currentDay, today, navigate, api, queryClient, editTemplate, focusAfterNavigation],
+    [currentDay, today, navigate, signOut, editTemplate, focusAfterNavigation],
   )
 
   useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
@@ -206,6 +219,9 @@ function Planner({ focus }: { focus: DayKey }) {
           {isError && <p role="alert">Your settings could not be loaded.</p>}
           {saveFailed && (
             <p role="alert">Your settings could not be saved. They will be saved when possible.</p>
+          )}
+          {signOutFailed && (
+            <p role="alert">Could not sign out. Check your connection and try again.</p>
           )}
           {settings !== undefined && live && (
             <PlannerContext
