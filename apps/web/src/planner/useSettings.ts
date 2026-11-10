@@ -1,59 +1,81 @@
 import type { UserSettings } from '@agendina/contract'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApi } from '../app/AppProviders.tsx'
 
 const SETTINGS_QUERY = ['settings'] as const
 const SAVE_DELAY_MS = 400
+const RETRY_DELAY_MS = 5000
 
-/** The user's settings, and an `update` that applies immediately and saves shortly after. */
+/**
+ * The user's settings, and an `update` that applies immediately and saves shortly after. A change
+ * that could not be saved is kept and retried (`saveFailed` meanwhile), also when the connection
+ * comes back.
+ */
 export function useSettings() {
   const api = useApi()
   const queryClient = useQueryClient()
-  const settings = useQuery({ queryKey: SETTINGS_QUERY, queryFn: () => api.settings() })
-  const pending = useRef<{ settings: UserSettings; timer: ReturnType<typeof setTimeout> }>(
-    undefined,
-  )
+  const loaded = useQuery({ queryKey: SETTINGS_QUERY, queryFn: () => api.settings() })
+  // The change not saved yet. It is shown instead of the loaded settings, so that settings
+  // fetched again meanwhile (e.g. on window focus) do not undo it on screen.
+  const [unsaved, setUnsaved] = useState<UserSettings | undefined>(undefined)
+  const [saveFailed, setSaveFailed] = useState(false)
+  const latest = useRef<UserSettings | undefined>(undefined)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  /** Sends the change waiting for its delay right away. */
+  /** Saves the unsaved change right away. Never rejects: a failure is retried later. */
   const flush = useCallback(
-    ({ keepalive = false }: { keepalive?: boolean } = {}) => {
-      if (pending.current === undefined) return
-      clearTimeout(pending.current.timer)
-      const { settings } = pending.current
-      pending.current = undefined
-      api.saveSettings(settings, { keepalive }).catch(() => {
-        console.warn('Settings could not be saved')
-      })
+    async ({ keepalive = false }: { keepalive?: boolean } = {}): Promise<void> => {
+      clearTimeout(timer.current)
+      timer.current = undefined
+      const settings = latest.current
+      if (settings === undefined) return
+      try {
+        const saved = await api.saveSettings(settings, { keepalive })
+        // Changed again meanwhile: that change has its own save coming.
+        if (latest.current !== settings) return
+        latest.current = undefined
+        queryClient.setQueryData(SETTINGS_QUERY, saved)
+        setUnsaved(undefined)
+        setSaveFailed(false)
+      } catch {
+        if (latest.current !== settings) return
+        setSaveFailed(true)
+      }
     },
-    [api],
+    [api, queryClient],
   )
 
   // A change made just before leaving the planner or closing the page is still saved.
   useEffect(() => {
-    const pageHide = () => {
-      flush({ keepalive: true })
-    }
+    const pageHide = () => void flush({ keepalive: true })
+    const online = () => void flush()
     window.addEventListener('pagehide', pageHide)
+    window.addEventListener('online', online)
     return () => {
       window.removeEventListener('pagehide', pageHide)
-      flush({ keepalive: true })
+      window.removeEventListener('online', online)
+      void flush({ keepalive: true })
     }
   }, [flush])
 
+  useEffect(() => {
+    if (!saveFailed) return
+    const retry = setInterval(() => void flush(), RETRY_DELAY_MS)
+    return () => {
+      clearInterval(retry)
+    }
+  }, [saveFailed, flush])
+
   const update = useCallback(
     (next: UserSettings) => {
-      queryClient.setQueryData(SETTINGS_QUERY, next)
-      clearTimeout(pending.current?.timer)
-      pending.current = {
-        settings: next,
-        timer: setTimeout(() => {
-          flush()
-        }, SAVE_DELAY_MS),
-      }
+      latest.current = next
+      setUnsaved(next)
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => void flush(), SAVE_DELAY_MS)
     },
-    [queryClient, flush],
+    [flush],
   )
 
-  return { settings: settings.data, isError: settings.isError, update }
+  return { settings: unsaved ?? loaded.data, isError: loaded.isError, saveFailed, update, flush }
 }

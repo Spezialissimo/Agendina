@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS } from '@agendina/contract'
+import { US_WEEK } from '@agendina/core'
 import { screen, waitFor, within } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -292,6 +293,71 @@ describe('editing a template', () => {
       await act(() => new Promise((resolve) => setTimeout(resolve, 300)))
 
       expect(screen.getByRole('textbox', { name: 'Week template' })).toBeInTheDocument()
+    })
+
+    const openFromSettings = async (
+      user: ReturnType<typeof renderApp>['user'],
+      kind: 'day' | 'week',
+    ) => {
+      await user.click(await screen.findByRole('button', { name: 'Settings' }))
+      await user.click(screen.getByRole('button', { name: `Edit ${kind} template` }))
+    }
+
+    it('keeps its unsaved text when it is opened again from another day', async () => {
+      const { user, router } = renderApp(server, '/day/2026-10-27')
+      await openFromSettings(user, 'day')
+      replaceText(await editor('Day template'), 'unsaved draft')
+      await act(() => router.navigate('/day/2026-10-28'))
+
+      await openFromSettings(user, 'day')
+
+      expect(editorText(await editor('Day template'))).toBe('unsaved draft')
+    })
+
+    it('keeps the unsaved day template when the week template is opened too', async () => {
+      const { user } = renderApp(server, '/day/2026-10-27')
+      await openFromSettings(user, 'day')
+      replaceText(await editor('Day template'), 'unsaved draft')
+
+      await openFromSettings(user, 'week')
+
+      expect(await editor('Week template')).toBeInTheDocument()
+      expect(editorText(await editor('Day template'))).toBe('unsaved draft')
+    })
+
+    it('starts the first template from the page it was opened on, wherever you go next', async () => {
+      await api.saveNote('day', '2026-10-27', 'tuesday text', 0)
+      await api.saveNote('day', '2026-10-28', 'wednesday text', 0)
+      const { user, router } = renderApp(server, '/day/2026-10-27')
+      await openFromSettings(user, 'day')
+      expect(editorText(await editor('Day template'))).toBe('tuesday text')
+
+      await act(() => router.navigate('/day/2026-10-28'))
+
+      expect(editorText(await editor('Day template'))).toBe('tuesday text')
+      await user.click(screen.getByRole('button', { name: 'Save template' }))
+      await waitFor(async () => {
+        expect(await api.template('day')).toMatchObject({ content: 'tuesday text' })
+        expect(await api.getNote('day', '2026-10-27')).toMatchObject({ templateRevision: 1 })
+      })
+      expect(await api.getNote('day', '2026-10-28')).toMatchObject({ templateRevision: null })
+    })
+
+    it('links a week page written before the week start changed to its first template', async () => {
+      // Written when weeks started on Monday; with Sunday weeks it shows in the week of Oct 25.
+      await api.saveNote('week', '2026-10-26', 'old week page', 0)
+      await api.saveSettings({ ...DEFAULT_SETTINGS, weekRule: US_WEEK })
+      const { user } = renderApp(server, '/day/2026-10-27')
+      await openFromSettings(user, 'week')
+      const template = await editor('Week template')
+      expect(editorText(template)).toBe('old week page')
+      expect(template).toHaveFocus()
+
+      await user.click(screen.getByRole('button', { name: 'Save template' }))
+
+      await waitFor(async () => {
+        expect(await api.getNote('week', '2026-10-26')).toMatchObject({ templateRevision: 1 })
+      })
     })
 
     it('puts the cursor in the template editor, from Settings and from the palette', async () => {

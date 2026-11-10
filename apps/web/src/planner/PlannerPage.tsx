@@ -9,7 +9,7 @@ import {
   type DayKey,
 } from '@agendina/core'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ContextType } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useApi, useToday } from '../app/AppProviders.tsx'
 import { SettingsIcon, SignOutIcon } from '../app/icons.tsx'
@@ -22,8 +22,8 @@ import { addColumn, addRow } from '../editor/tables.ts'
 import { SettingsDialog } from '../settings/SettingsDialog.tsx'
 import { LayoutView } from './LayoutView.tsx'
 import { useFocusMode } from './useFocusMode.ts'
-import { closeEdit, type TemplateEdit } from './templateEdit.ts'
-import { PlannerContext } from './PlannerContext.tsx'
+import { closeEdit, startEdit, type TemplateEdit } from './templateEdit.ts'
+import { PlannerContext, type TemplateEdits } from './PlannerContext.tsx'
 import { PageFocus, PageFocusContext, focusTarget, type PageFocusApi } from './pageFocus.ts'
 import { WeekStrip } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
@@ -49,13 +49,14 @@ function Planner({ focus }: { focus: DayKey }) {
   const api = useApi()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { settings, isError, update } = useSettings()
+  const { settings, isError, saveFailed, update, flush } = useSettings()
   const live = useLiveUpdates()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Stays open across navigation: the editor shows on the page of its kind that is being edited.
-  const [templateEdit, setTemplateEdit] = useState<TemplateEdit | undefined>()
+  const [templateEdits, setTemplateEdits] = useState<TemplateEdits>({})
+  const [signOutFailed, setSignOutFailed] = useState(false)
   const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
 
@@ -71,7 +72,8 @@ function Planner({ focus }: { focus: DayKey }) {
   const editTemplate = useCallback(
     (kind: NoteKind) => {
       const page = pageOf(kind, currentDay())
-      if (page !== undefined) setTemplateEdit({ kind, key: page.key })
+      if (page === undefined) return
+      setTemplateEdits((edits) => ({ ...edits, [kind]: startEdit(edits[kind], kind, page.key) }))
     },
     [pageOf, currentDay],
   )
@@ -80,10 +82,12 @@ function Planner({ focus }: { focus: DayKey }) {
   const [pageFocus] = useState(() => new PageFocus())
   useEffect(() => pageFocus.connect(document), [pageFocus])
   // A request for another day lapses (e.g. the browser's back button went elsewhere meanwhile).
+  // Compared with the day open right now, not the one rendered: a second shortcut pressed before
+  // this render has already asked for the day after, and that request must stay.
   useEffect(() => {
     const request = pageFocus.get()
-    if (request !== undefined && request.day !== focus) pageFocus.cancel(request.id)
-  }, [pageFocus, focus])
+    if (request !== undefined && request.day !== currentDay()) pageFocus.cancel(request.id)
+  }, [pageFocus, focus, currentDay])
   const focusAfterNavigation = useCallback(
     (day: DayKey, side?: NoteKind) => {
       if (settings === undefined || !pageFocus.mayMoveFocus()) return
@@ -98,6 +102,43 @@ function Planner({ focus }: { focus: DayKey }) {
   const pageFocusApi = useMemo<PageFocusApi>(
     () => ({ store: pageFocus, focusAfterNavigation }),
     [pageFocus, focusAfterNavigation],
+  )
+
+  const signOut = useCallback(async () => {
+    setSignOutFailed(false)
+    try {
+      // First, while still signed in: a setting changed a moment ago is not saved yet.
+      await flush()
+      await api.logout()
+      await queryClient.resetQueries()
+    } catch {
+      setSignOutFailed(true)
+    }
+  }, [api, queryClient, flush])
+
+  const plannerContext = useMemo<ContextType<typeof PlannerContext>>(
+    () =>
+      weekRule === undefined
+        ? undefined
+        : {
+            weekRule,
+            templateEdits,
+            closeTemplate: (edit: TemplateEdit) => {
+              setTemplateEdits((edits) => ({
+                ...edits,
+                [edit.kind]: closeEdit(edits[edit.kind], edit),
+              }))
+            },
+            setTemplateDraft: (edit: TemplateEdit, draft: string) => {
+              setTemplateEdits((edits) => {
+                const current = edits[edit.kind]
+                return current?.key === edit.key
+                  ? { ...edits, [edit.kind]: { ...current, draft } }
+                  : edits
+              })
+            },
+          },
+    [weekRule, templateEdits],
   )
 
   const run = useCallback(
@@ -143,7 +184,7 @@ function Planner({ focus }: { focus: DayKey }) {
           editTemplate('week')
           break
         case 'account.signOut':
-          void api.logout().then(() => queryClient.resetQueries())
+          void signOut()
           break
         case 'editor.toggleCheckbox':
           applyToFocusedEditor(toggleAtCursor)
@@ -156,7 +197,7 @@ function Planner({ focus }: { focus: DayKey }) {
           break
       }
     },
-    [currentDay, today, navigate, api, queryClient, editTemplate, focusAfterNavigation],
+    [currentDay, today, navigate, signOut, editTemplate, focusAfterNavigation],
   )
 
   useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
@@ -203,23 +244,14 @@ function Planner({ focus }: { focus: DayKey }) {
         </header>
         <main className="pages">
           {isError && <p role="alert">Your settings could not be loaded.</p>}
+          {saveFailed && (
+            <p role="alert">Your settings could not be saved. They will be saved when possible.</p>
+          )}
+          {signOutFailed && (
+            <p role="alert">Could not sign out. Check your connection and try again.</p>
+          )}
           {settings !== undefined && live && (
-            <PlannerContext
-              value={{
-                weekRule: settings.weekRule,
-                editingTemplate: templateEdit,
-                closeTemplate: (edit) => {
-                  setTemplateEdit((current) => closeEdit(current, edit))
-                },
-                setTemplateDraft: (edit, draft) => {
-                  setTemplateEdit((current) =>
-                    current?.kind === edit.kind && current.key === edit.key
-                      ? { ...current, draft }
-                      : current,
-                  )
-                },
-              }}
-            >
+            <PlannerContext value={plannerContext}>
               <LayoutView
                 layout={resolveLayout(settings.layout, focus, settings.weekRule)}
                 onResize={(splitId, sizes) => {

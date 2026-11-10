@@ -46,6 +46,12 @@ function SplitView({
     onResize(split.id, next)
   }
 
+  const cancelDrag = () => {
+    if (drag.current === undefined) return
+    setSizes(drag.current.sizes)
+    drag.current = undefined
+  }
+
   const onKeyDown = (index: number) => (event: KeyboardEvent) => {
     const grow = row ? 'ArrowRight' : 'ArrowDown'
     const shrink = row ? 'ArrowLeft' : 'ArrowUp'
@@ -90,6 +96,9 @@ function SplitView({
                 drag.current = undefined
                 commit(move(i, from, (position(event) - start) / extent()))
               }}
+              // The browser took the gesture over (e.g. to scroll on touch): no pointerup comes.
+              onPointerCancel={cancelDrag}
+              onLostPointerCapture={cancelDrag}
             />
           )}
           <div className="split-child" style={{ flexGrow: sizes[index] ?? 1, flexBasis: 0 }}>

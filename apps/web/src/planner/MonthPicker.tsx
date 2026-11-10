@@ -1,5 +1,5 @@
 import { dayKey, monthGrid, type DayKey, type WeekRule } from '@agendina/core'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState, type RefObject } from 'react'
 import { useLocale, useToday } from '../app/AppProviders.tsx'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '../app/icons.tsx'
 import { format } from './weeks.ts'
@@ -18,8 +18,9 @@ export function MonthPicker({
   open,
   setOpen,
 }: Props & { open: boolean; setOpen: (open: boolean) => void }) {
+  const container = useRef<HTMLDivElement>(null)
   return (
-    <div className="month-picker">
+    <div ref={container} className="month-picker">
       <button
         type="button"
         className="icon"
@@ -36,6 +37,7 @@ export function MonthPicker({
         <MonthCalendar
           focus={focus}
           rule={rule}
+          picker={container}
           onPick={(day) => {
             setOpen(false)
             onPick(day)
@@ -49,7 +51,17 @@ export function MonthPicker({
   )
 }
 
-function MonthCalendar({ focus, rule, onPick, onClose }: Props & { onClose: () => void }) {
+function MonthCalendar({
+  focus,
+  rule,
+  picker,
+  onPick,
+  onClose,
+}: Props & {
+  /** The calendar with its button: a press on the button is the button's to handle. */
+  picker: RefObject<HTMLElement | null>
+  onClose: () => void
+}) {
   const locale = useLocale()
   const today = useToday()
   const [month, setMonth] = useState({
@@ -62,22 +74,28 @@ function MonthCalendar({ focus, rule, onPick, onClose }: Props & { onClose: () =
   const monthKey = first.slice(0, 7)
   const title = format(first, locale, { month: 'long', year: 'numeric' })
 
+  const close = useEffectEvent(onClose)
   useEffect(() => {
-    const close = (event: KeyboardEvent | PointerEvent) => {
-      if (
-        event instanceof KeyboardEvent
-          ? event.key === 'Escape'
-          : !ref.current?.contains(event.target as Node)
-      )
-        onClose()
+    // The keyboard moves into the calendar, and Escape gives it back to where it was. Picking a
+    // day or pressing elsewhere puts focus where the user went instead.
+    const before = document.activeElement
+    const current = ref.current?.querySelector<HTMLElement>('[aria-current="date"]')
+    ;(current ?? ref.current?.querySelector('button'))?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      close()
+      if (before instanceof HTMLElement && before.isConnected) before.focus()
     }
-    document.addEventListener('keydown', close)
-    document.addEventListener('pointerdown', close)
+    const onPointerDown = (event: PointerEvent) => {
+      if (!picker.current?.contains(event.target as Node)) close()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('pointerdown', onPointerDown)
     return () => {
-      document.removeEventListener('keydown', close)
-      document.removeEventListener('pointerdown', close)
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('pointerdown', onPointerDown)
     }
-  }, [onClose])
+  }, [picker])
 
   const shift = (delta: number) => {
     setMonth(({ year, month: m }) => {

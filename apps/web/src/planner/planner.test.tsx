@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
 import { editorText } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
-import { startTestServer, type TestServer } from '../test/server.ts'
+import { PASSWORD, startTestServer, type TestServer } from '../test/server.ts'
 
 describe('planner', () => {
   let server: TestServer
@@ -182,7 +182,115 @@ describe('planner', () => {
     })
   })
 
+  describe('month calendar', () => {
+    it('closes with the button that opened it', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const button = await screen.findByRole('button', { name: 'Choose a day' })
+      await user.click(button)
+      expect(screen.getByRole('dialog', { name: 'October 2026' })).toBeInTheDocument()
+
+      await user.click(button)
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('takes the keyboard when opened from the palette', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      await screen.findByRole('textbox', { name: 'Monday, October 26, 2026' })
+
+      await user.keyboard('{Meta>}k{/Meta}')
+      await user.type(
+        screen.getByRole('combobox', { name: 'Search commands' }),
+        'choose a day{Enter}',
+      )
+
+      const calendar = await screen.findByRole('dialog', { name: 'October 2026' })
+      expect(within(calendar).getByRole('button', { name: 'October 26, 2026' })).toHaveFocus()
+    })
+
+    it('gives the keyboard back on Escape', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const button = await screen.findByRole('button', { name: 'Choose a day' })
+      await user.click(button)
+      const calendar = screen.getByRole('dialog', { name: 'October 2026' })
+      expect(within(calendar).getByRole('button', { name: 'October 26, 2026' })).toHaveFocus()
+
+      await user.keyboard('{Escape}')
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(button).toHaveFocus()
+    })
+  })
+
+  describe('signing out', () => {
+    it('says so when it could not sign out, and stays in the planner', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const signOut = await screen.findByRole('button', { name: 'Sign out' })
+      server.setOffline(true)
+
+      await user.click(signOut)
+
+      expect(await screen.findByText(/could not sign out/i)).toHaveAttribute('role', 'alert')
+      expect(weekStrip()).toBeInTheDocument()
+    })
+
+    it('saves a setting changed just before', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      separator.focus()
+      await user.keyboard('{ArrowRight}')
+
+      await user.click(screen.getByRole('button', { name: 'Sign out' }))
+      await screen.findByRole('button', { name: 'Sign in' })
+
+      await api.login({ email: 'me@example.com', password: PASSWORD })
+      expect((await api.settings()).layout).toMatchObject({
+        children: [{ size: 0.5 }, { size: 0.5 }],
+      })
+    })
+  })
+
   describe('resizing', () => {
+    it('keeps a size that could not be saved, says so, and saves it once back online', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      server.setOffline(true)
+
+      separator.focus()
+      await user.keyboard('{ArrowRight}')
+
+      expect(await screen.findByText(/settings could not be saved/i)).toBeInTheDocument()
+      expect(separator).toHaveAttribute('aria-valuenow', '50')
+      server.setOffline(false)
+      window.dispatchEvent(new Event('online'))
+      await waitFor(async () => {
+        expect((await api.settings()).layout).toMatchObject({
+          children: [{ size: 0.5 }, { size: 0.5 }],
+        })
+      })
+      await waitFor(() => {
+        expect(screen.queryByText(/settings could not be saved/i)).not.toBeInTheDocument()
+      })
+      expect(separator).toHaveAttribute('aria-valuenow', '50')
+    })
+
+    it('drops a drag the browser cancelled, e.g. to scroll on touch', async () => {
+      renderApp(server, '/day/2026-10-26')
+      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      const container = separator.parentElement as HTMLElement
+      container.getBoundingClientRect = () =>
+        ({ left: 0, top: 0, width: 1000, height: 600 }) as DOMRect
+
+      fireEvent.pointerDown(separator, { clientX: 450, pointerId: 1 })
+      fireEvent.pointerMove(separator, { clientX: 300, pointerId: 1 })
+      fireEvent.pointerCancel(separator, { pointerId: 1 })
+      expect(separator).toHaveAttribute('aria-valuenow', '45')
+
+      // A pointer merely passing over the separator afterwards does not resize.
+      fireEvent.pointerMove(separator, { clientX: 200, pointerId: 1 })
+      expect(separator).toHaveAttribute('aria-valuenow', '45')
+    })
+
     it('resizes the pages from the keyboard and remembers the sizes', async () => {
       const { user } = renderApp(server, '/day/2026-10-26')
       const separator = await screen.findByRole('separator', { name: 'Resize pages' })

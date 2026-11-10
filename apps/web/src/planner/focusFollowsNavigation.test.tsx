@@ -626,6 +626,18 @@ describe('focus follows navigation', () => {
       expect(screen.getByRole('textbox', { name: 'Thursday, October 29, 2026' })).not.toHaveFocus()
     })
 
+    it('focuses the page of the last of two shortcuts pressed before the first one shows', async () => {
+      await open('/day/2026-10-28')
+      await editor('Wednesday, October 28, 2026')
+      const nextDay = { code: 'Period', key: '>', metaKey: true, shiftKey: true }
+
+      // No act(): React renders on its own schedule, as in the browser.
+      fireEvent.keyDown(document.body, nextDay)
+      fireEvent.keyDown(document.body, nextDay)
+
+      await expectFocusIn('Friday, October 30, 2026')
+    })
+
     it('not after the browser went to another day meanwhile', async () => {
       const { through, release } = holdingBack('day/2026-10-29')
       const { user, router } = await open('/day/2026-10-28', through)
