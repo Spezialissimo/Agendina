@@ -77,8 +77,8 @@ devices (ADR 0014).
 
 ## How we work
 Test-driven, small PRs: see `CLAUDE.md` (rules and commands) and `docs/developer-guide.md`
-(planning, sizing, review). Every roadmap item below starts from its acceptance criteria, and
-gets an ADR when it makes an architectural choice.
+(planning, sizing, review). Every phase starts from its acceptance criteria, and gets an ADR when
+it makes an architectural choice.
 
 ## Status
 **MVP released** (Phases 0–6, 2026-10): monorepo and CI, core domain (week math, diff3 merge,
@@ -87,26 +87,25 @@ and live-preview editor, day/week templates with propagation, week-start setting
 on GHCR, self-hosting guide (`docs/self-hosting.md`). History: `git log` and `docs/adr/`.
 
 Since then: daily use. Small fixes and wishes are logged and triaged in `docs/feedback.md`;
-they do not belong here. Only features big enough to need acceptance criteria get a roadmap item.
+they do not belong here. Only features big enough to need acceptance criteria get a phase.
 
-## Roadmap (in this order)
-1. **Layout editor** (in progress, detailed below). Right after it: remove focus mode.
-2. **Layout presets** (detailed below), after trying the editor.
-3. **Mobile view and PWA**: journal-scroll style, tapping the week header opens the week note,
-   the current day is selectable in a footer; installable, works as a standalone app. Ideally a
-   layout (items 1–2), not a special case.
-4. **Offline sync with client-side merge**: needs an ADR first; must say how merging would work
-   under E2E encryption (the server cannot merge what it cannot read). Before starting: review
-   merge correctness (property tests in `core`), as merges become far more frequent.
-5. **Shortcut editor UI**: per-user overrides already exist in settings (ADR 0007).
-6. **Table-aware merge**: per-cell merge for tables, also for template propagation.
-7. **E2E encryption**. Before starting: check that no server feature reads note content.
-8. **License decision** (likely AGPL), before any public launch
-9. **Freemium entitlements and hosted deployment**. Before starting: a security review of
-   auth, sessions and export.
-10. **Capacitor app**: only if the PWA turns out not to be enough
+## Roadmap
+Phases are done in this order. Each one is detailed below.
 
-### 1. Layout editor
+- **Phase 7 — Layout editor** (in progress: done, to try)
+- **Phase 8 — Several named layouts** (next)
+- **Phase 9 — Week strip panel and collapsible panels**
+- **Phase 10 — Mobile view and PWA**, then remove focus mode
+- **Phase 11 — Layout presets**
+- **Phase 12 — Offline sync with client-side merge**
+- **Phase 13 — Shortcut editor UI**
+- **Phase 14 — Table-aware merge**
+- **Phase 15 — E2E encryption**
+- **Phase 16 — License decision**
+- **Phase 17 — Freemium entitlements and hosted deployment**
+- **Phase 18 — Capacitor app** (only if the PWA turns out not to be enough)
+
+### Phase 7 — Layout editor
 Layouts are already data (ADR 0005): a JSON tree stored in the user's settings and validated by
 `LayoutSchema`. Keep it small: a minimal editor, not a general design tool.
 
@@ -116,33 +115,79 @@ Acceptance criteria:
   UI and still rejected by `LayoutSchema` on the server.
 - Every layout has at least one editable page and at most one per kind (day, week), so a note
   never has two editors. Layouts without a day page or without a week page stay valid, as today.
-- Decided (2026-11-10): the editor comes first, presets after trying it (item 2). It opens from
-  a button in Settings and takes the place of the pages, like the template editor (Cancel / Save
-  layout): panels are placeholders with their controls, and nothing else can be done meanwhile
-  (no navigation, no shortcuts). Settings keep one layout tree until the presets are chosen.
-- Done: the layout editor (ADR 0005, `packages/core/src/layoutEdit.ts`). A layout shows no page
-  twice and at most 6 pages. Pages are added and moved with buttons on their four sides, or
-  dragged, with a live preview. Next: try it.
-- Done: a calendar panel (the month of the selected day, always open; ADR 0005). The date
-  selector on top stays where it is for now. Later: make it a panel of the same group, placed
-  and moved like the others; to decide then what saved layouts without it show, and how a
-  panel as tall as its content fits splits sized by fractions.
+- The editor opens from a button in Settings and takes the place of the pages, like the template
+  editor (Cancel / Save layout): panels are placeholders with their controls, and nothing else
+  can be done meanwhile (no navigation, no shortcuts).
 
-### 2. Layout presets
-Today only `OPEN_PLANNER` is offered. Keep it small: a few presets, built on the layout editor.
+Done (PR #58): the layout editor (ADR 0005, `packages/core/src/layoutEdit.ts`). A layout shows
+no page twice and at most 6 pages. Pages are added and moved with buttons on their four sides,
+or dragged, with a live preview. Also a calendar panel: the month of the selected day, always
+open (ADR 0005). Next: try it.
+
+### Phase 8 — Several named layouts
+Settings hold one layout tree today, with the splitter sizes inside it. This phase lets users
+keep several, which the phone (Phase 10) and the presets (Phase 11) both need.
+
+Acceptance criteria (decided 2026-11-10):
+- Settings keep several layouts, each with a name and its own splitter sizes, so switching never
+  loses an arrangement.
+- Users can create as many custom layouts as they like, named "Custom layout 1",
+  "Custom layout 2", … by default. A layout list in Settings shows them all; users can rename
+  and delete their own layouts. Deleting the active one switches to the default layout.
+- Presets (Open planner for now) cannot be changed: editing one saves the result as a new
+  custom layout.
+- There is one active layout per screen type (phone, desktop), saved in the settings, so every
+  desktop shows the same layout and, from Phase 10, every phone too.
+- Constraint (ADR 0012): while a deploy rolls out, the previous release still reads the single
+  `layout` setting, so the new code keeps it filled with the active desktop layout until a
+  release later.
+
+### Phase 9 — Week strip panel and collapsible panels
+Panels the mobile view needs, useful on desktop too.
+
+Acceptance criteria (to be refined before writing tests):
+- The week strip on top becomes a panel, placed and moved like the others, so a layout with the
+  calendar panel needs no top bar. On the phone it is the day footer.
+- To decide: what layouts saved before this show where the strip was, and how a panel as tall
+  as its content fits splits sized by fractions.
+- Collapsible panels, e.g. a week page that stays hidden until clicked.
+- Both stay expressible in the same layout tree.
+
+### Phase 10 — Mobile view and PWA
+Acceptance criteria (to be refined before writing tests):
+- Journal-scroll style: tapping the week header opens the week note, the current day is
+  selectable in a footer (the week strip panel, Phase 9).
+- Only one panel visible at a time.
+- Ideally a layout (Phases 7–9), not a special case: the phone shows its own active layout
+  (Phase 8), never the desktop one.
+- The phone shows neither the desktop presets nor the layout editor.
+- Installable, works as a standalone app (PWA).
+
+Right after it: remove focus mode (ADR 0013).
+
+### Phase 11 — Layout presets
+Today only Open planner is offered. Keep it small: a few desktop presets, built on the layout
+editor and the named layouts (Phase 8).
 
 Acceptance criteria (to be refined with the user before writing tests):
-- To decide first, as it changes the settings data model: settings hold one layout tree, with
-  the splitter sizes inside it. Can users keep several layouts (named, or one custom next to the
-  presets)? Only then can sizes be remembered per layout; with a single tree, choosing a preset
-  replaces the sizes too.
-- Settings lists the available presets (Open planner plus a few more, chosen when this item
+- Settings lists the available presets (Open planner plus a few more, chosen when this phase
   starts; a seven-day weekly spread would need a new panel type, see ADR 0005); choosing one
   applies immediately and is kept after reload and on other devices.
 - A preset needs no new rendering code unless it introduces a new panel type; presets live in
   `packages/core` as data, with tests that each resolves for any focus day and week rule.
 - The layout editor can reset to any preset, not only Open planner.
 - Switching presets never loses note content.
-- Wanted (2026-11-10), to design with the presets and the mobile view: collapsible panels
-  (e.g. a week page that stays hidden until clicked), and on mobile only one panel visible at a
-  time. Both should stay expressible in the same layout tree.
+
+### Phases 12–18
+- **Phase 12 — Offline sync with client-side merge**: needs an ADR first; must say how merging
+  would work under E2E encryption (the server cannot merge what it cannot read). Before
+  starting: review merge correctness (property tests in `core`), as merges become far more
+  frequent.
+- **Phase 13 — Shortcut editor UI**: per-user overrides already exist in settings (ADR 0007).
+- **Phase 14 — Table-aware merge**: per-cell merge for tables, also for template propagation.
+- **Phase 15 — E2E encryption**. Before starting: check that no server feature reads note
+  content.
+- **Phase 16 — License decision** (likely AGPL), before any public launch.
+- **Phase 17 — Freemium entitlements and hosted deployment**. Before starting: a security review
+  of auth, sessions and export.
+- **Phase 18 — Capacitor app**: only if the PWA turns out not to be enough.
