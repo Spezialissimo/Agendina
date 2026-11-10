@@ -9,7 +9,7 @@ import {
   type DayKey,
 } from '@agendina/core'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ContextType } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import { useApi, useToday } from '../app/AppProviders.tsx'
 import { SettingsIcon, SignOutIcon } from '../app/icons.tsx'
@@ -22,7 +22,7 @@ import { addColumn, addRow } from '../editor/tables.ts'
 import { SettingsDialog } from '../settings/SettingsDialog.tsx'
 import { LayoutView } from './LayoutView.tsx'
 import { useFocusMode } from './useFocusMode.ts'
-import { closeEdit, startEdit } from './templateEdit.ts'
+import { closeEdit, startEdit, type TemplateEdit } from './templateEdit.ts'
 import { PlannerContext, type TemplateEdits } from './PlannerContext.tsx'
 import { PageFocus, PageFocusContext, focusTarget, type PageFocusApi } from './pageFocus.ts'
 import { WeekStrip } from './WeekStrip.tsx'
@@ -115,6 +115,31 @@ function Planner({ focus }: { focus: DayKey }) {
       setSignOutFailed(true)
     }
   }, [api, queryClient, flush])
+
+  const plannerContext = useMemo<ContextType<typeof PlannerContext>>(
+    () =>
+      weekRule === undefined
+        ? undefined
+        : {
+            weekRule,
+            templateEdits,
+            closeTemplate: (edit: TemplateEdit) => {
+              setTemplateEdits((edits) => ({
+                ...edits,
+                [edit.kind]: closeEdit(edits[edit.kind], edit),
+              }))
+            },
+            setTemplateDraft: (edit: TemplateEdit, draft: string) => {
+              setTemplateEdits((edits) => {
+                const current = edits[edit.kind]
+                return current?.key === edit.key
+                  ? { ...edits, [edit.kind]: { ...current, draft } }
+                  : edits
+              })
+            },
+          },
+    [weekRule, templateEdits],
+  )
 
   const run = useCallback(
     (id: CommandId) => {
@@ -226,26 +251,7 @@ function Planner({ focus }: { focus: DayKey }) {
             <p role="alert">Could not sign out. Check your connection and try again.</p>
           )}
           {settings !== undefined && live && (
-            <PlannerContext
-              value={{
-                weekRule: settings.weekRule,
-                templateEdits,
-                closeTemplate: (edit) => {
-                  setTemplateEdits((edits) => ({
-                    ...edits,
-                    [edit.kind]: closeEdit(edits[edit.kind], edit),
-                  }))
-                },
-                setTemplateDraft: (edit, draft) => {
-                  setTemplateEdits((edits) => {
-                    const current = edits[edit.kind]
-                    return current?.key === edit.key
-                      ? { ...edits, [edit.kind]: { ...current, draft } }
-                      : edits
-                  })
-                },
-              }}
-            >
+            <PlannerContext value={plannerContext}>
               <LayoutView
                 layout={resolveLayout(settings.layout, focus, settings.weekRule)}
                 onResize={(splitId, sizes) => {
