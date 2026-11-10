@@ -183,6 +183,29 @@ describe('planner', () => {
   })
 
   describe('resizing', () => {
+    it('keeps a size that could not be saved, says so, and saves it once back online', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      server.setOffline(true)
+
+      separator.focus()
+      await user.keyboard('{ArrowRight}')
+
+      expect(await screen.findByText(/settings could not be saved/i)).toBeInTheDocument()
+      expect(separator).toHaveAttribute('aria-valuenow', '50')
+      server.setOffline(false)
+      window.dispatchEvent(new Event('online'))
+      await waitFor(async () => {
+        expect((await api.settings()).layout).toMatchObject({
+          children: [{ size: 0.5 }, { size: 0.5 }],
+        })
+      })
+      await waitFor(() => {
+        expect(screen.queryByText(/settings could not be saved/i)).not.toBeInTheDocument()
+      })
+      expect(separator).toHaveAttribute('aria-valuenow', '50')
+    })
+
     it('resizes the pages from the keyboard and remembers the sizes', async () => {
       const { user } = renderApp(server, '/day/2026-10-26')
       const separator = await screen.findByRole('separator', { name: 'Resize pages' })

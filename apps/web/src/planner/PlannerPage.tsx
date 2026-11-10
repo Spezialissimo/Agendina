@@ -49,7 +49,7 @@ function Planner({ focus }: { focus: DayKey }) {
   const api = useApi()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { settings, isError, update } = useSettings()
+  const { settings, isError, saveFailed, update } = useSettings()
   const live = useLiveUpdates()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -204,6 +204,9 @@ function Planner({ focus }: { focus: DayKey }) {
         </header>
         <main className="pages">
           {isError && <p role="alert">Your settings could not be loaded.</p>}
+          {saveFailed && (
+            <p role="alert">Your settings could not be saved. They will be saved when possible.</p>
+          )}
           {settings !== undefined && live && (
             <PlannerContext
               value={{
