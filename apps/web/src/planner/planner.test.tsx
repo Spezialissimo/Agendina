@@ -206,6 +206,23 @@ describe('planner', () => {
       expect(separator).toHaveAttribute('aria-valuenow', '50')
     })
 
+    it('drops a drag the browser cancelled, e.g. to scroll on touch', async () => {
+      renderApp(server, '/day/2026-10-26')
+      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      const container = separator.parentElement as HTMLElement
+      container.getBoundingClientRect = () =>
+        ({ left: 0, top: 0, width: 1000, height: 600 }) as DOMRect
+
+      fireEvent.pointerDown(separator, { clientX: 450, pointerId: 1 })
+      fireEvent.pointerMove(separator, { clientX: 300, pointerId: 1 })
+      fireEvent.pointerCancel(separator, { pointerId: 1 })
+      expect(separator).toHaveAttribute('aria-valuenow', '45')
+
+      // A pointer merely passing over the separator afterwards does not resize.
+      fireEvent.pointerMove(separator, { clientX: 200, pointerId: 1 })
+      expect(separator).toHaveAttribute('aria-valuenow', '45')
+    })
+
     it('resizes the pages from the keyboard and remembers the sizes', async () => {
       const { user } = renderApp(server, '/day/2026-10-26')
       const separator = await screen.findByRole('separator', { name: 'Resize pages' })
