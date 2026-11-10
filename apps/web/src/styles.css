@@ -405,6 +405,243 @@ button {
   background: var(--rule);
 }
 
+.topbar-actions[hidden] {
+  display: none;
+}
+
+.layout-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.layout-editor-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+}
+
+.layout-editor-bar h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.layout-editor .hint {
+  margin: 0;
+}
+
+.layout-editor-pages,
+.layout-split {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.layout-split {
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  padding: 0.5rem;
+}
+
+.layout-split-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.layout-panel {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  background: var(--page);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.layout-panel-body {
+  flex: 1;
+  /* The buttons of the four sides around what the page shows; they never cover it. */
+  display: grid;
+  grid-template:
+    '. top .' auto
+    'left main right' 1fr
+    '. bottom .' auto / auto 1fr auto;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.4rem;
+  overflow: auto;
+}
+
+.layout-panel-handle {
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* A page is picked up from anywhere on it (LayoutEditor.tsx). */
+.layout-panel {
+  cursor: grab;
+  user-select: none;
+  /* A finger drags the page too, instead of scrolling. */
+  touch-action: none;
+}
+
+.layout-panel :is(select, button, label) {
+  cursor: pointer;
+}
+
+.layout-editor[data-dragging],
+.layout-editor[data-dragging] * {
+  cursor: grabbing;
+}
+
+/* The empty place the carried page would land in. */
+.layout-panel-slot {
+  border: 2px dashed var(--ink-soft);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+/* The carried page itself, under the pointer. */
+.layout-drag-card {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  flex: none;
+  border-color: var(--ink);
+  background: var(--page);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+
+/* What the page shows and its removal, in the middle of the page. */
+.layout-panel-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.layout-panel-center label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.layout-panel-center label > span {
+  margin-left: -0.5rem;
+}
+
+.layout-panel-delete {
+  padding: 0.35rem 0.9rem;
+  border: 2px solid var(--danger);
+  border-radius: 6px;
+  background: none;
+  color: var(--danger);
+}
+
+/* On each side of a page: add a page there (+), move the page that way (arrow). */
+.layout-panel-edge {
+  place-self: center;
+  display: flex;
+  gap: 0.1rem;
+  padding: 0.15rem;
+  border-radius: 8px;
+  background: var(--chip);
+}
+
+.layout-panel-edge button {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.layout-panel-edge button:hover:not(:disabled),
+.layout-panel-edge button:focus-visible {
+  background: var(--page);
+  color: var(--ink);
+}
+
+.layout-panel-edge-left {
+  grid-area: left;
+  flex-direction: column;
+}
+
+.layout-panel-edge-right {
+  grid-area: right;
+  flex-direction: column;
+}
+
+.layout-panel-edge-top {
+  grid-area: top;
+}
+
+.layout-panel-edge-bottom {
+  grid-area: bottom;
+}
+
+.layout-panel-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0 0.5rem;
+}
+
+/* The carried card has no buttons around its name. */
+.layout-drag-card .layout-panel-body {
+  display: block;
+  padding: 1rem 1.25rem;
+}
+
+.layout-panel-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+}
+
+.layout-panel button:disabled {
+  opacity: 0.5;
+}
+
+/* The calendar panel: the month of the pop-up, in the flow of the page and a little larger. */
+.calendar-page .month-calendar {
+  position: static;
+  align-self: center;
+  width: min(100%, 22rem);
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.calendar-page .month-calendar table {
+  width: 100%;
+}
+
 .page {
   position: relative;
   flex: 1;
@@ -418,7 +655,8 @@ button {
   overflow: auto;
 }
 
-.page:not([data-editable]) {
+/* Read-only note pages; the calendar is not a note, so it is never dimmed. */
+.page:not([data-editable], .calendar-page) {
   opacity: 0.6;
 }
 
@@ -708,7 +946,8 @@ button {
   gap: 0.5rem;
 }
 
-.settings select {
+.settings select,
+.layout-editor select {
   /* As wide as the longest option, not the whole section. */
   justify-self: start;
   max-width: 100%;

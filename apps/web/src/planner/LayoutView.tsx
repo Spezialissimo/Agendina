@@ -1,5 +1,13 @@
 import type { ResolvedLayout } from '@agendina/core'
-import { Fragment, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import {
+  Fragment,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react'
+import { CalendarPage } from './CalendarPage.tsx'
 import { NotePage } from './NotePage.tsx'
 
 const KEYBOARD_STEP = 0.05
@@ -11,14 +19,33 @@ interface Props {
 }
 
 export function LayoutView({ layout, onResize }: Props) {
-  if (layout.type === 'panel') return <NotePage view={layout.view} />
-  return <SplitView split={layout} onResize={onResize} />
+  if (layout.type === 'panel') {
+    return layout.view.type === 'calendar' ? (
+      <CalendarPage view={layout.view} />
+    ) : (
+      <NotePage view={layout.view} />
+    )
+  }
+  return (
+    <SplitView
+      split={layout}
+      onResize={onResize}
+      renderChild={(child) => <LayoutView layout={child} onResize={onResize} />}
+    />
+  )
 }
 
-function SplitView({
+interface SplitProps<Node extends { id: string }> extends Pick<Props, 'onResize'> {
+  split: { id: string; direction: 'row' | 'column'; children: { node: Node; size: number }[] }
+  renderChild: (node: Node) => ReactNode
+}
+
+/** The children of a split with a splitter between them; also used by the layout editor. */
+export function SplitView<Node extends { id: string }>({
   split,
   onResize,
-}: { split: Extract<ResolvedLayout, { type: 'split' }> } & Pick<Props, 'onResize'>) {
+  renderChild,
+}: SplitProps<Node>) {
   const key = split.children.map((c) => c.size).join()
   const fromSettings = normalize(split.children.map((c) => c.size))
   const [state, setState] = useState({ key, sizes: fromSettings })
@@ -69,7 +96,7 @@ function SplitView({
   return (
     <div ref={container} className={`split split-${split.direction}`}>
       {split.children.map((child, index) => (
-        <Fragment key={index}>
+        <Fragment key={child.node.id}>
           {index > 0 && (
             <div
               role="separator"
@@ -102,7 +129,7 @@ function SplitView({
             />
           )}
           <div className="split-child" style={{ flexGrow: sizes[index] ?? 1, flexBasis: 0 }}>
-            <LayoutView layout={child.node} onResize={onResize} />
+            {renderChild(child.node)}
           </div>
         </Fragment>
       ))}

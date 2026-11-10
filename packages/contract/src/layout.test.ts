@@ -8,6 +8,8 @@ const note = (id: string, kind: 'day' | 'week', offset: number): Layout => ({
   panel: { type: 'note', kind, offset },
 })
 
+const calendar = (id: string): Layout => ({ type: 'panel', id, panel: { type: 'calendar' } })
+
 const row = (id: string, ...children: [Layout, number][]): Layout => ({
   type: 'split',
   id,
@@ -35,9 +37,67 @@ describe('LayoutSchema', () => {
       },
     ],
     ['a fractional offset', note('a', 'day', 0.5)],
+    ['only a calendar', calendar('c')],
+    ['two calendars', row('r', [calendar('a'), 1], [calendar('b'), 1], [note('d', 'day', 0), 1])],
+    [
+      'a calendar with a field it does not have',
+      {
+        type: 'split',
+        id: 'r',
+        direction: 'row',
+        children: [
+          { node: { type: 'panel', id: 'c', panel: { type: 'calendar', kind: 'day' } }, size: 1 },
+          { node: note('d', 'day', 0), size: 1 },
+        ],
+      },
+    ],
+    [
+      'no page that can be written in',
+      row('r', [note('a', 'day', -1), 1], [note('b', 'week', 1), 1]),
+    ],
+    ['two editors for the same day', row('r', [note('a', 'day', 0), 1], [note('b', 'day', 0), 1])],
+    [
+      'the same read-only page twice',
+      row('r', [note('a', 'day', 0), 1], [note('b', 'day', 1), 1], [note('c', 'day', 1), 1]),
+    ],
+    [
+      'more pages than fit on a screen',
+      row(
+        'r',
+        ...Array.from({ length: 7 }, (_, i): [Layout, number] => [note(`d${i}`, 'day', i), 1]),
+      ),
+    ],
     ['not an object', 'open-planner'],
   ])('rejects %s', (_, value) => {
     expect(LayoutSchema.safeParse(value).success).toBe(false)
+  })
+
+  it.each([
+    ['only a day page', note('d', 'day', 0)],
+    ['only a week page', note('w', 'week', 0)],
+    [
+      'a neighbour day next to the focused day',
+      row('r', [note('a', 'day', -1), 1], [note('b', 'day', 0), 1]),
+    ],
+  ])('accepts %s', (_, value) => {
+    expect(LayoutSchema.safeParse(value).success).toBe(true)
+  })
+
+  it('accepts a calendar next to a page to write in, and keeps it as it is', () => {
+    const layout = row('r', [calendar('c'), 1], [note('d', 'day', 0), 1])
+
+    expect(LayoutSchema.parse(layout)).toEqual(layout)
+  })
+
+  it('says what is wrong with the pages', () => {
+    const result = LayoutSchema.safeParse(
+      row('r', [note('a', 'day', 1), 1], [note('b', 'day', 1), 1]),
+    )
+
+    expect(result.error?.issues.map((issue) => issue.message)).toEqual([
+      'Invalid layout: no-editable-page',
+      'Invalid layout: duplicate-page',
+    ])
   })
 
   it('names a duplicate id once, even when it is nested', () => {

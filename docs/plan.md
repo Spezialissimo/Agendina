@@ -90,41 +90,59 @@ Since then: daily use. Small fixes and wishes are logged and triaged in `docs/fe
 they do not belong here. Only features big enough to need acceptance criteria get a roadmap item.
 
 ## Roadmap (in this order)
-1. **Layout presets and a layout editor** (next, detailed below). Right after it: remove focus
-   mode.
-2. **Mobile view and PWA**: journal-scroll style, tapping the week header opens the week note,
+1. **Layout editor** (in progress, detailed below). Right after it: remove focus mode.
+2. **Layout presets** (detailed below), after trying the editor.
+3. **Mobile view and PWA**: journal-scroll style, tapping the week header opens the week note,
    the current day is selectable in a footer; installable, works as a standalone app. Ideally a
-   layout (item 1), not a special case.
-3. **Offline sync with client-side merge**: needs an ADR first; must say how merging would work
+   layout (items 1–2), not a special case.
+4. **Offline sync with client-side merge**: needs an ADR first; must say how merging would work
    under E2E encryption (the server cannot merge what it cannot read). Before starting: review
    merge correctness (property tests in `core`), as merges become far more frequent.
-4. **Shortcut editor UI**: per-user overrides already exist in settings (ADR 0007).
-5. **Table-aware merge**: per-cell merge for tables, also for template propagation.
-6. **E2E encryption**. Before starting: check that no server feature reads note content.
-7. **License decision** (likely AGPL), before any public launch
-8. **Freemium entitlements and hosted deployment**. Before starting: a security review of
+5. **Shortcut editor UI**: per-user overrides already exist in settings (ADR 0007).
+6. **Table-aware merge**: per-cell merge for tables, also for template propagation.
+7. **E2E encryption**. Before starting: check that no server feature reads note content.
+8. **License decision** (likely AGPL), before any public launch
+9. **Freemium entitlements and hosted deployment**. Before starting: a security review of
    auth, sessions and export.
-9. **Capacitor app**: only if the PWA turns out not to be enough
+10. **Capacitor app**: only if the PWA turns out not to be enough
 
-### 1. Layout presets and a layout editor
+### 1. Layout editor
 Layouts are already data (ADR 0005): a JSON tree stored in the user's settings and validated by
-`LayoutSchema`; today only `OPEN_PLANNER` is offered. Keep it small: a few presets and a minimal
-editor, not a general design tool.
+`LayoutSchema`. Keep it small: a minimal editor, not a general design tool.
+
+Acceptance criteria:
+- A minimal editor can change a split's direction, replace a panel's content (kind and offset),
+  add and remove panels, and reset to Open planner. Invalid trees are impossible to build in the
+  UI and still rejected by `LayoutSchema` on the server.
+- Every layout has at least one editable page and at most one per kind (day, week), so a note
+  never has two editors. Layouts without a day page or without a week page stay valid, as today.
+- Decided (2026-11-10): the editor comes first, presets after trying it (item 2). It opens from
+  a button in Settings and takes the place of the pages, like the template editor (Cancel / Save
+  layout): panels are placeholders with their controls, and nothing else can be done meanwhile
+  (no navigation, no shortcuts). Settings keep one layout tree until the presets are chosen.
+- Done: the layout editor (ADR 0005, `packages/core/src/layoutEdit.ts`). A layout shows no page
+  twice and at most 6 pages. Pages are added and moved with buttons on their four sides, or
+  dragged, with a live preview. Next: try it.
+- Done: a calendar panel (the month of the selected day, always open; ADR 0005). The date
+  selector on top stays where it is for now. Later: make it a panel of the same group, placed
+  and moved like the others; to decide then what saved layouts without it show, and how a
+  panel as tall as its content fits splits sized by fractions.
+
+### 2. Layout presets
+Today only `OPEN_PLANNER` is offered. Keep it small: a few presets, built on the layout editor.
 
 Acceptance criteria (to be refined with the user before writing tests):
+- To decide first, as it changes the settings data model: settings hold one layout tree, with
+  the splitter sizes inside it. Can users keep several layouts (named, or one custom next to the
+  presets)? Only then can sizes be remembered per layout; with a single tree, choosing a preset
+  replaces the sizes too.
 - Settings lists the available presets (Open planner plus a few more, chosen when this item
   starts; a seven-day weekly spread would need a new panel type, see ADR 0005); choosing one
   applies immediately and is kept after reload and on other devices.
 - A preset needs no new rendering code unless it introduces a new panel type; presets live in
   `packages/core` as data, with tests that each resolves for any focus day and week rule.
-- A minimal editor can change a split's direction, replace a panel's content (kind and offset),
-  add and remove panels, and reset to a preset. Invalid trees are impossible to build in the UI
-  and still rejected by `LayoutSchema` on the server.
-- Every layout has at least one editable page and at most one per kind (day, week), so a note
-  never has two editors. Layouts without a day page or without a week page stay valid, as today.
+- The layout editor can reset to any preset, not only Open planner.
 - Switching presets never loses note content.
-- To decide first, as it changes the settings data model: settings hold one layout tree, with
-  the splitter sizes inside it. Can users keep several layouts (named, or one custom next to the
-  presets)? Only then can sizes be remembered per layout; with a single tree, choosing a preset
-  replaces the sizes too.
-- Open question: does the editor live in Settings or in place on the page?
+- Wanted (2026-11-10), to design with the presets and the mobile view: collapsible panels
+  (e.g. a week page that stays hidden until clicked), and on mobile only one panel visible at a
+  time. Both should stay expressible in the same layout tree.

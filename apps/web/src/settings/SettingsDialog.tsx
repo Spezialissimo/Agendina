@@ -12,6 +12,7 @@ interface Props {
   /** The page kinds whose template can be edited from the pages on show. */
   templateKinds: readonly NoteKind[]
   onEditTemplate: (kind: NoteKind) => void
+  onEditLayout: () => void
   onClose: () => void
 }
 
@@ -34,6 +35,7 @@ export function SettingsDialog({
   onChange,
   templateKinds,
   onEditTemplate,
+  onEditLayout,
   onClose,
 }: Props) {
   const locale = useLocale()
@@ -152,6 +154,15 @@ export function SettingsDialog({
               ))}
             </select>
           </label>
+        </fieldset>
+        <fieldset>
+          <legend>Layout</legend>
+          <p>Choose which pages are on the screen and how they are arranged.</p>
+          <div className="settings-actions">
+            <button type="button" onClick={onEditLayout}>
+              Edit layout
+            </button>
+          </div>
         </fieldset>
         {templateKinds.length > 0 && (
           <fieldset>

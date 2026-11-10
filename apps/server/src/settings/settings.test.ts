@@ -94,6 +94,26 @@ describe.each(testDatabases())('settings on $kind', ({ create }) => {
         },
       },
     ],
+    [
+      'a layout without a page to write in',
+      {
+        ...DEFAULT_SETTINGS,
+        layout: { type: 'panel', id: 'p', panel: { type: 'note', kind: 'day', offset: -1 } },
+      },
+    ],
+    [
+      'a layout with two editors for the same page',
+      {
+        ...DEFAULT_SETTINGS,
+        layout: {
+          ...layout,
+          children: layout.children.map((c) => ({
+            ...c,
+            node: { ...c.node, panel: { type: 'note', kind: 'day', offset: 0 } },
+          })),
+        },
+      },
+    ],
     ['a missing field', { weekRule: US_WEEK, keymap: {} }],
   ])('rejects %s and keeps the previous settings', async (_, body) => {
     const res = await putSettings(body)
