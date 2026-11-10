@@ -193,6 +193,33 @@ describe('planner', () => {
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
+
+    it('takes the keyboard when opened from the palette', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      await screen.findByRole('textbox', { name: 'Monday, October 26, 2026' })
+
+      await user.keyboard('{Meta>}k{/Meta}')
+      await user.type(
+        screen.getByRole('combobox', { name: 'Search commands' }),
+        'choose a day{Enter}',
+      )
+
+      const calendar = await screen.findByRole('dialog', { name: 'October 2026' })
+      expect(within(calendar).getByRole('button', { name: 'October 26, 2026' })).toHaveFocus()
+    })
+
+    it('gives the keyboard back on Escape', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const button = await screen.findByRole('button', { name: 'Choose a day' })
+      await user.click(button)
+      const calendar = screen.getByRole('dialog', { name: 'October 2026' })
+      expect(within(calendar).getByRole('button', { name: 'October 26, 2026' })).toHaveFocus()
+
+      await user.keyboard('{Escape}')
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(button).toHaveFocus()
+    })
   })
 
   describe('resizing', () => {
