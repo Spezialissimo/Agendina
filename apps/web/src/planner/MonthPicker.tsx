@@ -62,17 +62,9 @@ function MonthCalendar({
   picker: RefObject<HTMLElement | null>
   onClose: () => void
 }) {
-  const locale = useLocale()
-  const today = useToday()
-  const [month, setMonth] = useState({
-    year: Number(focus.slice(0, 4)),
-    month: Number(focus.slice(5, 7)),
-  })
   const ref = useRef<HTMLDivElement>(null)
-  const weeks = monthGrid(month.year, month.month, rule)
-  const first = dayKey(month.year, month.month, 1)
-  const monthKey = first.slice(0, 7)
-  const title = format(first, locale, { month: 'long', year: 'numeric' })
+  const [month, setMonth] = useState(monthOf(focus))
+  const title = useMonthTitle(month)
 
   const close = useEffectEvent(onClose)
   useEffect(() => {
@@ -97,15 +89,50 @@ function MonthCalendar({
     }
   }, [picker])
 
+  return (
+    <div ref={ref} className="month-calendar" role="dialog" aria-label={title}>
+      <MonthGrid focus={focus} rule={rule} month={month} setMonth={setMonth} onPick={onPick} />
+    </div>
+  )
+}
+
+export interface Month {
+  year: number
+  month: number
+}
+
+export function monthOf(day: DayKey): Month {
+  return { year: Number(day.slice(0, 4)), month: Number(day.slice(5, 7)) }
+}
+
+function useMonthTitle({ year, month }: Month): string {
+  return format(dayKey(year, month, 1), useLocale(), { month: 'long', year: 'numeric' })
+}
+
+/**
+ * A month to pick a day from, with arrows to the months around it. Used by the pop-up of the
+ * calendar button and by the calendar panel.
+ */
+export function MonthGrid({
+  focus,
+  rule,
+  month,
+  setMonth,
+  onPick,
+}: Props & { month: Month; setMonth: (month: Month) => void }) {
+  const locale = useLocale()
+  const today = useToday()
+  const weeks = monthGrid(month.year, month.month, rule)
+  const monthKey = dayKey(month.year, month.month, 1).slice(0, 7)
+  const title = useMonthTitle(month)
+
   const shift = (delta: number) => {
-    setMonth(({ year, month: m }) => {
-      const index = year * 12 + (m - 1) + delta
-      return { year: Math.floor(index / 12), month: (index % 12) + 1 }
-    })
+    const index = month.year * 12 + (month.month - 1) + delta
+    setMonth({ year: Math.floor(index / 12), month: (index % 12) + 1 })
   }
 
   return (
-    <div ref={ref} className="month-calendar" role="dialog" aria-label={title}>
+    <>
       <div className="month-header">
         <button
           type="button"
@@ -166,6 +193,6 @@ function MonthCalendar({
           ))}
         </tbody>
       </table>
-    </div>
+    </>
   )
 }

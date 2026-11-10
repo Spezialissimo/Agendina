@@ -10,10 +10,17 @@ export interface NotePanel {
   offset: number
 }
 
+/** A month calendar to pick a day from: always the month of the focused day at first. */
+export interface CalendarPanel {
+  type: 'calendar'
+}
+
+export type Panel = NotePanel | CalendarPanel
+
 export interface PanelNode {
   type: 'panel'
   id: string
-  panel: NotePanel
+  panel: Panel
 }
 
 export interface SplitNode {
@@ -37,8 +44,16 @@ export interface NoteView {
   focusOnClick?: DayKey
 }
 
+export interface CalendarView {
+  type: 'calendar'
+  /** The focused day: the calendar opens on its month and marks it. */
+  focus: DayKey
+}
+
+export type PanelView = NoteView | CalendarView
+
 export type ResolvedLayout =
-  | { type: 'panel'; id: string; view: NoteView }
+  | { type: 'panel'; id: string; view: PanelView }
   | {
       type: 'split'
       id: string
@@ -67,7 +82,11 @@ export const OPEN_PLANNER: Layout = {
 
 export function resolveLayout(layout: Layout, focus: DayKey, rule: WeekRule): ResolvedLayout {
   if (layout.type === 'panel') {
-    return { type: 'panel', id: layout.id, view: resolveNote(layout.panel, focus, rule) }
+    const view: PanelView =
+      layout.panel.type === 'calendar'
+        ? { type: 'calendar', focus }
+        : resolveNote(layout.panel, focus, rule)
+    return { type: 'panel', id: layout.id, view }
   }
   return {
     type: 'split',
@@ -111,7 +130,8 @@ export function setSplitSizes(layout: Layout, splitId: string, sizes: number[]):
 /** The page of `kind` that can be written in, if the layout shows one. */
 export function editableNote(layout: ResolvedLayout, kind: NoteView['kind']): NoteView | undefined {
   if (layout.type === 'panel') {
-    return layout.view.kind === kind && layout.view.editable ? layout.view : undefined
+    const { view } = layout
+    return view.type === 'note' && view.kind === kind && view.editable ? view : undefined
   }
   for (const child of layout.children) {
     const found = editableNote(child.node, kind)

@@ -3,10 +3,12 @@ import {
   addDays,
   isDayKey,
   editableNote,
+  panelsOf,
   resolveKeymap,
   resolveLayout,
   setSplitSizes,
   type DayKey,
+  type Layout,
 } from '@agendina/core'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState, type ContextType } from 'react'
@@ -20,6 +22,7 @@ import { toggleAtCursor } from '../editor/checkboxes.ts'
 import { applyToFocusedEditor, focusedEditor } from '../editor/focusedEditor.ts'
 import { addColumn, addRow } from '../editor/tables.ts'
 import { SettingsDialog } from '../settings/SettingsDialog.tsx'
+import { LayoutEditor } from './LayoutEditor.tsx'
 import { LayoutView } from './LayoutView.tsx'
 import { useFocusMode } from './useFocusMode.ts'
 import { closeEdit, startEdit, type TemplateEdit } from './templateEdit.ts'
@@ -30,6 +33,12 @@ import { useCurrentDay } from './useCurrentDay.ts'
 import { useLiveUpdates } from './useLiveUpdates.ts'
 import { useSettings } from './useSettings.ts'
 import { nextTextSize, readTextSize, writeTextSize, type PageKind } from './textSize.ts'
+
+function showsEditable(layout: Layout, kind: NoteKind): boolean {
+  return panelsOf(layout).some(
+    ({ panel }) => panel.type === 'note' && panel.kind === kind && panel.offset === 0,
+  )
+}
 
 /** The page being typed in (or last typed in), else the day page. Read when a command runs. */
 function targetPageKind(): PageKind {
@@ -56,6 +65,10 @@ function Planner({ focus }: { focus: DayKey }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Stays open across navigation: the editor shows on the page of its kind that is being edited.
   const [templateEdits, setTemplateEdits] = useState<TemplateEdits>({})
+  // The layout being edited, until it is saved or cancelled. Meanwhile the planner shows only
+  // the layout editor: no pages, no navigation, no shortcuts.
+  const [layoutDraft, setLayoutDraft] = useState<Layout | undefined>(undefined)
+  const editingLayout = layoutDraft !== undefined
   const [signOutFailed, setSignOutFailed] = useState(false)
   const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
@@ -177,6 +190,9 @@ function Planner({ focus }: { focus: DayKey }) {
         case 'settings.open':
           setSettingsOpen(true)
           break
+        case 'layout.edit':
+          setLayoutDraft(layout)
+          break
         case 'template.editDay':
           editTemplate('day')
           break
@@ -197,19 +213,20 @@ function Planner({ focus }: { focus: DayKey }) {
           break
       }
     },
-    [currentDay, today, navigate, signOut, editTemplate, focusAfterNavigation],
+    [currentDay, today, navigate, signOut, editTemplate, focusAfterNavigation, layout],
   )
 
-  useShortcuts(keymap, run, !paletteOpen && !settingsOpen)
+  const busy = paletteOpen || settingsOpen || editingLayout
+  useShortcuts(keymap, run, !busy)
   const { enabled: focusModeOn, idleMs } = settings?.focusMode ?? DEFAULT_FOCUS_MODE
-  const focusMode = useFocusMode(focusModeOn && !paletteOpen && !settingsOpen, focus, idleMs)
+  const focusMode = useFocusMode(focusModeOn && !busy, focus, idleMs)
 
   return (
     <PageFocusContext value={pageFocusApi}>
       <div className="planner" data-focus-mode={focusMode || undefined}>
         <header className="topbar">
           <span className="brand">Agendina</span>
-          {settings !== undefined && live && (
+          {settings !== undefined && live && !editingLayout && (
             <WeekStrip
               focus={focus}
               rule={settings.weekRule}
@@ -217,7 +234,7 @@ function Planner({ focus }: { focus: DayKey }) {
               setCalendarOpen={setCalendarOpen}
             />
           )}
-          <div className="topbar-actions">
+          <div className="topbar-actions" hidden={editingLayout}>
             <button
               type="button"
               className="icon"
@@ -250,7 +267,28 @@ function Planner({ focus }: { focus: DayKey }) {
           {signOutFailed && (
             <p role="alert">Could not sign out. Check your connection and try again.</p>
           )}
-          {settings !== undefined && live && (
+          {settings !== undefined && editingLayout && (
+            <LayoutEditor
+              layout={layoutDraft}
+              onChange={setLayoutDraft}
+              onCancel={() => {
+                setLayoutDraft(undefined)
+              }}
+              onSave={() => {
+                update({ ...settings, layout: layoutDraft })
+                // An edit no page shows any more would come back, stale, with that page.
+                setTemplateEdits((edits): TemplateEdits =>
+                  Object.fromEntries(
+                    Object.entries(edits).filter(([kind]) =>
+                      showsEditable(layoutDraft, kind as NoteKind),
+                    ),
+                  ),
+                )
+                setLayoutDraft(undefined)
+              }}
+            />
+          )}
+          {settings !== undefined && live && !editingLayout && (
             <PlannerContext value={plannerContext}>
               <LayoutView
                 layout={resolveLayout(settings.layout, focus, settings.weekRule)}
@@ -269,6 +307,10 @@ function Planner({ focus }: { focus: DayKey }) {
             onEditTemplate={(kind) => {
               setSettingsOpen(false)
               run(kind === 'day' ? 'template.editDay' : 'template.editWeek')
+            }}
+            onEditLayout={() => {
+              setSettingsOpen(false)
+              run('layout.edit')
             }}
             onClose={() => {
               setSettingsOpen(false)

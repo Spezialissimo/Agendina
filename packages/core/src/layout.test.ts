@@ -72,6 +72,26 @@ describe('resolveLayout', () => {
     })
   })
 
+  it('gives a calendar the focused day, to show its month', () => {
+    const layout = row(
+      'r',
+      [{ type: 'panel', id: 'c', panel: { type: 'calendar' } }, 1],
+      [note('d', 'day', 0), 1],
+    )
+
+    const resolved = resolveLayout(layout, '2026-10-24', ISO_WEEK)
+
+    expect(resolved).toMatchObject({
+      children: [
+        { node: { type: 'panel', id: 'c', view: { type: 'calendar', focus: '2026-10-24' } } },
+        { node: { view: { type: 'note', kind: 'day', key: '2026-10-24' } } },
+      ],
+    })
+    // A calendar is not a page to write in.
+    expect(editableNote(resolved, 'day')).toMatchObject({ key: '2026-10-24' })
+    expect(editableNote(resolved, 'week')).toBeUndefined()
+  })
+
   it('keys week notes by the first day of the week, following the week rule', () => {
     const layout = row('r', [note('week', 'week', 0), 1])
 
@@ -147,10 +167,9 @@ describe('resolveLayout', () => {
         fc.integer({ min: -60, max: 60 }),
         (day, kind, offset) => {
           const resolved = resolveLayout(row('r', [note('p', kind, offset), 1]), day, ISO_WEEK)
+          const first = resolved.type === 'split' ? resolved.children[0]?.node : undefined
           const view =
-            resolved.type === 'split' && resolved.children[0]?.node.type === 'panel'
-              ? resolved.children[0].node.view
-              : undefined
+            first?.type === 'panel' && first.view.type === 'note' ? first.view : undefined
 
           expect(view !== undefined && isDayKey(view.key)).toBe(true)
           expect(view?.editable).toBe(offset === 0)

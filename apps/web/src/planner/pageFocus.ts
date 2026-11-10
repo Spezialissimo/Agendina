@@ -22,7 +22,9 @@ export function focusTarget(
 }
 
 function editableViews(layout: ResolvedLayout): NoteView[] {
-  if (layout.type === 'panel') return layout.view.editable ? [layout.view] : []
+  if (layout.type === 'panel') {
+    return layout.view.type === 'note' && layout.view.editable ? [layout.view] : []
+  }
   return layout.children.flatMap((c) => editableViews(c.node))
 }
 
