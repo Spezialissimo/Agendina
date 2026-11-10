@@ -182,6 +182,19 @@ describe('planner', () => {
     })
   })
 
+  describe('month calendar', () => {
+    it('closes with the button that opened it', async () => {
+      const { user } = renderApp(server, '/day/2026-10-26')
+      const button = await screen.findByRole('button', { name: 'Choose a day' })
+      await user.click(button)
+      expect(screen.getByRole('dialog', { name: 'October 2026' })).toBeInTheDocument()
+
+      await user.click(button)
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
   describe('resizing', () => {
     it('keeps a size that could not be saved, says so, and saves it once back online', async () => {
       const { user } = renderApp(server, '/day/2026-10-26')
