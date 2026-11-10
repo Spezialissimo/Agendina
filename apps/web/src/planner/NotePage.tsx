@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
 import { useFocusRequest, usePageFocus } from './pageFocus.ts'
+import type { TemplateEdit } from './templateEdit.ts'
 import { nextTextSize, TEXT_SIZE_LABEL, useTextSize, writeTextSize } from './textSize.ts'
 import { pageLabel, pageSubtitle, pageTitle } from './weeks.ts'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
@@ -28,7 +29,7 @@ import { useTemplate } from '../templates/useTemplate.ts'
  * earliest of those when there is no page for the first day. Undefined while loading, so nothing
  * is typed into a page that is about to change.
  */
-function usePageKey(view: NoteView): DayKey | undefined {
+function usePageKey(view: Pick<NoteView, 'kind' | 'key'>): DayKey | undefined {
   const api = useApi()
   const last = addDays(view.key, 6)
   const notes = useQuery({
@@ -47,7 +48,7 @@ export function NotePage({ view }: { view: NoteView }) {
   const api = useApi()
   const locale = useLocale()
   const navigate = useNavigate()
-  const { weekRule, templateEdits, closeTemplate, setTemplateDraft } = usePlannerContext()
+  const { weekRule, templateEdits, closeTemplate } = usePlannerContext()
   const editingTemplate = templateEdits[view.kind]
   const pageKey = usePageKey(view)
   const note = useQuery({
@@ -97,27 +98,16 @@ export function NotePage({ view }: { view: NoteView }) {
           {notice.text}
         </p>
       )}
-      {pageKey === undefined ? null : view.editable && editingTemplate?.kind === view.kind ? (
-        template.data !== undefined &&
-        note.data !== undefined && (
-          <TemplateEditor
-            key={`${view.kind}/${editingTemplate.key}`}
-            kind={view.kind}
-            pageKey={editingTemplate.key}
-            template={template.data}
-            pageText={note.data?.content ?? ''}
-            draft={editingTemplate.draft}
-            autoFocus={pageKey === editingTemplate.key}
-            onDraftChange={(text) => {
-              setTemplateDraft(editingTemplate, text)
-            }}
-            focusRequest={focusRequest}
-            onClose={(text) => {
-              closeTemplate(editingTemplate)
-              if (text !== undefined) setNotice({ key: pageKey, text })
-            }}
-          />
-        )
+      {pageKey === undefined ? null : view.editable && editingTemplate !== undefined ? (
+        <TemplateEditing
+          edit={editingTemplate}
+          autoFocus={view.key === editingTemplate.key}
+          focusRequest={focusRequest}
+          onClose={(text) => {
+            closeTemplate(editingTemplate)
+            if (text !== undefined) setNotice({ key: pageKey, text })
+          }}
+        />
       ) : view.editable ? (
         <EditablePage
           key={`${view.kind}/${pageKey}`}
@@ -143,6 +133,50 @@ export function NotePage({ view }: { view: NoteView }) {
         />
       )}
     </section>
+  )
+}
+
+/**
+ * The template editor for `edit`, shown on the page of its kind that is on screen. It works on
+ * the page the edit started from, which may be another one by now: a first template is copied
+ * from that page and linked to it.
+ */
+function TemplateEditing({
+  edit,
+  autoFocus,
+  focusRequest,
+  onClose,
+}: {
+  edit: TemplateEdit
+  autoFocus: boolean
+  focusRequest: { id: number; done: () => void } | undefined
+  onClose: (notice?: string) => void
+}) {
+  const api = useApi()
+  const { setTemplateDraft } = usePlannerContext()
+  const pageKey = usePageKey(edit)
+  const page = useQuery({
+    queryKey: ['note', edit.kind, pageKey],
+    queryFn: () => api.getNote(edit.kind, pageKey ?? edit.key),
+    enabled: pageKey !== undefined,
+  })
+  const template = useTemplate(edit.kind)
+  if (pageKey === undefined || page.data === undefined || template.data === undefined) return null
+  return (
+    <TemplateEditor
+      key={`${edit.kind}/${edit.key}`}
+      kind={edit.kind}
+      pageKey={pageKey}
+      template={template.data}
+      pageText={page.data?.content ?? ''}
+      draft={edit.draft}
+      autoFocus={autoFocus}
+      onDraftChange={(text) => {
+        setTemplateDraft(edit, text)
+      }}
+      focusRequest={focusRequest}
+      onClose={onClose}
+    />
   )
 }
 
