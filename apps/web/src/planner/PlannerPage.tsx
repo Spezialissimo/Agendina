@@ -82,10 +82,12 @@ function Planner({ focus }: { focus: DayKey }) {
   const [pageFocus] = useState(() => new PageFocus())
   useEffect(() => pageFocus.connect(document), [pageFocus])
   // A request for another day lapses (e.g. the browser's back button went elsewhere meanwhile).
+  // Compared with the day open right now, not the one rendered: a second shortcut pressed before
+  // this render has already asked for the day after, and that request must stay.
   useEffect(() => {
     const request = pageFocus.get()
-    if (request !== undefined && request.day !== focus) pageFocus.cancel(request.id)
-  }, [pageFocus, focus])
+    if (request !== undefined && request.day !== currentDay()) pageFocus.cancel(request.id)
+  }, [pageFocus, focus, currentDay])
   const focusAfterNavigation = useCallback(
     (day: DayKey, side?: NoteKind) => {
       if (settings === undefined || !pageFocus.mayMoveFocus()) return
