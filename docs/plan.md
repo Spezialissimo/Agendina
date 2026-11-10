@@ -90,17 +90,20 @@ Since then: daily use. Small fixes and wishes are logged and triaged in `docs/fe
 they do not belong here. Only features big enough to need acceptance criteria get a roadmap item.
 
 ## Roadmap (in this order)
-1. **Layout presets and a layout editor** (next, detailed below)
+1. **Layout presets and a layout editor** (next, detailed below). Right after it: remove focus
+   mode.
 2. **Mobile view and PWA**: journal-scroll style, tapping the week header opens the week note,
    the current day is selectable in a footer; installable, works as a standalone app. Ideally a
    layout (item 1), not a special case.
 3. **Offline sync with client-side merge**: needs an ADR first; must say how merging would work
-   under E2E encryption (the server cannot merge what it cannot read).
+   under E2E encryption (the server cannot merge what it cannot read). Before starting: review
+   merge correctness (property tests in `core`), as merges become far more frequent.
 4. **Shortcut editor UI**: per-user overrides already exist in settings (ADR 0007).
 5. **Table-aware merge**: per-cell merge for tables, also for template propagation.
-6. **E2E encryption**
+6. **E2E encryption**. Before starting: check that no server feature reads note content.
 7. **License decision** (likely AGPL), before any public launch
-8. **Freemium entitlements and hosted deployment**
+8. **Freemium entitlements and hosted deployment**. Before starting: a security review of
+   auth, sessions and export.
 9. **Capacitor app**: only if the PWA turns out not to be enough
 
 ### 1. Layout presets and a layout editor
@@ -109,16 +112,19 @@ Layouts are already data (ADR 0005): a JSON tree stored in the user's settings a
 editor, not a general design tool.
 
 Acceptance criteria (to be refined with the user before writing tests):
-- Settings lists the available presets (Open planner, plus at least a weekly spread and a
-  day-only focus view); choosing one applies immediately and is kept after reload and on other
-  devices.
+- Settings lists the available presets (Open planner plus a few more, chosen when this item
+  starts; a seven-day weekly spread would need a new panel type, see ADR 0005); choosing one
+  applies immediately and is kept after reload and on other devices.
 - A preset needs no new rendering code unless it introduces a new panel type; presets live in
   `packages/core` as data, with tests that each resolves for any focus day and week rule.
 - A minimal editor can change a split's direction, replace a panel's content (kind and offset),
   add and remove panels, and reset to a preset. Invalid trees are impossible to build in the UI
   and still rejected by `LayoutSchema` on the server.
-- Exactly one editable day panel and at most one editable week panel remain in any layout, so
-  autosave and focus-follows-navigation keep working (to decide: the exact rule).
-- Splitter sizes are remembered per layout; switching presets never loses note content.
-- Open questions: does the editor live in Settings or in place on the page? Can users save
-  several named layouts, or only one custom layout?
+- Every layout has at least one editable page and at most one per kind (day, week), so a note
+  never has two editors. Layouts without a day page or without a week page stay valid, as today.
+- Switching presets never loses note content.
+- To decide first, as it changes the settings data model: settings hold one layout tree, with
+  the splitter sizes inside it. Can users keep several layouts (named, or one custom next to the
+  presets)? Only then can sizes be remembered per layout; with a single tree, choosing a preset
+  replaces the sizes too.
+- Open question: does the editor live in Settings or in place on the page?
