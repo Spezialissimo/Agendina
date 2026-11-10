@@ -24,3 +24,16 @@ export function closeEdit(
 ): TemplateEdit | undefined {
   return current?.kind === closed.kind && current.key === closed.key ? undefined : current
 }
+
+/**
+ * The edit after "Edit template" is run on page `key`. An edit already open keeps its unsaved
+ * text: run from another page, it moves there (that page becomes the one it is edited from).
+ */
+export function startEdit(
+  current: TemplateEdit | undefined,
+  kind: NoteKind,
+  key: DayKey,
+): TemplateEdit {
+  if (current === undefined) return { kind, key }
+  return current.key === key ? current : { ...current, key }
+}

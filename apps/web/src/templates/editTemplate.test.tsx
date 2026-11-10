@@ -294,6 +294,36 @@ describe('editing a template', () => {
       expect(screen.getByRole('textbox', { name: 'Week template' })).toBeInTheDocument()
     })
 
+    const openFromSettings = async (
+      user: ReturnType<typeof renderApp>['user'],
+      kind: 'day' | 'week',
+    ) => {
+      await user.click(await screen.findByRole('button', { name: 'Settings' }))
+      await user.click(screen.getByRole('button', { name: `Edit ${kind} template` }))
+    }
+
+    it('keeps its unsaved text when it is opened again from another day', async () => {
+      const { user, router } = renderApp(server, '/day/2026-10-27')
+      await openFromSettings(user, 'day')
+      replaceText(await editor('Day template'), 'unsaved draft')
+      await act(() => router.navigate('/day/2026-10-28'))
+
+      await openFromSettings(user, 'day')
+
+      expect(editorText(await editor('Day template'))).toBe('unsaved draft')
+    })
+
+    it('keeps the unsaved day template when the week template is opened too', async () => {
+      const { user } = renderApp(server, '/day/2026-10-27')
+      await openFromSettings(user, 'day')
+      replaceText(await editor('Day template'), 'unsaved draft')
+
+      await openFromSettings(user, 'week')
+
+      expect(await editor('Week template')).toBeInTheDocument()
+      expect(editorText(await editor('Day template'))).toBe('unsaved draft')
+    })
+
     it('puts the cursor in the template editor, from Settings and from the palette', async () => {
       const { user } = renderApp(server, '/day/2026-10-27')
       await user.click(await screen.findByRole('button', { name: 'Settings' }))

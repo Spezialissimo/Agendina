@@ -22,8 +22,8 @@ import { addColumn, addRow } from '../editor/tables.ts'
 import { SettingsDialog } from '../settings/SettingsDialog.tsx'
 import { LayoutView } from './LayoutView.tsx'
 import { useFocusMode } from './useFocusMode.ts'
-import { closeEdit, type TemplateEdit } from './templateEdit.ts'
-import { PlannerContext } from './PlannerContext.tsx'
+import { closeEdit, startEdit } from './templateEdit.ts'
+import { PlannerContext, type TemplateEdits } from './PlannerContext.tsx'
 import { PageFocus, PageFocusContext, focusTarget, type PageFocusApi } from './pageFocus.ts'
 import { WeekStrip } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
@@ -55,7 +55,7 @@ function Planner({ focus }: { focus: DayKey }) {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Stays open across navigation: the editor shows on the page of its kind that is being edited.
-  const [templateEdit, setTemplateEdit] = useState<TemplateEdit | undefined>()
+  const [templateEdits, setTemplateEdits] = useState<TemplateEdits>({})
   const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
 
@@ -71,7 +71,8 @@ function Planner({ focus }: { focus: DayKey }) {
   const editTemplate = useCallback(
     (kind: NoteKind) => {
       const page = pageOf(kind, currentDay())
-      if (page !== undefined) setTemplateEdit({ kind, key: page.key })
+      if (page === undefined) return
+      setTemplateEdits((edits) => ({ ...edits, [kind]: startEdit(edits[kind], kind, page.key) }))
     },
     [pageOf, currentDay],
   )
@@ -207,16 +208,20 @@ function Planner({ focus }: { focus: DayKey }) {
             <PlannerContext
               value={{
                 weekRule: settings.weekRule,
-                editingTemplate: templateEdit,
+                templateEdits,
                 closeTemplate: (edit) => {
-                  setTemplateEdit((current) => closeEdit(current, edit))
+                  setTemplateEdits((edits) => ({
+                    ...edits,
+                    [edit.kind]: closeEdit(edits[edit.kind], edit),
+                  }))
                 },
                 setTemplateDraft: (edit, draft) => {
-                  setTemplateEdit((current) =>
-                    current?.kind === edit.kind && current.key === edit.key
-                      ? { ...current, draft }
-                      : current,
-                  )
+                  setTemplateEdits((edits) => {
+                    const current = edits[edit.kind]
+                    return current?.key === edit.key
+                      ? { ...edits, [edit.kind]: { ...current, draft } }
+                      : edits
+                  })
                 },
               }}
             >

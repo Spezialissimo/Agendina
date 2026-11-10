@@ -47,7 +47,8 @@ export function NotePage({ view }: { view: NoteView }) {
   const api = useApi()
   const locale = useLocale()
   const navigate = useNavigate()
-  const { weekRule, editingTemplate, closeTemplate, setTemplateDraft } = usePlannerContext()
+  const { weekRule, templateEdits, closeTemplate, setTemplateDraft } = usePlannerContext()
+  const editingTemplate = templateEdits[view.kind]
   const pageKey = usePageKey(view)
   const note = useQuery({
     queryKey: ['note', view.kind, pageKey],
