@@ -1,10 +1,10 @@
-import { DEFAULT_SETTINGS } from '@agendina/contract'
 import { MAX_PANELS, OPEN_PLANNER, type Layout } from '@agendina/core'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Api } from '../api/client.ts'
 import { typeInto } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
+import { settingsWithLayout } from '../test/settings.ts'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
 const panelNode = (id: string, kind: 'day' | 'week', offset: number): Layout => ({
@@ -39,11 +39,19 @@ describe('layout editor', () => {
   const separators = () => screen.queryAllByRole('separator', { name: 'Resize pages' })
   const savedLayout = async () => (await api.settings()).layout
 
+  /** The button that edits the layout on show: "Edit …", or "Duplicate and edit …" a preset. */
+  const editActiveLayout = (settings: HTMLElement) => {
+    const name = within(settings).getByRole('radio', { checked: true }).getAttribute('aria-label')
+    return within(settings).getByRole('button', {
+      name: new RegExp(`^(Edit|Duplicate and edit) ${String(name)}$`),
+    })
+  }
+
   const editLayout = async () => {
     const view = renderApp(server, '/day/2026-10-26')
     await view.user.click(await screen.findByRole('button', { name: 'Settings' }))
     const settings = screen.getByRole('dialog', { name: 'Settings' })
-    await view.user.click(within(settings).getByRole('button', { name: 'Edit layout' }))
+    await view.user.click(editActiveLayout(settings))
     await screen.findByRole('region', { name: 'Layout' })
     return view
   }
@@ -67,7 +75,10 @@ describe('layout editor', () => {
       expect(editor()).toBeInTheDocument()
       expect(panelNames()).toEqual(['Selected week panel', 'Selected day panel'])
       // The notes themselves are away until the layout is saved or cancelled.
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      // The only field is the layout's name.
+      expect(screen.getAllByRole('textbox')).toEqual([
+        screen.getByRole('textbox', { name: 'Name' }),
+      ])
       expect(page('Week 44')).not.toBeInTheDocument()
       expect(page(MONDAY)).not.toBeInTheDocument()
     })
@@ -277,21 +288,6 @@ describe('layout editor', () => {
 
       await waitFor(async () => {
         expect(await savedLayout()).toMatchObject({ children: [{ size: 0.5 }, { size: 0.5 }] })
-      })
-    })
-
-    it('goes back to the Open planner on request', async () => {
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout: panelNode('only', 'day', 0) })
-      const { user } = await editLayout()
-      expect(panelNames()).toEqual(['Selected day panel'])
-
-      await user.click(screen.getByRole('button', { name: 'Reset to Open planner' }))
-
-      expect(panelNames()).toEqual(['Selected week panel', 'Selected day panel'])
-      await save(user)
-      expect(await screen.findByRole('region', { name: 'Week 44' })).toBeInTheDocument()
-      await waitFor(async () => {
-        expect(await savedLayout()).toEqual(OPEN_PLANNER)
       })
     })
 
@@ -532,15 +528,15 @@ describe('layout editor', () => {
 
       const editAgain = async () => {
         await user.click(screen.getByRole('button', { name: 'Settings' }))
-        await user.click(screen.getByRole('button', { name: 'Edit layout' }))
+        await user.click(editActiveLayout(screen.getByRole('dialog', { name: 'Settings' })))
         await screen.findByRole('region', { name: 'Layout' })
       }
       await editAgain()
       await user.click(panel('Selected week').getByRole('button', { name: 'Delete page' }))
       await save(user)
-      await editAgain()
-      await user.click(screen.getByRole('button', { name: 'Reset to Open planner' }))
-      await save(user)
+      await user.click(screen.getByRole('button', { name: 'Settings' }))
+      await user.click(screen.getByRole('radio', { name: 'Open planner' }))
+      await user.click(screen.getByRole('button', { name: 'Close' }))
 
       // The week page is back as a page to write in, not as the template edit left behind.
       expect(await screen.findByRole('textbox', { name: 'Week 44' })).toBeInTheDocument()
@@ -622,7 +618,7 @@ describe('layout editor', () => {
           { size: 0.5, node: panelNode('later', 'day', 5) },
         ],
       }
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
+      await api.saveSettings(settingsWithLayout(layout))
 
       await editLayout()
 

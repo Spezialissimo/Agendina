@@ -534,22 +534,21 @@ button {
   gap: 0.75rem;
 }
 
-.layout-panel-center label {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.layout-panel-center label > span {
-  margin-left: -0.5rem;
+/* The list and the delete button share one size, one above the other. */
+.layout-editor .layout-panel-center select,
+.layout-panel-delete {
+  box-sizing: border-box;
+  width: min(100%, 11rem);
+  height: 2.25rem;
+  padding: 0 0.6rem;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 6px;
+  font: inherit;
 }
 
 .layout-panel-delete {
-  padding: 0.35rem 0.9rem;
-  border: 2px solid var(--danger);
-  border-radius: 6px;
+  border-color: var(--danger);
   background: none;
   color: var(--danger);
 }
@@ -944,6 +943,200 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* The named layouts: a card each, with a miniature of the pages; the one on show is outlined. */
+.layout-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.75rem;
+}
+
+.layout-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem 0.5rem;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: var(--paper);
+  min-width: 0;
+}
+
+.layout-card[data-active] {
+  border-color: var(--accent);
+}
+
+.layout-card:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.layout-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 30px;
+}
+
+.layout-card-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.layout-card-tag {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
+.layout-card-body {
+  position: relative;
+}
+
+/* The whole miniature chooses the layout; the radio itself is out of sight but focusable. */
+.settings label.layout-card-choice {
+  display: block;
+  cursor: pointer;
+}
+
+.layout-card-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.layout-preview {
+  display: flex;
+  aspect-ratio: 16 / 10;
+}
+
+.layout-preview-split {
+  display: flex;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.layout-preview-split[data-direction='column'] {
+  flex-direction: column;
+}
+
+.layout-preview-cell {
+  display: flex;
+  flex-basis: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.layout-preview-page {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--page);
+  color: var(--ink-soft);
+  font-size: 0.625rem;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.layout-preview-page[data-writable='false'] {
+  background: var(--chip);
+}
+
+/* Edit and delete over the miniature: shown on hover or focus, always on touch screens. */
+.layout-card-actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--paper) 60%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms;
+}
+
+.layout-card:hover .layout-card-actions,
+.layout-card:focus-within .layout-card-actions,
+.layout-card[data-confirming] .layout-card-actions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .layout-card-actions {
+    opacity: 1;
+  }
+}
+
+.layout-card-actions > * {
+  pointer-events: auto;
+  box-sizing: border-box;
+  min-width: 6rem;
+  padding: 0.1rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--page) 88%, transparent);
+  color: var(--ink);
+  font-size: 0.875rem;
+}
+
+.layout-card-actions > span {
+  pointer-events: none;
+  text-align: center;
+}
+
+.layout-card-actions button:hover {
+  background: var(--page);
+}
+
+.layout-card-actions button.danger {
+  color: var(--danger);
+}
+
+.layout-card-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 9rem;
+  border: 2px dashed var(--rule);
+  background: none;
+  color: var(--ink-soft);
+}
+
+.layout-card-new:hover {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
+
+/* The name of the layout being edited, under the editor's title. */
+.layout-editor-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.35rem 0;
+}
+
+.layout-editor-name input {
+  width: min(100%, 18rem);
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+  border: 2px solid var(--rule);
+  border-radius: 6px;
+  background: var(--page);
+  color: var(--ink);
 }
 
 .settings select,

@@ -14,10 +14,11 @@ test('layout: edited on the pages, kept after a reload', async ({ page }, testIn
   const dayAfter = page.getByRole('region', { name: 'Wednesday, April 7, 2027' })
   const editor = page.getByRole('region', { name: 'Layout' })
   const panel = (name: string) => page.getByRole('group', { name: `${name} panel` })
-  const editLayout = async () => {
+  /** Open planner is duplicated to be edited; from then on its copy is on show. */
+  const editLayout = async (button = 'Edit Custom layout 1') => {
     await revealButtons(page)
     await page.getByRole('button', { name: 'Settings' }).click()
-    await page.getByRole('button', { name: 'Edit layout' }).click()
+    await page.getByRole('button', { name: button }).click()
     await expect(editor).toBeVisible()
   }
 
@@ -28,7 +29,7 @@ test('layout: edited on the pages, kept after a reload', async ({ page }, testIn
   })
 
   await test.step('while editing, the pages are placeholders and there is nowhere else to go', async () => {
-    await editLayout()
+    await editLayout('Duplicate and edit Open planner')
 
     await expect(day).toBeHidden()
     await expect(page.getByRole('navigation', { name: 'Week' })).toBeHidden()
@@ -47,7 +48,7 @@ test('layout: edited on the pages, kept after a reload', async ({ page }, testIn
   })
 
   await test.step('the week goes away, the next day comes below the day', async () => {
-    await editLayout()
+    await editLayout('Duplicate and edit Open planner')
     await panel('Selected day').getByRole('button', { name: 'Add page below' }).click()
     await expect(panel('Day after')).toBeVisible()
     await panel('Selected week').getByRole('button', { name: 'Delete page' }).click()
@@ -119,5 +120,37 @@ test('layout: edited on the pages, kept after a reload', async ({ page }, testIn
       'aria-current',
       'date',
     )
+  })
+
+  await test.step('the edited Open planner is a layout of its own; both stay', async () => {
+    const calendar = page.getByRole('region', { name: 'Calendar' })
+    const settings = page.getByRole('dialog', { name: 'Settings' })
+    const choose = async (name: string) => {
+      await revealButtons(page)
+      await page.getByRole('button', { name: 'Settings' }).click()
+      // A corner of the layout's miniature, away from its Edit and Delete buttons.
+      await settings
+        .locator('label', { has: page.getByRole('radio', { name }) })
+        .click({ position: { x: 8, y: 8 } })
+      await expect(settings.getByRole('radio', { name })).toBeChecked()
+      await settings.getByRole('button', { name: 'Close' }).click()
+    }
+
+    await choose('Open planner')
+    await expect(page.getByRole('textbox', { name: /^Week \d+$/ })).toBeVisible()
+    await expect(calendar).toBeHidden()
+
+    await choose('Custom layout 1')
+    await expect(calendar).toBeVisible()
+    await expect
+      .poll(async () => {
+        const saved = (await (await page.request.get('/api/settings')).json()) as {
+          settings: { layouts: { active: { desktop: string } } }
+        }
+        return saved.settings.layouts.active.desktop
+      })
+      .not.toBe('open-planner')
+    await page.reload()
+    await expect(calendar).toBeVisible()
   })
 })

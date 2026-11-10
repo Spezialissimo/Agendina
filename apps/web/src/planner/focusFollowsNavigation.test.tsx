@@ -1,10 +1,10 @@
-import { DEFAULT_SETTINGS } from '@agendina/contract'
 import type { Layout } from '@agendina/core'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Api, type FetchFn } from '../api/client.ts'
 import { placeCursor, selectionOf } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
+import { settingsWithLayout } from '../test/settings.ts'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
 // Keys by physical code, as in commands.test.tsx.
@@ -254,7 +254,7 @@ describe('focus follows navigation', () => {
           },
         ],
       }
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
+      await api.saveSettings(settingsWithLayout(layout))
       const { user } = await open('/day/2026-10-28')
       await editor('Wednesday, October 28, 2026')
 
@@ -271,7 +271,7 @@ describe('focus follows navigation', () => {
         id: 'week',
         panel: { type: 'note', kind: 'week', offset: 0 },
       }
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
+      await api.saveSettings(settingsWithLayout(layout))
       const { user } = await open('/day/2026-10-28')
       await editor('Week 44')
 
@@ -385,7 +385,7 @@ describe('focus follows navigation', () => {
           },
         ],
       }
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
+      await api.saveSettings(settingsWithLayout(layout))
       const { user } = await open('/day/2026-10-28')
       const yesterday = await screen.findByRole('region', { name: 'Tuesday, October 27, 2026' })
 

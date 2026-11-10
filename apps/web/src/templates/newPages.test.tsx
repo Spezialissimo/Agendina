@@ -1,10 +1,10 @@
-import { DEFAULT_SETTINGS } from '@agendina/contract'
 import type { Layout } from '@agendina/core'
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
 import { editorText, replaceText, typeInto } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
+import { settingsWithLayout } from '../test/settings.ts'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
 const TODAY = 'Monday, October 26, 2026'
@@ -115,7 +115,7 @@ describe('new pages start from the template', () => {
         },
       ],
     }
-    await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
+    await api.saveSettings(settingsWithLayout(layout))
     await api.saveTemplate('day', '## Today', 0)
     renderApp(server, '/day/2026-10-26')
 

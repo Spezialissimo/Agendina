@@ -1,12 +1,16 @@
-import { DEFAULT_FOCUS_MODE, type NoteKind } from '@agendina/contract'
+import { DEFAULT_FOCUS_MODE, withLayouts, type NoteKind } from '@agendina/contract'
 import {
+  activeLayout,
   addDays,
+  allLayouts,
   isDayKey,
+  nextLayoutName,
   editableNote,
   panelsOf,
   resolveKeymap,
+  resizeLayout,
   resolveLayout,
-  setSplitSizes,
+  saveEditedLayout,
   type DayKey,
   type Layout,
 } from '@agendina/core'
@@ -65,16 +69,44 @@ function Planner({ focus }: { focus: DayKey }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   // Stays open across navigation: the editor shows on the page of its kind that is being edited.
   const [templateEdits, setTemplateEdits] = useState<TemplateEdits>({})
-  // The layout being edited, until it is saved or cancelled. Meanwhile the planner shows only
-  // the layout editor: no pages, no navigation, no shortcuts.
-  const [layoutDraft, setLayoutDraft] = useState<Layout | undefined>(undefined)
+  // The layout being edited (`editing` is its id, undefined for a new one), until it is saved
+  // or cancelled. Meanwhile the planner shows only the layout editor: no pages, no navigation,
+  // no shortcuts.
+  const [layoutDraft, setLayoutDraft] = useState<
+    { editing: string | undefined; layout: Layout; name: string } | undefined
+  >(undefined)
   const editingLayout = layoutDraft !== undefined
+  // Stable: the layout editor listens to the pointer with it.
+  const changeLayoutDraft = useCallback((layout: Layout) => {
+    setLayoutDraft((draft) => (draft === undefined ? draft : { ...draft, layout }))
+  }, [])
+  const changeLayoutName = useCallback((name: string) => {
+    setLayoutDraft((draft) => (draft === undefined ? draft : { ...draft, name }))
+  }, [])
   const [signOutFailed, setSignOutFailed] = useState(false)
   const currentDay = useCurrentDay(focus)
   const keymap = useMemo(() => resolveKeymap(COMMANDS, settings?.keymap ?? {}), [settings?.keymap])
 
   const weekRule = settings?.weekRule
-  const layout = settings?.layout
+  const layouts = settings?.layouts
+  const active = useMemo(
+    () => (layouts === undefined ? undefined : activeLayout(layouts, 'desktop')),
+    [layouts],
+  )
+  const layout = active?.layout
+  /** Opens the layout editor on layout `id`, or on a new layout made from the one on show. */
+  const startLayoutEdit = useCallback(
+    (id: string | undefined) => {
+      if (layouts === undefined || active === undefined) return
+      const edited = allLayouts(layouts).find((l) => l.id === id)
+      setLayoutDraft({
+        editing: id,
+        layout: (edited ?? active).layout,
+        name: edited !== undefined && !edited.preset ? edited.name : nextLayoutName(layouts),
+      })
+    },
+    [layouts, active],
+  )
   const pageOf = useCallback(
     (kind: NoteKind, day: DayKey) =>
       layout === undefined || weekRule === undefined
@@ -103,14 +135,14 @@ function Planner({ focus }: { focus: DayKey }) {
   }, [pageFocus, focus, currentDay])
   const focusAfterNavigation = useCallback(
     (day: DayKey, side?: NoteKind) => {
-      if (settings === undefined || !pageFocus.mayMoveFocus()) return
+      if (layout === undefined || weekRule === undefined || !pageFocus.mayMoveFocus()) return
       const target = focusTarget(
-        resolveLayout(settings.layout, day, settings.weekRule),
+        resolveLayout(layout, day, weekRule),
         side ?? pageFocus.side ?? 'day',
       )
       if (target !== undefined) pageFocus.request(target.kind, target.key, day)
     },
-    [pageFocus, settings],
+    [pageFocus, layout, weekRule],
   )
   const pageFocusApi = useMemo<PageFocusApi>(
     () => ({ store: pageFocus, focusAfterNavigation }),
@@ -191,7 +223,7 @@ function Planner({ focus }: { focus: DayKey }) {
           setSettingsOpen(true)
           break
         case 'layout.edit':
-          setLayoutDraft(layout)
+          if (active !== undefined) startLayoutEdit(active.id)
           break
         case 'template.editDay':
           editTemplate('day')
@@ -213,7 +245,16 @@ function Planner({ focus }: { focus: DayKey }) {
           break
       }
     },
-    [currentDay, today, navigate, signOut, editTemplate, focusAfterNavigation, layout],
+    [
+      currentDay,
+      today,
+      navigate,
+      signOut,
+      editTemplate,
+      focusAfterNavigation,
+      active,
+      startLayoutEdit,
+    ],
   )
 
   const busy = paletteOpen || settingsOpen || editingLayout
@@ -269,18 +310,25 @@ function Planner({ focus }: { focus: DayKey }) {
           )}
           {settings !== undefined && editingLayout && (
             <LayoutEditor
-              layout={layoutDraft}
-              onChange={setLayoutDraft}
+              layout={layoutDraft.layout}
+              name={layoutDraft.name}
+              onRename={changeLayoutName}
+              onChange={changeLayoutDraft}
               onCancel={() => {
                 setLayoutDraft(undefined)
               }}
               onSave={() => {
-                update({ ...settings, layout: layoutDraft })
+                const layouts = saveEditedLayout(settings.layouts, {
+                  ...layoutDraft,
+                  screen: 'desktop',
+                })
+                if (layouts !== settings.layouts) update(withLayouts(settings, layouts))
+                const saved = activeLayout(layouts, 'desktop').layout
                 // An edit no page shows any more would come back, stale, with that page.
                 setTemplateEdits((edits): TemplateEdits =>
                   Object.fromEntries(
                     Object.entries(edits).filter(([kind]) =>
-                      showsEditable(layoutDraft, kind as NoteKind),
+                      showsEditable(saved, kind as NoteKind),
                     ),
                   ),
                 )
@@ -288,12 +336,17 @@ function Planner({ focus }: { focus: DayKey }) {
               }}
             />
           )}
-          {settings !== undefined && live && !editingLayout && (
+          {settings !== undefined && active !== undefined && live && !editingLayout && (
             <PlannerContext value={plannerContext}>
               <LayoutView
-                layout={resolveLayout(settings.layout, focus, settings.weekRule)}
+                layout={resolveLayout(active.layout, focus, settings.weekRule)}
                 onResize={(splitId, sizes) => {
-                  update({ ...settings, layout: setSplitSizes(settings.layout, splitId, sizes) })
+                  update(
+                    withLayouts(
+                      settings,
+                      resizeLayout(settings.layouts, active.id, splitId, sizes),
+                    ),
+                  )
                 }}
               />
             </PlannerContext>
@@ -308,9 +361,13 @@ function Planner({ focus }: { focus: DayKey }) {
               setSettingsOpen(false)
               run(kind === 'day' ? 'template.editDay' : 'template.editWeek')
             }}
-            onEditLayout={() => {
+            onEditLayout={(id) => {
               setSettingsOpen(false)
-              run('layout.edit')
+              startLayoutEdit(id)
+            }}
+            onNewLayout={() => {
+              setSettingsOpen(false)
+              startLayoutEdit(undefined)
             }}
             onClose={() => {
               setSettingsOpen(false)

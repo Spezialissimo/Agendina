@@ -1,9 +1,9 @@
-import { DEFAULT_SETTINGS } from '@agendina/contract'
 import type { Layout } from '@agendina/core'
 import { screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
 import { renderApp } from '../test/render.tsx'
+import { settingsWithLayout } from '../test/settings.ts'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
 const CALENDAR_AND_DAY: Layout = {
@@ -25,7 +25,7 @@ describe('calendar panel', () => {
   beforeEach(async () => {
     server = await startTestServer()
     await server.signup()
-    await new Api(server.fetch).saveSettings({ ...DEFAULT_SETTINGS, layout: CALENDAR_AND_DAY })
+    await new Api(server.fetch).saveSettings(settingsWithLayout(CALENDAR_AND_DAY))
   })
 
   afterEach(async () => {
@@ -109,11 +109,9 @@ describe('calendar panel', () => {
   })
 
   it('starts weeks on the day the user chose', async () => {
-    await new Api(server.fetch).saveSettings({
-      ...DEFAULT_SETTINGS,
-      layout: CALENDAR_AND_DAY,
-      weekRule: { firstDay: 7, minimalDays: 1 },
-    })
+    await new Api(server.fetch).saveSettings(
+      settingsWithLayout(CALENDAR_AND_DAY, { weekRule: { firstDay: 7, minimalDays: 1 } }),
+    )
     const { calendar } = await open()
 
     const firstRow = calendar.getAllByRole('row')[1]

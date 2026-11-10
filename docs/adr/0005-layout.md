@@ -69,8 +69,30 @@ week strip stays fixed chrome above the tree for now. Settings saved with a cale
 valid for a release older than this one (it falls back to the default layout while it still
 serves during a deploy, ADR 0012), which is acceptable for the minutes that lasts.
 
-Still to come: presets, the date selector as a panel, collapsible panels, one visible panel on
-mobile.
+Refinement (named layouts, 2026-11): settings keep several layouts (`layouts` in the user
+settings, `packages/core/src/layouts.ts`): the presets, which are data in `core` and never
+change, and the user's custom layouts, each with an id, a name and its own tree. There is one
+active layout per type of screen (desktop, phone), so every desktop shows the same one.
+
+- A preset stores nothing but the splitter sizes the user chose for it (`presetSizes`, by split
+  id; sizes that no longer fit the preset are ignored), so moving a splitter never turns it into
+  a custom layout. A preset is not edited but duplicated ("Duplicate and edit"): saving makes
+  a new custom layout, even unchanged. A custom layout is edited in place.
+- Settings shows each layout as a card with a miniature of its pages; clicking it shows that
+  layout, its buttons edit or delete it. The name is edited in the layout editor, with the
+  arrangement. The editor's "Reset to Open planner" is gone: choosing Open planner does that.
+- New layouts start from the one on show and are named "Custom layout N", one past the highest
+  number in a name; ids are `custom-N` the same way. Deleting a layout (after a confirmation)
+  shows the default preset on the screens that showed it.
+- Migration (ADR 0012): the single `layout` setting stays, always filled by the server with the
+  active desktop layout, so the previous release keeps working. Settings saved without `layouts`
+  (stored before this change, or saved by a tab still running the previous release, which has
+  no reload prompt) are taken in by `adoptLegacyLayout`: the splitter sizes of Open planner, the
+  active custom layout replaced, or else a new custom layout; no other layout is lost. Drop
+  `layout` a release later, once no tab can still run the old code.
+
+Still to come: more presets, the date selector as a panel, collapsible panels, one visible
+panel on mobile.
 
 ## Consequences
 

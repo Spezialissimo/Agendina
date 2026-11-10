@@ -1,6 +1,6 @@
 import {
+  MAX_LAYOUT_NAME,
   MAX_PANELS,
-  OPEN_PLANNER,
   addPanel,
   contentKey,
   layoutProblems,
@@ -24,6 +24,9 @@ import { dropTarget, measurePanels, useGlidingPanels, type PanelRect } from './l
 interface Props {
   /** The layout as edited so far; nothing is saved until `onSave`. */
   layout: Layout
+  /** The name the layout is saved with. */
+  name: string
+  onRename: (name: string) => void
   onChange: (layout: Layout) => void
   onCancel: () => void
   onSave: () => void
@@ -87,7 +90,7 @@ const DragContext = createContext<{
   grab: (panelId: string, label: string, x: number, y: number) => void
 }>({ dragging: undefined, grab: () => undefined })
 
-function contentLabel(content: PanelContent): string {
+export function contentLabel(content: PanelContent): string {
   if (content.kind === 'calendar') return 'Calendar'
   const { kind, offset } = content
   if (offset === 0) return `Selected ${kind}`
@@ -170,7 +173,7 @@ function checksOf(layout: Layout): Map<string, PanelChecks> {
  * Edits the layout in place of the pages: each page is a placeholder with its controls, splits
  * keep their splitters. Works on a draft, like the template editor (ADR 0005).
  */
-export function LayoutEditor({ layout, onChange, onCancel, onSave }: Props) {
+export function LayoutEditor({ layout, name, onRename, onChange, onCancel, onSave }: Props) {
   const titleId = useId()
   const pages = useRef<HTMLDivElement>(null)
   const pressed = useRef<{ panelId: string; label: string; x: number; y: number } | undefined>(
@@ -278,17 +281,19 @@ export function LayoutEditor({ layout, onChange, onCancel, onSave }: Props) {
             Choose the pages on the screen and how they are arranged. Drag a page to move it, drag
             between two pages to resize them. Nothing changes until you save.
           </p>
+          <label className="layout-editor-name">
+            Name
+            <input
+              type="text"
+              value={name}
+              maxLength={MAX_LAYOUT_NAME}
+              onChange={(event) => {
+                onRename(event.target.value)
+              }}
+            />
+          </label>
         </div>
         <div className="conflict-actions">
-          <button
-            type="button"
-            className="link"
-            onClick={() => {
-              onChange(OPEN_PLANNER)
-            }}
-          >
-            Reset to Open planner
-          </button>
           <button type="button" className="link" onClick={onCancel}>
             Cancel
           </button>
@@ -416,33 +421,30 @@ function Panel({ node, layout, checks, onChange }: { node: PanelNode } & NodePro
             <p className="hint">{contentHint(current)}</p>
           </div>
           <div className="layout-panel-center">
-            <label>
-              {/* The colon is for the eye; the list is named "Shows". */}
-              Shows<span aria-hidden="true">:</span>
-              <select
-                value={contentKey(current)}
-                onChange={(event) => {
-                  const chosen = choices
-                    .flatMap((choice) => choice.contents)
-                    .find((content) => contentKey(content) === event.target.value)
-                  if (chosen !== undefined) onChange(setPanelContent(layout, node.id, chosen))
-                }}
-              >
-                {choices.map(({ group, contents }) => (
-                  <optgroup key={group} label={group}>
-                    {contents.map((content) => (
-                      <option
-                        key={contentKey(content)}
-                        value={contentKey(content)}
-                        disabled={unavailable.has(contentKey(content))}
-                      >
-                        {contentLabel(content)}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
+            <select
+              aria-label="Shows"
+              value={contentKey(current)}
+              onChange={(event) => {
+                const chosen = choices
+                  .flatMap((choice) => choice.contents)
+                  .find((content) => contentKey(content) === event.target.value)
+                if (chosen !== undefined) onChange(setPanelContent(layout, node.id, chosen))
+              }}
+            >
+              {choices.map(({ group, contents }) => (
+                <optgroup key={group} label={group}>
+                  {contents.map((content) => (
+                    <option
+                      key={contentKey(content)}
+                      value={contentKey(content)}
+                      disabled={unavailable.has(contentKey(content))}
+                    >
+                      {contentLabel(content)}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
             <button
               type="button"
               className="layout-panel-delete"
