@@ -36,6 +36,31 @@ export const COMMANDS = [
   },
   { id: 'focus.today', title: 'Today', context: 'global', defaultBindings: ['Mod+Alt+KeyT'] },
   { id: 'calendar.open', title: 'Choose a day…', context: 'global', defaultBindings: [] },
+  // Vim's h j k l: the cursor moves to the page on that side. Ctrl, not Cmd, on a Mac too.
+  {
+    id: 'page.moveLeft',
+    title: 'Page to the left',
+    context: 'global',
+    defaultBindings: ['Ctrl+Shift+KeyH'],
+  },
+  {
+    id: 'page.moveDown',
+    title: 'Page below',
+    context: 'global',
+    defaultBindings: ['Ctrl+Shift+KeyJ'],
+  },
+  {
+    id: 'page.moveUp',
+    title: 'Page above',
+    context: 'global',
+    defaultBindings: ['Ctrl+Shift+KeyK'],
+  },
+  {
+    id: 'page.moveRight',
+    title: 'Page to the right',
+    context: 'global',
+    defaultBindings: ['Ctrl+Shift+KeyL'],
+  },
   {
     id: 'palette.open',
     title: 'Command palette',

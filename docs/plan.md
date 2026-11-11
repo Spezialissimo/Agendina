@@ -156,7 +156,8 @@ Done (branch `feat/editable-neighbours`, ADR 0005 and 0008): every note page is 
 the selected one (offset 0) keeps a darker edge and is where navigation puts the cursor. The
 template editor became a pop-up: a first template starts empty, and "Save and apply from …"
 applies it from the selected page or from a day or week picked in the calendar of its arrow.
-Next: a shortcut to move the cursor between panels.
+Then (branch `feat/page-moves`): ⌃⇧H/J/K/L put the cursor in the page to the left, below, above
+or right, as laid out on screen (`packages/core/src/pageMoves.ts`, ADR 0007).
 
 ### Phase 9 — Week strip panel and collapsible panels
 Panels the mobile view needs, useful on desktop too.

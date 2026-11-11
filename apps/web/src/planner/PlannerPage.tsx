@@ -6,12 +6,14 @@ import {
   canAddLayout,
   isDayKey,
   nextLayoutName,
+  pageInDirection,
   resolveKeymap,
   resizeLayout,
   resolveLayout,
   saveEditedLayout,
   weekStart,
   type DayKey,
+  type Direction,
   type Layout,
 } from '@agendina/core'
 import { useQueryClient } from '@tanstack/react-query'
@@ -135,6 +137,28 @@ function Planner({ focus }: { focus: DayKey }) {
     },
     [pageFocus, layout, weekRule],
   )
+  /**
+   * Puts the cursor in the page on that side of the one being written in, or, before any page
+   * was, in the selected day page. The selected day stays the same.
+   */
+  const moveToPage = useCallback(
+    (direction: Direction) => {
+      if (layout === undefined || weekRule === undefined) return
+      const day = currentDay()
+      const resolved = resolveLayout(layout, day, weekRule)
+      const page = focusedEditor()?.dom.closest<HTMLElement>('[data-page-kind]')?.dataset
+      const kind = page?.pageKind
+      const key = page?.pageKey
+      const target =
+        page === undefined
+          ? focusTarget(resolved, 'day')
+          : (kind === 'day' || kind === 'week') && key !== undefined && isDayKey(key)
+            ? pageInDirection(resolved, { kind, key }, direction)
+            : undefined
+      if (target !== undefined) pageFocus.request(target.kind, target.key, day)
+    },
+    [pageFocus, layout, weekRule, currentDay],
+  )
   const pageFocusApi = useMemo<PageFocusApi>(
     () => ({ store: pageFocus, focusAfterNavigation }),
     [pageFocus, focusAfterNavigation],
@@ -182,6 +206,18 @@ function Planner({ focus }: { focus: DayKey }) {
         case 'calendar.open':
           setCalendarOpen(true)
           break
+        case 'page.moveLeft':
+          moveToPage('left')
+          break
+        case 'page.moveDown':
+          moveToPage('down')
+          break
+        case 'page.moveUp':
+          moveToPage('up')
+          break
+        case 'page.moveRight':
+          moveToPage('right')
+          break
         case 'palette.open':
           setPaletteOpen(true)
           break
@@ -223,6 +259,7 @@ function Planner({ focus }: { focus: DayKey }) {
       signOut,
       editTemplate,
       focusAfterNavigation,
+      moveToPage,
       active,
       canEditLayout,
       startLayoutEdit,

@@ -3,7 +3,7 @@ import { autocompletion } from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { Annotation, EditorState, type TransactionSpec } from '@codemirror/state'
-import { EditorView, keymap, placeholder } from '@codemirror/view'
+import { EditorView, keymap, placeholder, type KeyBinding } from '@codemirror/view'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { livePreviewExtension } from './livePreview.ts'
 import { focusAfterNavigation, rememberFocus } from './focusedEditor.ts'
@@ -127,8 +127,14 @@ export function PageEditor({
               run: (view) => tab(view, 1),
               shift: (view) => tab(view, -1),
             },
-            // ⌘↩ is the app's "toggle to-do" command (see commands/registry.ts), not "insert blank line".
-            ...defaultKeymap.filter((binding) => binding.key !== 'Mod-Enter'),
+            // ⌘↩ is the app's "toggle to-do" command (see commands/registry.ts), not "insert blank
+            // line". Off a Mac, Ctrl+Shift+K moves to the page above: "delete line" keeps ⇧⌘K only.
+            ...defaultKeymap.flatMap((b): KeyBinding[] => {
+              if (b.key === 'Mod-Enter') return []
+              if (b.key !== 'Shift-Mod-k') return [b]
+              const { key, ...rest } = b
+              return [{ ...rest, mac: key }]
+            }),
             ...historyKeymap,
           ]),
           rememberFocus,
