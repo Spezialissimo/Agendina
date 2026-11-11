@@ -38,7 +38,8 @@ describe('focus follows navigation', () => {
   /** Today is Monday 26 October 2026 (ISO week 44: 26 Oct – 1 Nov). */
   const open = async (path: string, through: TestServer = server) => {
     const view = renderApp(through, path, { now: new Date('2026-10-26T09:00:00') })
-    await screen.findByRole('navigation', { name: 'Week' })
+    // The pages are on show (some layouts here have no week strip to wait for).
+    await screen.findAllByRole('textbox')
     return view
   }
   const editor = (name: string) => screen.findByRole('textbox', { name })

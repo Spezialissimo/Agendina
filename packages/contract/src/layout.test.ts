@@ -9,6 +9,7 @@ const note = (id: string, kind: 'day' | 'week', offset: number): Layout => ({
 })
 
 const calendar = (id: string): Layout => ({ type: 'panel', id, panel: { type: 'calendar' } })
+const strip = (id: string): Layout => ({ type: 'panel', id, panel: { type: 'weekStrip' } })
 
 const row = (id: string, ...children: [Layout, number][]): Layout => ({
   type: 'split',
@@ -51,6 +52,16 @@ describe('LayoutSchema', () => {
         ],
       },
     ],
+    ['only a week strip', strip('s')],
+    ['two week strips', row('r', [strip('a'), 1], [note('d', 'day', 0), 1], [strip('b'), 1])],
+    [
+      'a week strip with a field it does not have',
+      row(
+        'r',
+        [{ type: 'panel', id: 's', panel: { type: 'weekStrip', offset: 1 } } as never, 1],
+        [note('d', 'day', 0), 1],
+      ),
+    ],
     [
       'no page that can be written in',
       row('r', [note('a', 'day', -1), 1], [note('b', 'week', 1), 1]),
@@ -85,6 +96,12 @@ describe('LayoutSchema', () => {
 
   it('accepts a calendar next to a page to write in, and keeps it as it is', () => {
     const layout = row('r', [calendar('c'), 1], [note('d', 'day', 0), 1])
+
+    expect(LayoutSchema.parse(layout)).toEqual(layout)
+  })
+
+  it('accepts a week strip next to a page to write in, and keeps it as it is', () => {
+    const layout = row('r', [strip('s'), 1], [note('d', 'day', 0), 1])
 
     expect(LayoutSchema.parse(layout)).toEqual(layout)
   })

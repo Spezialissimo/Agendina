@@ -13,6 +13,20 @@ const panelNode = (id: string, kind: 'day' | 'week', offset: number): Layout => 
   panel: { type: 'note', kind, offset },
 })
 
+/**
+ * Open planner before the week strip became a panel: the week page, then the day page. The
+ * editing tests start from it, shown as a custom layout, to keep to two pages.
+ */
+const WEEK_AND_DAY: Layout = {
+  type: 'split',
+  id: 'pages',
+  direction: 'row',
+  children: [
+    { size: 0.45, node: panelNode('week', 'week', 0) },
+    { size: 0.55, node: panelNode('day', 'day', 0) },
+  ],
+}
+
 // Monday 26 October 2026 starts ISO week 44.
 const MONDAY = 'Monday, October 26, 2026'
 const SUNDAY_BEFORE = 'Sunday, October 25, 2026'
@@ -64,7 +78,7 @@ describe('layout editor', () => {
     await user.click(screen.getByRole('button', { name: 'Save layout' }))
     expect(editor()).not.toBeInTheDocument()
     expect(panels()).toHaveLength(0)
-    await screen.findByRole('navigation', { name: 'Week' })
+    await screen.findAllByRole('textbox')
   }
 
   describe('opening', () => {
@@ -73,7 +87,11 @@ describe('layout editor', () => {
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       expect(editor()).toBeInTheDocument()
-      expect(panelNames()).toEqual(['Selected week panel', 'Selected day panel'])
+      expect(panelNames()).toEqual([
+        'Week strip panel',
+        'Selected week panel',
+        'Selected day panel',
+      ])
       // The notes themselves are away until the layout is saved or cancelled.
       // The only field is the layout's name.
       expect(screen.getAllByRole('textbox')).toEqual([
@@ -144,6 +162,10 @@ describe('layout editor', () => {
   })
 
   describe('changing the layout', () => {
+    beforeEach(async () => {
+      await api.saveSettings(settingsWithLayout(WEEK_AND_DAY))
+    })
+
     it('stacks pages that were side by side', async () => {
       const { user } = await editLayout()
       expect(separators()[0]).toHaveAttribute('aria-orientation', 'vertical')
@@ -153,7 +175,7 @@ describe('layout editor', () => {
       expect(separators()[0]).toHaveAttribute('aria-orientation', 'horizontal')
       await save(user)
       await waitFor(async () => {
-        expect(await savedLayout()).toEqual({ ...OPEN_PLANNER, direction: 'column' })
+        expect(await savedLayout()).toEqual({ ...WEEK_AND_DAY, direction: 'column' })
       })
     })
 
@@ -308,6 +330,10 @@ describe('layout editor', () => {
   })
 
   describe('adding and moving pages with the buttons on their sides', () => {
+    beforeEach(async () => {
+      await api.saveSettings(settingsWithLayout(WEEK_AND_DAY))
+    })
+
     it('adds a page on the left of another, or above it', async () => {
       const { user } = await editLayout()
 
@@ -366,7 +392,11 @@ describe('layout editor', () => {
   })
 
   describe('moving pages by dragging', () => {
-    // jsdom lays nothing out: say where the two pages of the Open planner are on the screen,
+    beforeEach(async () => {
+      await api.saveSettings(settingsWithLayout(WEEK_AND_DAY))
+    })
+
+    // jsdom lays nothing out: say where the two pages are on the screen,
     // the week on the left (0 to 400) and the day on the right (400 to 1000), both 600 high.
     const PLACES: Record<string, { left: number; width: number }> = {
       'Selected week panel': { left: 0, width: 400 },
@@ -551,6 +581,22 @@ describe('layout editor', () => {
       // One calendar is on the screen already, and the day is the only page to write in.
       expect(within(dayShows).getByRole('option', { name: 'Calendar' })).toBeDisabled()
       expect(panel('Selected day').getByRole('button', { name: 'Delete page' })).toBeDisabled()
+    })
+
+    it('shows the week strip of Open planner as a panel, which can be removed and put back once', async () => {
+      const { user } = await editLayout()
+      const weekShows = () => panel('Selected week').getByRole('combobox', { name: 'Shows' })
+      expect(panelNames()).toEqual([
+        'Week strip panel',
+        'Selected week panel',
+        'Selected day panel',
+      ])
+      expect(within(weekShows()).getByRole('option', { name: 'Week strip' })).toBeDisabled()
+
+      await user.click(panel('Week strip').getByRole('button', { name: 'Delete page' }))
+
+      expect(panelNames()).toEqual(['Selected week panel', 'Selected day panel'])
+      expect(within(weekShows()).getByRole('option', { name: 'Week strip' })).toBeEnabled()
     })
 
     it('cannot show the same page twice', async () => {

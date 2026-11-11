@@ -34,10 +34,19 @@ const split = (
 /** The pages a layout shows, in reading order, e.g. `['week 0', 'day 0']`. */
 const pages = (layout: Layout) =>
   panelsOf(layout).map(({ panel }) =>
-    panel.type === 'calendar' ? 'calendar' : `${panel.kind} ${String(panel.offset)}`,
+    panel.type === 'note' ? `${panel.kind} ${String(panel.offset)}` : panel.type,
   )
 
 const calendar = (id: string): Layout => ({ type: 'panel', id, panel: { type: 'calendar' } })
+const strip = (id: string): Layout => ({ type: 'panel', id, panel: { type: 'weekStrip' } })
+
+/** Open planner before the week strip became a panel: the week page, then the day page. */
+const WEEK_AND_DAY = split(
+  'pages',
+  'row',
+  [note('week', 'week', 0), 0.45],
+  [note('day', 'day', 0), 0.55],
+)
 
 const idsOf = (layout: Layout): string[] =>
   layout.type === 'panel'
@@ -84,6 +93,18 @@ describe('layoutProblems', () => {
     ).toEqual(['duplicate-page'])
   })
 
+  it('does not take the week strip for a page to write in, and shows it once', () => {
+    expect(layoutProblems(strip('s'))).toEqual(['no-editable-page'])
+    expect(layoutProblems(split('c', 'column', [strip('s'), 1], [note('d', 'day', 0), 1]))).toEqual(
+      [],
+    )
+    expect(
+      layoutProblems(
+        split('c', 'column', [strip('a'), 1], [note('d', 'day', 0), 1], [strip('b'), 1]),
+      ),
+    ).toEqual(['duplicate-page'])
+  })
+
   it('needs a page that can be written in', () => {
     const layout = split('r', 'row', [note('a', 'day', -1), 1], [note('b', 'week', 1), 1])
 
@@ -124,9 +145,9 @@ describe('layoutProblems', () => {
 
 describe('setSplitDirection', () => {
   it('stacks pages that were side by side, keeping their sizes', () => {
-    const stacked = setSplitDirection(OPEN_PLANNER, 'pages', 'column')
+    const stacked = setSplitDirection(WEEK_AND_DAY, 'pages', 'column')
 
-    expect(stacked).toEqual({ ...OPEN_PLANNER, direction: 'column' })
+    expect(stacked).toEqual({ ...WEEK_AND_DAY, direction: 'column' })
   })
 
   it('changes a nested split only', () => {
@@ -146,21 +167,21 @@ describe('setSplitDirection', () => {
   })
 
   it('refuses a split that does not exist', () => {
-    expect(() => setSplitDirection(OPEN_PLANNER, 'nope', 'column')).toThrow(/no split "nope"/)
+    expect(() => setSplitDirection(WEEK_AND_DAY, 'nope', 'column')).toThrow(/no split "nope"/)
   })
 })
 
 describe('setPanelContent', () => {
   it('shows another page in the panel, keeping its place and size', () => {
-    const changed = setPanelContent(OPEN_PLANNER, 'week', { kind: 'day', offset: -1 })
+    const changed = setPanelContent(WEEK_AND_DAY, 'week', { kind: 'day', offset: -1 })
 
     expect(pages(changed)).toEqual(['day -1', 'day 0'])
     expect(changed).toMatchObject({ children: [{ size: 0.45 }, { size: 0.55 }] })
-    expect(idsOf(changed)).toEqual(idsOf(OPEN_PLANNER))
+    expect(idsOf(changed)).toEqual(idsOf(WEEK_AND_DAY))
   })
 
   it('shows the calendar in the panel, and a page again', () => {
-    const withCalendar = setPanelContent(OPEN_PLANNER, 'week', { kind: 'calendar' })
+    const withCalendar = setPanelContent(WEEK_AND_DAY, 'week', { kind: 'calendar' })
 
     expect(panelsOf(withCalendar)[0]).toEqual({
       type: 'panel',
@@ -168,11 +189,22 @@ describe('setPanelContent', () => {
       panel: { type: 'calendar' },
     })
     expect(pages(withCalendar)).toEqual(['calendar', 'day 0'])
-    expect(setPanelContent(withCalendar, 'week', { kind: 'week', offset: 0 })).toEqual(OPEN_PLANNER)
+    expect(setPanelContent(withCalendar, 'week', { kind: 'week', offset: 0 })).toEqual(WEEK_AND_DAY)
+  })
+
+  it('shows the week strip in the panel', () => {
+    const withStrip = setPanelContent(WEEK_AND_DAY, 'week', { kind: 'weekStrip' })
+
+    expect(panelsOf(withStrip)[0]).toEqual({
+      type: 'panel',
+      id: 'week',
+      panel: { type: 'weekStrip' },
+    })
+    expect(pages(withStrip)).toEqual(['weekStrip', 'day 0'])
   })
 
   it('refuses a panel that does not exist', () => {
-    expect(() => setPanelContent(OPEN_PLANNER, 'nope', { kind: 'day', offset: 1 })).toThrow(
+    expect(() => setPanelContent(WEEK_AND_DAY, 'nope', { kind: 'day', offset: 1 })).toThrow(
       /no panel "nope"/,
     )
   })
@@ -180,7 +212,7 @@ describe('setPanelContent', () => {
 
 describe('addPanel', () => {
   it('adds a page after the given one in a split of the same direction, sharing its space', () => {
-    const added = addPanel(OPEN_PLANNER, 'week', 'right')
+    const added = addPanel(WEEK_AND_DAY, 'week', 'right')
 
     expect(pages(added)).toEqual(['week 0', 'day 1', 'day 0'])
     expect(added).toMatchObject({
@@ -192,7 +224,7 @@ describe('addPanel', () => {
   })
 
   it('splits the page itself when the new one goes the other way', () => {
-    const added = addPanel(OPEN_PLANNER, 'day', 'bottom')
+    const added = addPanel(WEEK_AND_DAY, 'day', 'bottom')
 
     expect(added).toMatchObject({
       id: 'pages',
@@ -239,6 +271,12 @@ describe('addPanel', () => {
     expect(pages(addPanel(layout, 'c', 'right'))).toEqual(['calendar', 'week 0', 'day 0'])
   })
 
+  it('never adds a week strip by itself', () => {
+    const layout = split('c', 'column', [strip('s'), 1], [note('d', 'day', 0), 1])
+
+    expect(pages(addPanel(layout, 's', 'bottom'))).toEqual(['weekStrip', 'week 0', 'day 0'])
+  })
+
   it('keeps every page at least the minimum size', () => {
     const layout = split('r', 'row', [note('w', 'week', 0), 0.2], [note('d', 'day', 0), 0.8])
 
@@ -252,7 +290,7 @@ describe('addPanel', () => {
   })
 
   it('refuses a panel that does not exist', () => {
-    expect(() => addPanel(OPEN_PLANNER, 'nope', 'right')).toThrow(/no panel "nope"/)
+    expect(() => addPanel(WEEK_AND_DAY, 'nope', 'right')).toThrow(/no panel "nope"/)
   })
 })
 
@@ -273,7 +311,7 @@ describe('removePanel', () => {
   })
 
   it('leaves the last page alone on the screen, without a split around it', () => {
-    expect(removePanel(OPEN_PLANNER, 'week')).toEqual(note('day', 'day', 0))
+    expect(removePanel(WEEK_AND_DAY, 'week')).toEqual(note('day', 'day', 0))
   })
 
   it('replaces a nested split left with one page by that page, at the split’s size', () => {
@@ -290,10 +328,10 @@ describe('removePanel', () => {
   })
 
   it('undoes adding a page', () => {
-    const added = addPanel(OPEN_PLANNER, 'day', 'bottom')
-    const newPanel = panelsOf(added).find((p) => !idsOf(OPEN_PLANNER).includes(p.id))
+    const added = addPanel(WEEK_AND_DAY, 'day', 'bottom')
+    const newPanel = panelsOf(added).find((p) => !idsOf(WEEK_AND_DAY).includes(p.id))
 
-    expect(removePanel(added, newPanel?.id ?? '')).toEqual(OPEN_PLANNER)
+    expect(removePanel(added, newPanel?.id ?? '')).toEqual(WEEK_AND_DAY)
   })
 
   it('refuses to remove the only page', () => {
@@ -301,13 +339,13 @@ describe('removePanel', () => {
   })
 
   it('refuses a panel that does not exist', () => {
-    expect(() => removePanel(OPEN_PLANNER, 'nope')).toThrow(/no panel "nope"/)
+    expect(() => removePanel(WEEK_AND_DAY, 'nope')).toThrow(/no panel "nope"/)
   })
 })
 
 describe('movePanel', () => {
   it('swaps two pages side by side', () => {
-    const moved = movePanel(OPEN_PLANNER, 'week', 'day', 'right')
+    const moved = movePanel(WEEK_AND_DAY, 'week', 'day', 'right')
 
     expect(moved).toMatchObject({
       type: 'split',
@@ -318,7 +356,7 @@ describe('movePanel', () => {
   })
 
   it('stacks two pages that were side by side', () => {
-    const moved = movePanel(OPEN_PLANNER, 'week', 'day', 'top')
+    const moved = movePanel(WEEK_AND_DAY, 'week', 'day', 'top')
 
     expect(moved).toMatchObject({
       type: 'split',
@@ -383,23 +421,23 @@ describe('movePanel', () => {
   })
 
   it('keeps the page as it was: its id and what it shows', () => {
-    const moved = movePanel(OPEN_PLANNER, 'week', 'day', 'bottom')
+    const moved = movePanel(WEEK_AND_DAY, 'week', 'day', 'bottom')
 
-    expect(panelsOf(moved)).toEqual([...panelsOf(OPEN_PLANNER)].reverse())
+    expect(panelsOf(moved)).toEqual([...panelsOf(WEEK_AND_DAY)].reverse())
   })
 
   it('refuses to move a page next to itself, or pages that do not exist', () => {
-    expect(() => movePanel(OPEN_PLANNER, 'day', 'day', 'left')).toThrow(/next to itself/)
-    expect(() => movePanel(OPEN_PLANNER, 'nope', 'day', 'left')).toThrow(/no panel "nope"/)
-    expect(() => movePanel(OPEN_PLANNER, 'day', 'nope', 'left')).toThrow(/no panel "nope"/)
+    expect(() => movePanel(WEEK_AND_DAY, 'day', 'day', 'left')).toThrow(/next to itself/)
+    expect(() => movePanel(WEEK_AND_DAY, 'nope', 'day', 'left')).toThrow(/no panel "nope"/)
+    expect(() => movePanel(WEEK_AND_DAY, 'day', 'nope', 'left')).toThrow(/no panel "nope"/)
   })
 })
 
 describe('addPanel on the other sides', () => {
   it('adds a page before the given one: on its left, or above it', () => {
-    expect(pages(addPanel(OPEN_PLANNER, 'day', 'left'))).toEqual(['week 0', 'day 1', 'day 0'])
+    expect(pages(addPanel(WEEK_AND_DAY, 'day', 'left'))).toEqual(['week 0', 'day 1', 'day 0'])
 
-    const above = addPanel(OPEN_PLANNER, 'day', 'top')
+    const above = addPanel(WEEK_AND_DAY, 'day', 'top')
     expect(above).toMatchObject({
       direction: 'row',
       children: [
@@ -427,7 +465,7 @@ describe('shiftPanel', () => {
   const order = (layout: Layout) => panelsOf(layout).map((p) => p.id)
 
   it('swaps a page with its neighbour in that direction, each keeping its size', () => {
-    expect(shiftPanel(OPEN_PLANNER, 'week', 'right')).toEqual(
+    expect(shiftPanel(WEEK_AND_DAY, 'week', 'right')).toEqual(
       split('pages', 'row', [note('day', 'day', 0), 0.55], [note('week', 'week', 0), 0.45]),
     )
     expect(order(shiftPanel(nested(), 'd', 'bottom'))).toEqual(['w', 'n', 'd'])
@@ -474,7 +512,7 @@ describe('shiftPanel', () => {
 
   it('goes to the edge of the screen when nothing is in the way', () => {
     // Up from a row: across the whole top.
-    expect(shiftPanel(OPEN_PLANNER, 'day', 'top')).toMatchObject({
+    expect(shiftPanel(WEEK_AND_DAY, 'day', 'top')).toMatchObject({
       type: 'split',
       direction: 'column',
       children: [
@@ -493,10 +531,10 @@ describe('shiftPanel', () => {
   })
 
   it('refuses when the page is already at that edge', () => {
-    expect(() => shiftPanel(OPEN_PLANNER, 'day', 'right')).toThrow(/further/)
-    expect(() => shiftPanel(OPEN_PLANNER, 'week', 'left')).toThrow(/further/)
+    expect(() => shiftPanel(WEEK_AND_DAY, 'day', 'right')).toThrow(/further/)
+    expect(() => shiftPanel(WEEK_AND_DAY, 'week', 'left')).toThrow(/further/)
     expect(() => shiftPanel(note('d', 'day', 0), 'd', 'top')).toThrow(/further/)
-    expect(() => shiftPanel(OPEN_PLANNER, 'nope', 'top')).toThrow(/no panel "nope"/)
+    expect(() => shiftPanel(WEEK_AND_DAY, 'nope', 'top')).toThrow(/no panel "nope"/)
   })
 })
 
@@ -572,7 +610,7 @@ describe('editing a layout', () => {
         fc.date({ min: new Date('1990-01-01'), max: new Date('2100-01-01'), noInvalidDate: true }),
         fc.constantFrom(ISO_WEEK, US_WEEK),
         (steps, date, rule) => {
-          const layout = steps.reduce(apply, OPEN_PLANNER)
+          const layout = steps.reduce(apply, WEEK_AND_DAY)
 
           expect(layoutProblems(layout)).toEqual([])
           const ids = idsOf(layout)

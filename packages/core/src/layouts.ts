@@ -233,6 +233,6 @@ function sameLayout(a: Layout, b: Layout, compareSizes: boolean): boolean {
 }
 
 function samePanel(a: Panel, b: Panel): boolean {
-  if (a.type === 'calendar' || b.type === 'calendar') return a.type === b.type
+  if (a.type !== 'note' || b.type !== 'note') return a.type === b.type
   return a.kind === b.kind && a.offset === b.offset
 }

@@ -7,6 +7,7 @@ import {
   isDayKey,
   nextLayoutName,
   pageInDirection,
+  panelsOf,
   resolveKeymap,
   resizeLayout,
   resolveLayout,
@@ -34,7 +35,7 @@ import { TemplateDialog } from '../templates/TemplateDialog.tsx'
 import { useFocusMode } from './useFocusMode.ts'
 import { PlannerContext } from './PlannerContext.tsx'
 import { PageFocus, PageFocusContext, focusTarget, type PageFocusApi } from './pageFocus.ts'
-import { WeekStrip } from './WeekStrip.tsx'
+import { MonthPopupContext } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { useLiveUpdates } from './useLiveUpdates.ts'
 import { useSettings } from './useSettings.ts'
@@ -92,6 +93,12 @@ function Planner({ focus }: { focus: DayKey }) {
     [layouts],
   )
   const layout = active?.layout
+  const hasWeekStrip =
+    layout !== undefined && panelsOf(layout).some(({ panel }) => panel.type === 'weekStrip')
+  const monthPopup = useMemo(
+    () => ({ open: calendarOpen, setOpen: setCalendarOpen }),
+    [calendarOpen],
+  )
   // A preset is edited as a new copy, for which there must be room.
   const canEditLayout =
     layouts !== undefined && active !== undefined && (!active.preset || canAddLayout(layouts))
@@ -204,7 +211,8 @@ function Planner({ focus }: { focus: DayKey }) {
           go(today)
           break
         case 'calendar.open':
-          setCalendarOpen(true)
+          // The month pops up from the week strip.
+          if (hasWeekStrip) setCalendarOpen(true)
           break
         case 'page.moveLeft':
           moveToPage('left')
@@ -263,6 +271,7 @@ function Planner({ focus }: { focus: DayKey }) {
       active,
       canEditLayout,
       startLayoutEdit,
+      hasWeekStrip,
     ],
   )
 
@@ -276,14 +285,6 @@ function Planner({ focus }: { focus: DayKey }) {
       <div className="planner" data-focus-mode={focusMode || undefined}>
         <header className="topbar">
           <span className="brand">Agendina</span>
-          {settings !== undefined && live && !editingLayout && (
-            <WeekStrip
-              focus={focus}
-              rule={settings.weekRule}
-              calendarOpen={calendarOpen}
-              setCalendarOpen={setCalendarOpen}
-            />
-          )}
           <div className="topbar-actions" hidden={editingLayout}>
             <button
               type="button"
@@ -338,17 +339,19 @@ function Planner({ focus }: { focus: DayKey }) {
           )}
           {settings !== undefined && active !== undefined && live && !editingLayout && (
             <PlannerContext value={plannerContext}>
-              <LayoutView
-                layout={resolveLayout(active.layout, focus, settings.weekRule)}
-                onResize={(splitId, sizes) => {
-                  update(
-                    withLayouts({
-                      ...settings,
-                      layouts: resizeLayout(settings.layouts, active.id, splitId, sizes),
-                    }),
-                  )
-                }}
-              />
+              <MonthPopupContext value={monthPopup}>
+                <LayoutView
+                  layout={resolveLayout(active.layout, focus, settings.weekRule)}
+                  onResize={(splitId, sizes) => {
+                    update(
+                      withLayouts({
+                        ...settings,
+                        layouts: resizeLayout(settings.layouts, active.id, splitId, sizes),
+                      }),
+                    )
+                  }}
+                />
+              </MonthPopupContext>
             </PlannerContext>
           )}
         </main>
@@ -388,7 +391,9 @@ function Planner({ focus }: { focus: DayKey }) {
         {paletteOpen && (
           <CommandPalette
             keymap={keymap}
-            isAvailable={(id) => id !== 'layout.edit' || canEditLayout}
+            isAvailable={(id) =>
+              id === 'layout.edit' ? canEditLayout : id !== 'calendar.open' || hasWeekStrip
+            }
             onRun={run}
             onClose={() => {
               setPaletteOpen(false)

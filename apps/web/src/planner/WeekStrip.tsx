@@ -1,21 +1,32 @@
-import { addDays, weekDays, type DayKey, type WeekRule } from '@agendina/core'
+import { addDays, weekDays, type DayKey, type WeekStripView } from '@agendina/core'
 import { useQuery } from '@tanstack/react-query'
+import { createContext, useContext } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useApi, useLocale, useToday } from '../app/AppProviders.tsx'
 import { ChevronLeftIcon, ChevronRightIcon } from '../app/icons.tsx'
 import { MonthPicker } from './MonthPicker.tsx'
+import { usePlannerContext } from './PlannerContext.tsx'
 import { usePageFocus } from './pageFocus.ts'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { format, formatRange, weekTitle } from './weeks.ts'
 
+/** Whether the month pop-up of the strip is open: the "Choose a day" command opens it. */
+export const MonthPopupContext = createContext<{
+  open: boolean
+  setOpen: (open: boolean) => void
+}>({ open: false, setOpen: () => undefined })
+
 interface Props {
-  focus: DayKey
-  rule: WeekRule
-  calendarOpen: boolean
-  setCalendarOpen: (open: boolean) => void
+  view: WeekStripView
+  /** Across when stacked with other panels, down when beside them. */
+  orientation: 'horizontal' | 'vertical'
 }
 
-export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props) {
+/** The week strip panel: the days of the focused week, the week arrows, Today and the month. */
+export function WeekStrip({ view, orientation }: Props) {
+  const { focus } = view
+  const { weekRule: rule } = usePlannerContext()
+  const { open: calendarOpen, setOpen: setCalendarOpen } = useContext(MonthPopupContext)
   const api = useApi()
   const locale = useLocale()
   const today = useToday()
@@ -47,7 +58,12 @@ export function WeekStrip({ focus, rule, calendarOpen, setCalendarOpen }: Props)
 
   return (
     // Clicks here keep the side the user was writing on, for the week arrows.
-    <nav className="week-strip" aria-label="Week" data-keeps-page-side="">
+    <nav
+      className="week-strip"
+      aria-label="Week"
+      data-orientation={orientation}
+      data-keeps-page-side=""
+    >
       <button
         type="button"
         className="icon"

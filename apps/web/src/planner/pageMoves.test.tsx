@@ -44,7 +44,8 @@ describe('moving the cursor between pages', () => {
   /** Today is Monday 26 October 2026 (ISO week 44: 26 Oct – 1 Nov). */
   const open = async (path: string, platform: 'mac' | 'other' = 'mac') => {
     const view = renderApp(server, path, { platform, now: new Date('2026-10-26T09:00:00') })
-    await screen.findByRole('navigation', { name: 'Week' })
+    // The pages are on show (their layouts have no week strip to wait for).
+    await screen.findAllByRole('textbox')
     return view
   }
   const editor = (name: string) => screen.findByRole('textbox', { name })

@@ -15,7 +15,12 @@ export interface CalendarPanel {
   type: 'calendar'
 }
 
-export type Panel = NotePanel | CalendarPanel
+/** The days of the focused week, to pick one, with the week arrows and the month pop-up. */
+export interface WeekStripPanel {
+  type: 'weekStrip'
+}
+
+export type Panel = NotePanel | CalendarPanel | WeekStripPanel
 
 export interface PanelNode {
   type: 'panel'
@@ -31,7 +36,7 @@ export interface SplitNode {
   children: { node: Layout; size: number }[]
 }
 
-/** The pages area below the week strip: a tree of splits whose leaves are panels. */
+/** The pages area below the top bar: a tree of splits whose leaves are panels. */
 export type Layout = PanelNode | SplitNode
 
 export interface NoteView {
@@ -49,7 +54,13 @@ export interface CalendarView {
   focus: DayKey
 }
 
-export type PanelView = NoteView | CalendarView
+export interface WeekStripView {
+  type: 'weekStrip'
+  /** The focused day: the strip shows its week and marks it. */
+  focus: DayKey
+}
+
+export type PanelView = NoteView | CalendarView | WeekStripView
 
 export type ResolvedLayout =
   | { type: 'panel'; id: string; view: PanelView }
@@ -62,19 +73,37 @@ export type ResolvedLayout =
 
 export const MIN_PANE_SIZE = 0.15
 
-/** The default layout: the week page on the left, the focused day on the right. */
+/**
+ * The least share of a week strip: the page keeps it no smaller than its content, which is
+ * readable at any share, so it only needs to stay above 0.
+ */
+export const MIN_STRIP_SIZE = 0.02
+
+/** The default layout: the week strip on top, the week page on the left, the day on the right. */
 export const OPEN_PLANNER: Layout = {
   type: 'split',
-  id: 'pages',
-  direction: 'row',
+  id: 'planner',
+  direction: 'column',
   children: [
+    // A low strip: its content keeps it as tall as it needs.
+    { size: 0.1, node: { type: 'panel', id: 'strip', panel: { type: 'weekStrip' } } },
     {
-      size: 0.45,
-      node: { type: 'panel', id: 'week', panel: { type: 'note', kind: 'week', offset: 0 } },
-    },
-    {
-      size: 0.55,
-      node: { type: 'panel', id: 'day', panel: { type: 'note', kind: 'day', offset: 0 } },
+      size: 0.9,
+      node: {
+        type: 'split',
+        id: 'pages',
+        direction: 'row',
+        children: [
+          {
+            size: 0.45,
+            node: { type: 'panel', id: 'week', panel: { type: 'note', kind: 'week', offset: 0 } },
+          },
+          {
+            size: 0.55,
+            node: { type: 'panel', id: 'day', panel: { type: 'note', kind: 'day', offset: 0 } },
+          },
+        ],
+      },
     },
   ],
 }
@@ -82,9 +111,9 @@ export const OPEN_PLANNER: Layout = {
 export function resolveLayout(layout: Layout, focus: DayKey, rule: WeekRule): ResolvedLayout {
   if (layout.type === 'panel') {
     const view: PanelView =
-      layout.panel.type === 'calendar'
-        ? { type: 'calendar', focus }
-        : resolveNote(layout.panel, focus, rule)
+      layout.panel.type === 'note'
+        ? resolveNote(layout.panel, focus, rule)
+        : { type: layout.panel.type, focus }
     return { type: 'panel', id: layout.id, view }
   }
   return {
@@ -100,7 +129,7 @@ export function resolveLayout(layout: Layout, focus: DayKey, rule: WeekRule): Re
 
 /**
  * Returns a copy of `layout` where the split `splitId` has the given sizes, as fractions that
- * add up to 1 and are at least `MIN_PANE_SIZE` each.
+ * add up to 1 and are at least `MIN_PANE_SIZE` each (`MIN_STRIP_SIZE` for a week strip).
  */
 export function setSplitSizes(layout: Layout, splitId: string, sizes: number[]): Layout {
   if (!collectSplitIds(layout).includes(splitId)) {
@@ -117,7 +146,10 @@ export function setSplitSizes(layout: Layout, splitId: string, sizes: number[]):
     if (sizes.length !== node.children.length) {
       throw new Error(`Split "${splitId}" needs ${node.children.length} sizes, got ${sizes.length}`)
     }
-    const fractions = clampFractions(sizes)
+    const fractions = clampFractions(
+      sizes,
+      node.children.map((child) => minimumSize(child.node)),
+    )
     return {
       ...node,
       children: node.children.map((child, i) => ({ ...child, size: fractions[i] as number })),
@@ -146,22 +178,28 @@ function resolveNote(panel: NotePanel, focus: DayKey, rule: WeekRule): NoteView 
   return { type: 'note', kind: panel.kind, key, selected: panel.offset === 0 }
 }
 
-/** Normalizes sizes to fractions of 1, raising any pane below the minimum to the minimum. */
-function clampFractions(sizes: number[]): number[] {
-  if (sizes.length * MIN_PANE_SIZE >= 1) return sizes.map(() => 1 / sizes.length)
+/** The least share of a split a node may have. */
+export function minimumSize(node: Layout): number {
+  return node.type === 'panel' && node.panel.type === 'weekStrip' ? MIN_STRIP_SIZE : MIN_PANE_SIZE
+}
+
+/** Normalizes sizes to fractions of 1, raising any pane below its minimum to that minimum. */
+function clampFractions(sizes: number[], minimums: number[]): number[] {
+  const least = (i: number) => minimums[i] ?? MIN_PANE_SIZE
+  if (minimums.reduce((a, b) => a + b, 0) >= 1) return sizes.map(() => 1 / sizes.length)
 
   const clamped = new Set<number>()
   for (;;) {
     const free = sizes.reduce((sum, s, i) => (clamped.has(i) ? sum : sum + Math.max(s, 0)), 0)
-    const remaining = 1 - clamped.size * MIN_PANE_SIZE
+    const remaining = 1 - [...clamped].reduce((sum, i) => sum + least(i), 0)
     const fractions = sizes.map((s, i) =>
       clamped.has(i)
-        ? MIN_PANE_SIZE
+        ? least(i)
         : free > 0
           ? (Math.max(s, 0) / free) * remaining
           : remaining / (sizes.length - clamped.size),
     )
-    const tooSmall = fractions.findIndex((f, i) => !clamped.has(i) && f < MIN_PANE_SIZE)
+    const tooSmall = fractions.findIndex((f, i) => !clamped.has(i) && f < least(i))
     if (tooSmall === -1) return fractions
     clamped.add(tooSmall)
   }

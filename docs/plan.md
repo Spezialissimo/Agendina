@@ -162,13 +162,27 @@ or right, as laid out on screen (`packages/core/src/pageMoves.ts`, ADR 0007).
 ### Phase 9 — Week strip panel and collapsible panels
 Panels the mobile view needs, useful on desktop too.
 
-Acceptance criteria (to be refined before writing tests):
-- The week strip on top becomes a panel, placed and moved like the others, so a layout with the
-  calendar panel needs no top bar. On the phone it is the day footer.
-- To decide: what layouts saved before this show where the strip was, and how a panel as tall
-  as its content fits splits sized by fractions.
-- Collapsible panels, e.g. a week page that stays hidden until clicked.
-- Both stay expressible in the same layout tree.
+Acceptance criteria (decided 2026-11-11):
+- The week strip becomes a panel type (`{ type: 'weekStrip' }`), placed and moved like the
+  others, at most once per layout and not a page to write in. On the phone (Phase 10) it is the
+  day footer. A layout without it shows no strip.
+- It is resized like the other panels, never smaller than its content. Stacked above or below
+  them it is a horizontal bar; beside them it stands vertically (days one under the other).
+- The calendar panel's month fills its panel in both directions (it stopped at 22rem).
+- The top bar stays, slimmer: the brand, Settings and Sign out. Open planner gains the strip on
+  top of its pages (its `pages` split keeps its id, so saved splitter sizes still apply).
+  Custom layouts saved before this get no strip (no migration: one user so far, who chose this);
+  they add it in the layout editor, under Navigation.
+- Collapsible is a property of each panel, set in the layout editor. A collapsible panel shows
+  as a thin bar with its title until clicked (or the cursor is moved into it); it then opens in
+  place at its size, pushing the others, until its button collapses it again. It starts
+  collapsed on every load. A layout keeps at least one page to write in that does not collapse.
+- Both stay expressible in the same layout tree, validated by `LayoutSchema`.
+
+PRs: 1. the week strip panel; 2. collapsible panels.
+
+Done (branch `feat/week-strip-panel`, ADR 0005): the week strip panel. Next: PR 2, collapsible
+panels.
 
 ### Phase 10 — Mobile view and PWA
 Acceptance criteria (to be refined before writing tests):

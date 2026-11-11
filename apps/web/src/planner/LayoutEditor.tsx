@@ -92,6 +92,7 @@ const DragContext = createContext<{
 
 export function contentLabel(content: PanelContent): string {
   if (content.kind === 'calendar') return 'Calendar'
+  if (content.kind === 'weekStrip') return 'Week strip'
   const { kind, offset } = content
   if (offset === 0) return `Selected ${kind}`
   const side = offset < 0 ? 'before' : 'after'
@@ -102,6 +103,7 @@ export function contentLabel(content: PanelContent): string {
 
 function contentHint(content: PanelContent): string {
   if (content.kind === 'calendar') return 'A month to pick a day from.'
+  if (content.kind === 'weekStrip') return 'The days of the week, to pick one.'
   return content.offset === 0
     ? `The ${content.kind} you select.`
     : `Written in where it is, next to the ${content.kind} you select.`
@@ -130,7 +132,7 @@ function choicesFor(current: PanelContent): { group: string; contents: PanelCont
   return [
     { group: 'Days', contents: pagesOf('day') },
     { group: 'Weeks', contents: pagesOf('week') },
-    { group: 'Navigation', contents: [{ kind: 'calendar' }] },
+    { group: 'Navigation', contents: [{ kind: 'weekStrip' }, { kind: 'calendar' }] },
   ]
 }
 
@@ -404,8 +406,9 @@ function Panel({ node, layout, checks, onChange }: { node: PanelNode } & NodePro
       className="layout-panel"
       role="group"
       aria-label={`${label} panel`}
-      data-selected={(current.kind !== 'calendar' && current.offset === 0) || undefined}
+      data-selected={('offset' in current && current.offset === 0) || undefined}
       data-panel-id={node.id}
+      data-week-strip={current.kind === 'weekStrip' || undefined}
       // The whole page is picked up, from anywhere on it but its controls.
       onPointerDown={(event) => {
         if (event.button !== 0) return

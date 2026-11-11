@@ -97,12 +97,8 @@ describe('calendar panel', () => {
     await user.click(calendar.getByRole('button', { name: 'Next month' }))
     expect(calendar.getByText('November 2026')).toBeInTheDocument()
 
-    // The next day, from the week strip.
-    await user.click(
-      within(screen.getByRole('navigation', { name: 'Week' })).getByRole('link', {
-        name: /^Thu 29/,
-      }),
-    )
+    // The next day, with ⇧⌘. (this layout has no week strip).
+    await user.keyboard('{Meta>}{Shift>}[Period]{/Shift}{/Meta}')
 
     expect(await calendar.findByText('October 2026')).toBeInTheDocument()
     expect(day('October 29, 2026')).toHaveAttribute('aria-current', 'date')
