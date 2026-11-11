@@ -92,8 +92,8 @@ they do not belong here. Only features big enough to need acceptance criteria ge
 ## Roadmap
 Phases are done in this order. Each one is detailed below.
 
-- **Phase 7 — Layout editor** (in progress: done, to try)
-- **Phase 8 — Several named layouts** (in progress: done, to try)
+- **Phase 7 — Layout editor**
+- **Phase 8 — Several named layouts**
 - **Phase 9 — Week strip panel and collapsible panels**
 - **Phase 10 — Mobile view and PWA**, then remove focus mode
 - **Phase 11 — Layout presets**
@@ -122,7 +122,7 @@ Acceptance criteria:
 Done (PR #58): the layout editor (ADR 0005, `packages/core/src/layoutEdit.ts`). A layout shows
 no page twice and at most 6 pages. Pages are added and moved with buttons on their four sides,
 or dragged, with a live preview. Also a calendar panel: the month of the selected day, always
-open (ADR 0005). Next: try it.
+open (ADR 0005).
 
 ### Phase 8 — Several named layouts
 Settings hold one layout tree today, with the splitter sizes inside it. This phase lets users
@@ -145,7 +145,7 @@ Acceptance criteria (decided 2026-11-10):
 Done (branch `feat/named-layouts`): named layouts (ADR 0005, `packages/core/src/layouts.ts`):
 layout cards in Settings with a miniature of each (choose, Edit, Delete with confirmation, New
 layout; presets offer "Duplicate and edit"), the name edited in the layout editor, Open planner
-as the only preset. Next: try it; a release later, drop the single `layout` setting.
+as the only preset. Next: a release later, drop the single `layout` setting.
 
 Right after it, a small PR: **neighbour pages become editable**. The days and weeks before and
 after the selected one (offset ≠ 0) are no longer read-only, and clicking one no longer selects
