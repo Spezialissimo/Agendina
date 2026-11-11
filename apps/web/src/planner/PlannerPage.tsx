@@ -33,9 +33,8 @@ import { LayoutEditor } from './LayoutEditor.tsx'
 import { LayoutView } from './LayoutView.tsx'
 import { TemplateDialog } from '../templates/TemplateDialog.tsx'
 import { useFocusMode } from './useFocusMode.ts'
-import { PlannerContext } from './PlannerContext.tsx'
+import { MonthPopupContext, PlannerContext } from './PlannerContext.tsx'
 import { PageFocus, PageFocusContext, focusTarget, type PageFocusApi } from './pageFocus.ts'
-import { MonthPopupContext } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { useLiveUpdates } from './useLiveUpdates.ts'
 import { useSettings } from './useSettings.ts'
@@ -95,6 +94,8 @@ function Planner({ focus }: { focus: DayKey }) {
   const layout = active?.layout
   const hasWeekStrip =
     layout !== undefined && panelsOf(layout).some(({ panel }) => panel.type === 'weekStrip')
+  // The month closes with the strip it pops up from, so that it is not open when a strip is back.
+  if (calendarOpen && !hasWeekStrip) setCalendarOpen(false)
   const monthPopup = useMemo(
     () => ({ open: calendarOpen, setOpen: setCalendarOpen }),
     [calendarOpen],

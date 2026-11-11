@@ -5,6 +5,7 @@ import {
   contentKey,
   layoutProblems,
   movePanel,
+  pageCount,
   panelContent,
   panelsOf,
   removePanel,
@@ -382,7 +383,7 @@ function Node({ node, layout, checks, onChange }: NodeProps) {
 function Panel({ node, layout, checks, onChange }: { node: PanelNode } & NodeProps) {
   const current = panelContent(node.panel)
   const label = contentLabel(current)
-  const canAdd = panelsOf(layout).length < MAX_PANELS
+  const canAdd = pageCount(layout) < MAX_PANELS
   const { dragging, grab } = useContext(DragContext)
   if (dragging === node.id) {
     // The page is in the air: this is the empty place it would land in.

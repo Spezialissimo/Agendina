@@ -7,6 +7,7 @@ import {
   addPanel,
   layoutProblems,
   movePanel,
+  pageCount,
   panelsOf,
   removePanel,
   setPanelContent,
@@ -140,6 +141,28 @@ describe('layoutProblems', () => {
 
     expect(layoutProblems(days(MAX_PANELS))).toEqual([])
     expect(layoutProblems(days(MAX_PANELS + 1))).toEqual(['too-many-panels'])
+  })
+
+  it(`allows the week strip besides ${String(MAX_PANELS)} pages`, () => {
+    const pagesAndStrip = split(
+      'c',
+      'column',
+      [strip('s'), 0.1],
+      [
+        split(
+          'r',
+          'row',
+          ...Array.from({ length: MAX_PANELS }, (_, i): [Layout, number] => [
+            note(`d${String(i)}`, 'day', i),
+            1,
+          ]),
+        ),
+        0.9,
+      ],
+    )
+
+    expect(layoutProblems(pagesAndStrip)).toEqual([])
+    expect(pageCount(pagesAndStrip)).toBe(MAX_PANELS)
   })
 })
 

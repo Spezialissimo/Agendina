@@ -62,7 +62,13 @@ export function SplitView<Node extends { id: string }>({
     setState({ key, sizes: next })
   }
   const container = useRef<HTMLDivElement>(null)
-  const drag = useRef<{ index: number; start: number; sizes: number[] } | undefined>(undefined)
+  /**
+   * A drag in progress: it moves the sizes on the screen (`from`) by the pointer's distance as a
+   * share of `extent`, measured once when it starts; cancelled, it goes back to `before`.
+   */
+  const drag = useRef<
+    { index: number; start: number; extent: number; from: number[]; before: number[] } | undefined
+  >(undefined)
   const row = split.direction === 'row'
 
   const lengthOf = (element: Element | null | undefined) => {
@@ -97,7 +103,7 @@ export function SplitView<Node extends { id: string }>({
 
   const cancelDrag = () => {
     if (drag.current === undefined) return
-    setSizes(drag.current.sizes)
+    setSizes(drag.current.before)
     drag.current = undefined
   }
 
@@ -134,18 +140,24 @@ export function SplitView<Node extends { id: string }>({
               onKeyDown={onKeyDown(index - 1)}
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture(event.pointerId)
-                drag.current = { index: index - 1, start: position(event), sizes: onScreen() }
+                drag.current = {
+                  index: index - 1,
+                  start: position(event),
+                  extent: extent(),
+                  from: onScreen(),
+                  before: sizes,
+                }
               }}
               onPointerMove={(event) => {
                 if (drag.current === undefined) return
-                const { index: i, start, sizes: from } = drag.current
-                setSizes(move(i, from, (position(event) - start) / extent()))
+                const { index: i, start, extent: length, from } = drag.current
+                setSizes(move(i, from, (position(event) - start) / length))
               }}
               onPointerUp={(event) => {
                 if (drag.current === undefined) return
-                const { index: i, start, sizes: from } = drag.current
+                const { index: i, start, extent: length, from } = drag.current
                 drag.current = undefined
-                commit(move(i, from, (position(event) - start) / extent()))
+                commit(move(i, from, (position(event) - start) / length))
               }}
               // The browser took the gesture over (e.g. to scroll on touch): no pointerup comes.
               onPointerCancel={cancelDrag}

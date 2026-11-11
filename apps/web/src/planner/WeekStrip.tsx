@@ -1,20 +1,14 @@
 import { addDays, weekDays, type DayKey, type WeekStripView } from '@agendina/core'
 import { useQuery } from '@tanstack/react-query'
-import { createContext, useContext } from 'react'
+import { useContext } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useApi, useLocale, useToday } from '../app/AppProviders.tsx'
 import { ChevronLeftIcon, ChevronRightIcon } from '../app/icons.tsx'
 import { MonthPicker } from './MonthPicker.tsx'
-import { usePlannerContext } from './PlannerContext.tsx'
+import { MonthPopupContext, usePlannerContext } from './PlannerContext.tsx'
 import { usePageFocus } from './pageFocus.ts'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { format, formatRange, weekTitle } from './weeks.ts'
-
-/** Whether the month pop-up of the strip is open: the "Choose a day" command opens it. */
-export const MonthPopupContext = createContext<{
-  open: boolean
-  setOpen: (open: boolean) => void
-}>({ open: false, setOpen: () => undefined })
 
 interface Props {
   view: WeekStripView
@@ -136,6 +130,7 @@ export function WeekStrip({ view, orientation }: Props) {
         }}
         open={calendarOpen}
         setOpen={setCalendarOpen}
+        strip={orientation === 'horizontal' ? 'across' : 'standing'}
       />
     </nav>
   )

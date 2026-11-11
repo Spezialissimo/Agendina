@@ -8,7 +8,10 @@ import {
   type SplitNode,
 } from './layout.ts'
 
-/** As many as fit in one split with every page at least `MIN_PANE_SIZE` wide. */
+/**
+ * The most pages a layout shows: as many as fit in one split with every page at least
+ * `MIN_PANE_SIZE` wide. The week strip, which needs far less, is not counted.
+ */
 export const MAX_PANELS = 6
 
 export type LayoutProblem = 'no-editable-page' | 'duplicate-page' | 'too-many-panels'
@@ -38,8 +41,13 @@ export function layoutProblems(layout: Layout): LayoutProblem[] {
   const problems: LayoutProblem[] = []
   if (!shown.some((key) => key.endsWith(':0'))) problems.push('no-editable-page')
   if (new Set(shown).size !== shown.length) problems.push('duplicate-page')
-  if (shown.length > MAX_PANELS) problems.push('too-many-panels')
+  if (pageCount(layout) > MAX_PANELS) problems.push('too-many-panels')
   return problems
+}
+
+/** The pages and the calendar a layout shows: its panels but the week strip. */
+export function pageCount(layout: Layout): number {
+  return panelsOf(layout).filter(({ panel }) => panel.type !== 'weekStrip').length
 }
 
 /** Returns a copy of `layout` where the split `splitId` lays its pages out in `direction`. */

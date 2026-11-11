@@ -1,7 +1,8 @@
 import { dayKey, monthGrid, weekNumber, type DayKey, type WeekRule } from '@agendina/core'
-import { useEffect, useEffectEvent, useRef, useState, type RefObject } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { useLocale, useToday } from '../app/AppProviders.tsx'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '../app/icons.tsx'
+import { placePopup, type Placement } from './popupPlacement.ts'
 import { format, formatRange, weekTitle } from './weeks.ts'
 
 interface Props {
@@ -17,7 +18,13 @@ export function MonthPicker({
   onPick,
   open,
   setOpen,
-}: Props & { open: boolean; setOpen: (open: boolean) => void }) {
+  strip,
+}: Props & {
+  open: boolean
+  setOpen: (open: boolean) => void
+  /** How the week strip with the button lies: the month pops up below or beside it. */
+  strip: 'across' | 'standing'
+}) {
   const container = useRef<HTMLDivElement>(null)
   return (
     <div ref={container} className="month-picker">
@@ -38,6 +45,7 @@ export function MonthPicker({
           focus={focus}
           rule={rule}
           picker={container}
+          strip={strip}
           onPick={(day) => {
             setOpen(false)
             onPick(day)
@@ -55,14 +63,28 @@ function MonthCalendar({
   focus,
   rule,
   picker,
+  strip,
   onPick,
   onClose,
 }: Props & {
   /** The calendar with its button: a press on the button is the button's to handle. */
   picker: RefObject<HTMLElement | null>
+  strip: 'across' | 'standing'
   onClose: () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const [placement, setPlacement] = useState<Placement | undefined>(undefined)
+  // Placed before it is painted, on the side with room for it. The button is found from here, as
+  // the picker's ref is not set yet when it mounts open.
+  useLayoutEffect(() => {
+    const month = ref.current
+    const button = month?.parentElement?.querySelector(':scope > button')
+    if (month === null || button === null || button === undefined) return
+    const viewport = { width: window.innerWidth, height: window.innerHeight }
+    setPlacement(
+      placePopup(button.getBoundingClientRect(), month.getBoundingClientRect(), viewport, strip),
+    )
+  }, [strip])
   const [month, setMonth] = useState(monthOf(focus))
   const title = useMonthTitle(month)
 
@@ -90,7 +112,14 @@ function MonthCalendar({
   }, [picker])
 
   return (
-    <div ref={ref} className="month-calendar" role="dialog" aria-label={title}>
+    <div
+      ref={ref}
+      className="month-calendar"
+      role="dialog"
+      aria-label={title}
+      data-side={placement?.side}
+      data-align={placement?.align}
+    >
       <MonthGrid focus={focus} rule={rule} month={month} setMonth={setMonth} onPick={onPick} />
     </div>
   )

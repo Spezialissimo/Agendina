@@ -618,17 +618,22 @@ describe('layout editor', () => {
       expect(within(shows).getByRole('option', { name: 'Selected week' })).toBeEnabled()
     })
 
-    it(`stops adding pages at ${String(MAX_PANELS)}`, async () => {
+    it(`stops adding pages at ${String(MAX_PANELS)}, not counting the week strip`, async () => {
       const { user } = await editLayout()
       const add = () => panel('Selected day').getByRole('button', { name: 'Add page on the right' })
 
-      for (let pages = 2; pages < MAX_PANELS; pages++) await user.click(add())
+      for (let pages = 2; pages < MAX_PANELS; pages++) {
+        expect(add()).toBeEnabled()
+        await user.click(add())
+      }
 
       expect(add()).toBeDisabled()
       for (const name of ['Add page on the left', 'Add page above', 'Add page below']) {
         expect(panel('Selected day').getByRole('button', { name })).toBeDisabled()
       }
-      expect(panels()).toHaveLength(MAX_PANELS)
+      expect(
+        panels().filter((p) => p.getAttribute('aria-label') !== 'Week strip panel'),
+      ).toHaveLength(MAX_PANELS)
     })
 
     it('still shows a page set from elsewhere that the list does not offer', async () => {
