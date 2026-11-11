@@ -2,13 +2,12 @@ import {
   DEFAULT_SETTINGS,
   SettingsUpdate,
   UserSettings,
-  withLayouts,
   type SettingsResponse,
 } from '@agendina/contract'
 import { adoptLegacyLayout } from '@agendina/core'
 import type { Database } from '@agendina/db'
 import { Hono } from 'hono'
-import { readJson, requireUser, type AppEnv } from '../http.ts'
+import { parse, readJson, requireUser, type AppEnv } from '../http.ts'
 
 export function settingsRoutes() {
   const routes = new Hono<AppEnv>()
@@ -24,7 +23,8 @@ export function settingsRoutes() {
     const db = c.get('db')
     const layouts =
       update.layouts ?? adoptLegacyLayout((await loadSettings(db, user.id)).layouts, update.layout)
-    const settings = withLayouts({ ...update, layouts }, layouts)
+    // Validated again: the layouts may have been merged with the stored ones.
+    const settings = parse(UserSettings, { ...update, layouts })
     const value = JSON.stringify(settings)
     const updatedAt = c.get('now')().toISOString()
     await db

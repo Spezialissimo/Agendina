@@ -83,13 +83,19 @@ active layout per type of screen (desktop, phone), so every desktop shows the sa
   arrangement. The editor's "Reset to Open planner" is gone: choosing Open planner does that.
 - New layouts start from the one on show and are named "Custom layout N", one past the highest
   number in a name; ids are `custom-N` the same way. Deleting a layout (after a confirmation)
-  shows the default preset on the screens that showed it.
+  shows the default preset on the screens that showed it. A user keeps at most 100 custom
+  layouts (`MAX_CUSTOM_LAYOUTS`); at the limit, Settings offers no new layout or duplicate.
+- A template edit whose page the active layout no longer shows is closed whenever the active
+  layout changes (editor, Settings, another device), so it never comes back stale.
 - Migration (ADR 0012): the single `layout` setting stays, always filled by the server with the
   active desktop layout, so the previous release keeps working. Settings saved without `layouts`
   (stored before this change, or saved by a tab still running the previous release, which has
-  no reload prompt) are taken in by `adoptLegacyLayout`: the splitter sizes of Open planner, the
-  active custom layout replaced, or else a new custom layout; no other layout is lost. Drop
-  `layout` a release later, once no tab can still run the old code.
+  no reload prompt) are taken in by `adoptLegacyLayout`. Such a tab may show a layout another tab
+  has switched away from, so its layout only updates the sizes of the layout with the same
+  arrangement (the active one first), and an arrangement no layout has becomes a new custom
+  layout (dropped at the limit); no layout's arrangement is ever replaced. The server validates
+  the merged result before storing it. Drop `layout` a release later, once no tab can still run
+  the old code.
 
 Still to come: more presets, the date selector as a panel, collapsible panels, one visible
 panel on mobile.

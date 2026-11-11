@@ -1,5 +1,6 @@
 import {
   DEFAULT_LAYOUTS,
+  MAX_CUSTOM_LAYOUTS,
   OPEN_PLANNER,
   OPEN_PLANNER_ID,
   activeLayout,
@@ -8,7 +9,7 @@ import {
   type Layouts,
 } from '@agendina/core'
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, MAX_CUSTOM_LAYOUTS, SettingsUpdate, UserSettings } from './settings.ts'
+import { DEFAULT_SETTINGS, SettingsUpdate, UserSettings } from './settings.ts'
 
 const DAY_ONLY: Layout = { type: 'panel', id: 'd', panel: { type: 'note', kind: 'day', offset: 0 } }
 

@@ -1116,9 +1116,14 @@ button {
   color: var(--ink-soft);
 }
 
-.layout-card-new:hover {
+.layout-card-new:hover:not(:disabled) {
   color: var(--ink);
   border-color: var(--ink-soft);
+}
+
+.layout-card-new:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* The name of the layout being edited, under the editor's title. */

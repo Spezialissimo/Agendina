@@ -1,4 +1,11 @@
-import { activeLayout, allLayouts } from '@agendina/core'
+import { DEFAULT_SETTINGS, withLayouts } from '@agendina/contract'
+import {
+  DEFAULT_LAYOUTS,
+  MAX_CUSTOM_LAYOUTS,
+  OPEN_PLANNER,
+  activeLayout,
+  allLayouts,
+} from '@agendina/core'
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
@@ -278,6 +285,24 @@ describe('named layouts', () => {
       expect(separator()).toHaveAttribute('aria-valuenow', '65')
     })
 
+    it('closes a template edit whose page the chosen layout does not show', async () => {
+      const { user } = await start()
+      await dayOnlyLayout(user)
+      await openSettings(user)
+      await user.click(list().getByRole('radio', { name: 'Open planner' }))
+      await user.click(dialog().getByRole('button', { name: 'Edit week template' }))
+      expect(await screen.findByRole('textbox', { name: 'Week template' })).toBeInTheDocument()
+
+      await openSettings(user)
+      await user.click(list().getByRole('radio', { name: 'Custom layout 1' }))
+      await user.click(list().getByRole('radio', { name: 'Open planner' }))
+      await closeSettings(user)
+
+      // The week page is back as a page to write in, not as the template edit left behind.
+      expect(await screen.findByRole('textbox', { name: 'Week 44' })).toBeInTheDocument()
+      expect(screen.queryByRole('textbox', { name: 'Week template' })).not.toBeInTheDocument()
+    })
+
     it('shows the chosen layout after a reload', async () => {
       const first = await start()
       await dayOnlyLayout(first.user)
@@ -291,6 +316,52 @@ describe('named layouts', () => {
 
       await start()
       expect(weekPage()).not.toBeInTheDocument()
+    })
+  })
+
+  describe(`with ${String(MAX_CUSTOM_LAYOUTS)} custom layouts`, () => {
+    beforeEach(async () => {
+      const custom = Array.from({ length: MAX_CUSTOM_LAYOUTS }, (_, i) => ({
+        id: `custom-${String(i + 1)}`,
+        name: `Custom layout ${String(i + 1)}`,
+        layout: OPEN_PLANNER,
+      }))
+      await api.saveSettings(
+        withLayouts({
+          ...DEFAULT_SETTINGS,
+          layouts: { ...DEFAULT_LAYOUTS, custom, active: { ...DEFAULT_LAYOUTS.active } },
+        }),
+      )
+    })
+
+    it('offers no new layout until one is deleted', async () => {
+      const { user } = await start()
+      await openSettings(user)
+
+      expect(dialog().getByRole('button', { name: 'New layout' })).toBeDisabled()
+      expect(
+        dialog().getByRole('button', { name: 'Duplicate and edit Open planner' }),
+      ).toBeDisabled()
+      expect(dialog().getByText(/Delete a layout to make another/)).toBeInTheDocument()
+      expect(dialog().getByRole('button', { name: 'Edit Custom layout 1' })).toBeEnabled()
+
+      await user.click(dialog().getByRole('button', { name: 'Delete Custom layout 100' }))
+      await user.click(dialog().getByRole('button', { name: 'Delete' }))
+
+      expect(dialog().getByRole('button', { name: 'New layout' })).toBeEnabled()
+      expect(
+        dialog().getByRole('button', { name: 'Duplicate and edit Open planner' }),
+      ).toBeEnabled()
+    })
+
+    it('does not offer to edit Open planner from the command palette', async () => {
+      const { user } = await start()
+
+      await user.keyboard('{Meta>}k{/Meta}')
+      await user.type(screen.getByRole('combobox', { name: 'Search commands' }), 'edit')
+
+      expect(screen.getByRole('option', { name: /Edit day template/ })).toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: /Edit layout/ })).not.toBeInTheDocument()
     })
   })
 })

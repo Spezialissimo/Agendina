@@ -1,6 +1,7 @@
 import {
   DEFAULT_LAYOUTS,
   ISO_WEEK,
+  MAX_CUSTOM_LAYOUTS,
   MAX_LAYOUT_NAME,
   MAX_PANELS,
   OPEN_PLANNER,
@@ -8,6 +9,7 @@ import {
   activeLayout,
   adoptLegacyLayout,
   parseBinding,
+  type Layout,
   type Layouts as LayoutsType,
 } from '@agendina/core'
 import { z } from 'zod'
@@ -35,8 +37,6 @@ const FocusModeSettings = z.object({
 type FocusModeSettings = z.infer<typeof FocusModeSettings>
 
 export const DEFAULT_FOCUS_MODE: FocusModeSettings = { enabled: true, idleMs: 1500 }
-
-export const MAX_CUSTOM_LAYOUTS = 100
 
 const LayoutId = z.string().min(1).max(50)
 
@@ -94,10 +94,12 @@ export const SettingsUpdate = z.object({
 })
 export type SettingsUpdate = z.infer<typeof SettingsUpdate>
 
-export const UserSettings = SettingsUpdate.transform((settings) => {
-  const layouts = settings.layouts ?? adoptLegacyLayout(DEFAULT_LAYOUTS, settings.layout)
-  return { ...settings, layouts, layout: activeLayout(layouts, 'desktop').layout }
-})
+export const UserSettings = SettingsUpdate.transform((settings) =>
+  withLayouts({
+    ...settings,
+    layouts: settings.layouts ?? adoptLegacyLayout(DEFAULT_LAYOUTS, settings.layout),
+  }),
+)
 export type UserSettings = z.infer<typeof UserSettings>
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -108,9 +110,11 @@ export const DEFAULT_SETTINGS: UserSettings = {
   focusMode: DEFAULT_FOCUS_MODE,
 }
 
-/** `settings` showing `layouts`, with the single layout kept in step. */
-export function withLayouts(settings: UserSettings, layouts: LayoutsType): UserSettings {
-  return { ...settings, layouts, layout: activeLayout(layouts, 'desktop').layout }
+/** `settings` with the single layout kept in step with `layouts`: the active desktop one. */
+export function withLayouts<T extends { layouts: LayoutsType }>(
+  settings: T,
+): T & { layout: Layout } {
+  return { ...settings, layout: activeLayout(settings.layouts, 'desktop').layout }
 }
 
 export const SettingsResponse = z.object({ settings: UserSettings })

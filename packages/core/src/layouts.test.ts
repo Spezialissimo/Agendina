@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { OPEN_PLANNER, setSplitSizes, type Layout } from './layout.ts'
 import {
   DEFAULT_LAYOUTS,
+  MAX_CUSTOM_LAYOUTS,
   OPEN_PLANNER_ID,
   PRESETS,
   activeLayout,
   adoptLegacyLayout,
   allLayouts,
+  canAddLayout,
   deleteLayout,
   nextLayoutName,
   renameLayout,
@@ -32,6 +34,12 @@ const split = (id: string, ...children: [Layout, number][]): Layout => ({
 
 const DAY_ONLY = note('day', 'day', 0)
 const TWO_DAYS = split('days', [note('d0', 'day', 0), 0.5], [note('d1', 'day', 1), 0.5])
+const THREE_DAYS = split(
+  'days',
+  [note('d0', 'day', 0), 0.4],
+  [note('d1', 'day', 1), 0.3],
+  [note('d2', 'day', 2), 0.3],
+)
 
 /** Names in the order the layout list shows them. */
 const names = (layouts: Layouts) => allLayouts(layouts).map((l) => l.name)
@@ -280,17 +288,91 @@ describe('a single layout saved by the previous release', () => {
     })
 
     it('becomes a new custom layout when Open planner was active and got edited', () => {
-      const adopted = adoptLegacyLayout(selectLayout(layouts, 'desktop', OPEN_PLANNER_ID), DAY_ONLY)
+      const adopted = adoptLegacyLayout(
+        selectLayout(layouts, 'desktop', OPEN_PLANNER_ID),
+        THREE_DAYS,
+      )
 
       expect(names(adopted)).toEqual([...names(layouts), 'Custom layout 3'])
-      expect(activeLayout(adopted, 'desktop').layout).toEqual(DAY_ONLY)
+      expect(activeLayout(adopted, 'desktop').layout).toEqual(THREE_DAYS)
     })
+
+    // The tab may show a layout another tab has switched away from since.
+    it('resizes the layout it shows, not the active one, when another one is active', () => {
+      const dayOnlyActive = selectLayout(layouts, 'desktop', allLayouts(layouts)[1]?.id ?? '')
+      const resized = setSplitSizes(TWO_DAYS, 'days', [0.7, 0.3])
+
+      const adopted = adoptLegacyLayout(dayOnlyActive, resized)
+
+      expect(names(adopted)).toEqual(names(layouts))
+      expect(activeLayout(adopted, 'desktop').layout).toEqual(DAY_ONLY)
+      expect(allLayouts(adopted).find((l) => l.id === id)?.layout).toEqual(resized)
+    })
+
+    it('becomes a new custom layout when it was edited, keeping the active one as it is', () => {
+      const adopted = adoptLegacyLayout(layouts, THREE_DAYS)
+
+      expect(names(adopted)).toEqual([...names(layouts), 'Custom layout 3'])
+      expect(allLayouts(adopted).find((l) => l.id === id)?.layout).toEqual(TWO_DAYS)
+      expect(activeLayout(adopted, 'desktop').layout).toEqual(THREE_DAYS)
+    })
+
+    it('is dropped when there is no room for another layout', () => {
+      const full = fill(layouts)
+
+      expect(adoptLegacyLayout(full, THREE_DAYS)).toEqual(full)
+    })
+  })
+})
+
+/** `layouts` with as many custom layouts as can be kept. */
+function fill(layouts: Layouts): Layouts {
+  let full = layouts
+  while (canAddLayout(full)) full = create(full, DAY_ONLY).layouts
+  return full
+}
+
+describe('the number of custom layouts', () => {
+  it(`is at most ${String(MAX_CUSTOM_LAYOUTS)}`, () => {
+    const full = fill(DEFAULT_LAYOUTS)
+
+    expect(full.custom).toHaveLength(MAX_CUSTOM_LAYOUTS)
+    expect(canAddLayout(full)).toBe(false)
+  })
+
+  it('leaves the layouts as they are when one more is saved, keeping every name', () => {
+    const full = renameLayout(
+      fill(DEFAULT_LAYOUTS),
+      `custom-${String(MAX_CUSTOM_LAYOUTS)}`,
+      'Mornings',
+    )
+
+    expect(
+      saveEditedLayout(full, {
+        editing: undefined,
+        layout: TWO_DAYS,
+        screen: 'desktop',
+        name: 'Evenings',
+      }),
+    ).toEqual(full)
+    expect(
+      saveEditedLayout(full, { editing: OPEN_PLANNER_ID, layout: TWO_DAYS, screen: 'desktop' }),
+    ).toEqual(full)
+  })
+
+  it('still lets a custom layout be edited when there is no room for another', () => {
+    const full = fill(DEFAULT_LAYOUTS)
+    const { id } = activeLayout(full, 'desktop')
+
+    const edited = saveEditedLayout(full, { editing: id, layout: TWO_DAYS, screen: 'desktop' })
+
+    expect(activeLayout(edited, 'desktop')).toMatchObject({ id, layout: TWO_DAYS })
   })
 })
 
 describe('any sequence of changes', () => {
   interface Step {
-    op: 'create' | 'editPreset' | 'select' | 'delete' | 'rename' | 'edit'
+    op: 'create' | 'editPreset' | 'select' | 'delete' | 'rename' | 'edit' | 'adopt'
     /** Which layout of the list the step acts on. */
     pick: number
     tree: Layout
@@ -298,14 +380,15 @@ describe('any sequence of changes', () => {
   }
 
   const step: fc.Arbitrary<Step> = fc.record({
-    op: fc.constantFrom('create', 'editPreset', 'select', 'delete', 'rename', 'edit'),
+    op: fc.constantFrom('create', 'editPreset', 'select', 'delete', 'rename', 'edit', 'adopt'),
     pick: fc.nat(),
-    tree: fc.constantFrom(DAY_ONLY, TWO_DAYS, OPEN_PLANNER),
+    tree: fc.constantFrom(DAY_ONLY, TWO_DAYS, THREE_DAYS, OPEN_PLANNER),
     name: fc.string(),
   })
 
   const apply = (layouts: Layouts, s: Step): Layouts => {
     if (s.op === 'create') return create(layouts, s.tree).layouts
+    if (s.op === 'adopt') return adoptLegacyLayout(layouts, s.tree)
     if (s.op === 'editPreset') {
       return saveEditedLayout(layouts, {
         editing: OPEN_PLANNER_ID,

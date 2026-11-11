@@ -1,8 +1,10 @@
 import { withLayouts, type AuthState, type NoteKind, type UserSettings } from '@agendina/contract'
 import {
+  MAX_CUSTOM_LAYOUTS,
   activeLayout,
   addDays,
   allLayouts,
+  canAddLayout,
   deleteLayout,
   selectLayout,
   type WeekRule,
@@ -222,8 +224,9 @@ function LayoutSettings({
   const [deleting, setDeleting] = useState<string | undefined>(undefined)
   const { layouts } = settings
   const activeId = activeLayout(layouts, 'desktop').id
+  const canAdd = canAddLayout(layouts)
   const setLayouts = (next: typeof layouts) => {
-    if (next !== layouts) onChange(withLayouts(settings, next))
+    if (next !== layouts) onChange(withLayouts({ ...settings, layouts: next }))
   }
 
   return (
@@ -284,6 +287,7 @@ function LayoutSettings({
                     <button
                       type="button"
                       aria-label={`${layout.preset ? 'Duplicate and edit' : 'Edit'} ${layout.name}`}
+                      disabled={layout.preset && !canAdd}
                       onClick={() => {
                         onEditLayout(layout.id)
                       }}
@@ -308,10 +312,21 @@ function LayoutSettings({
             </div>
           </div>
         ))}
-        <button type="button" className="layout-card layout-card-new" onClick={onNewLayout}>
+        <button
+          type="button"
+          className="layout-card layout-card-new"
+          disabled={!canAdd}
+          onClick={onNewLayout}
+        >
           <span aria-hidden="true">+</span> New layout
         </button>
       </div>
+      {!canAdd && (
+        <p>
+          You have {MAX_CUSTOM_LAYOUTS} layouts of your own, the most there can be. Delete a layout
+          to make another.
+        </p>
+      )}
     </fieldset>
   )
 }

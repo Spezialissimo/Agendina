@@ -3,6 +3,7 @@ import {
   activeLayout,
   addDays,
   allLayouts,
+  canAddLayout,
   isDayKey,
   nextLayoutName,
   editableNote,
@@ -42,6 +43,14 @@ function showsEditable(layout: Layout, kind: NoteKind): boolean {
   return panelsOf(layout).some(
     ({ panel }) => panel.type === 'note' && panel.kind === kind && panel.offset === 0,
   )
+}
+
+/** The template edits whose page `layout` shows; `edits` itself when that is all of them. */
+function shownEdits(edits: TemplateEdits, layout: Layout): TemplateEdits {
+  const kinds = Object.keys(edits) as NoteKind[]
+  const shown = kinds.filter((kind) => showsEditable(layout, kind))
+  if (shown.length === kinds.length) return edits
+  return Object.fromEntries(shown.map((kind) => [kind, edits[kind]]))
 }
 
 /** The page being typed in (or last typed in), else the day page. Read when a command runs. */
@@ -94,6 +103,16 @@ function Planner({ focus }: { focus: DayKey }) {
     [layouts],
   )
   const layout = active?.layout
+  // A preset is edited as a new copy, for which there must be room.
+  const canEditLayout =
+    layouts !== undefined && active !== undefined && (!active.preset || canAddLayout(layouts))
+  // An edit no page shows any more would come back, stale, with that page. Whatever changed the
+  // layout (the editor, Settings, another device), so adjusted while rendering the new one.
+  const [editsLayout, setEditsLayout] = useState(layout)
+  if (layout !== editsLayout) {
+    setEditsLayout(layout)
+    if (layout !== undefined) setTemplateEdits((edits) => shownEdits(edits, layout))
+  }
   /** Opens the layout editor on layout `id`, or on a new layout made from the one on show. */
   const startLayoutEdit = useCallback(
     (id: string | undefined) => {
@@ -223,7 +242,7 @@ function Planner({ focus }: { focus: DayKey }) {
           setSettingsOpen(true)
           break
         case 'layout.edit':
-          if (active !== undefined) startLayoutEdit(active.id)
+          if (active !== undefined && canEditLayout) startLayoutEdit(active.id)
           break
         case 'template.editDay':
           editTemplate('day')
@@ -253,6 +272,7 @@ function Planner({ focus }: { focus: DayKey }) {
       editTemplate,
       focusAfterNavigation,
       active,
+      canEditLayout,
       startLayoutEdit,
     ],
   )
@@ -322,16 +342,7 @@ function Planner({ focus }: { focus: DayKey }) {
                   ...layoutDraft,
                   screen: 'desktop',
                 })
-                if (layouts !== settings.layouts) update(withLayouts(settings, layouts))
-                const saved = activeLayout(layouts, 'desktop').layout
-                // An edit no page shows any more would come back, stale, with that page.
-                setTemplateEdits((edits): TemplateEdits =>
-                  Object.fromEntries(
-                    Object.entries(edits).filter(([kind]) =>
-                      showsEditable(saved, kind as NoteKind),
-                    ),
-                  ),
-                )
+                if (layouts !== settings.layouts) update(withLayouts({ ...settings, layouts }))
                 setLayoutDraft(undefined)
               }}
             />
@@ -342,10 +353,10 @@ function Planner({ focus }: { focus: DayKey }) {
                 layout={resolveLayout(active.layout, focus, settings.weekRule)}
                 onResize={(splitId, sizes) => {
                   update(
-                    withLayouts(
-                      settings,
-                      resizeLayout(settings.layouts, active.id, splitId, sizes),
-                    ),
+                    withLayouts({
+                      ...settings,
+                      layouts: resizeLayout(settings.layouts, active.id, splitId, sizes),
+                    }),
                   )
                 }}
               />
@@ -379,7 +390,8 @@ function Planner({ focus }: { focus: DayKey }) {
             keymap={keymap}
             isAvailable={(id) =>
               (id !== 'template.editDay' || templateKinds.includes('day')) &&
-              (id !== 'template.editWeek' || templateKinds.includes('week'))
+              (id !== 'template.editWeek' || templateKinds.includes('week')) &&
+              (id !== 'layout.edit' || canEditLayout)
             }
             onRun={run}
             onClose={() => {

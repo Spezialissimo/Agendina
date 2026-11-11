@@ -33,6 +33,8 @@ export const PRESETS: readonly CustomLayout[] = [
 
 export const MAX_LAYOUT_NAME = 60
 
+export const MAX_CUSTOM_LAYOUTS = 100
+
 export const DEFAULT_LAYOUTS: Layouts = {
   custom: [],
   presetSizes: {},
@@ -101,6 +103,7 @@ export function saveEditedLayout(
   }: { editing: string | undefined; layout: Layout; screen: Screen; name?: string },
 ): Layouts {
   const original = layouts.custom.find((c) => c.id === editing)
+  if (original === undefined && !canAddLayout(layouts)) return layouts
   const saved =
     original === undefined
       ? addCustom(layouts, layout, screen)
@@ -110,6 +113,11 @@ export function saveEditedLayout(
           original.id,
         )
   return renameLayout(saved, saved.active[screen], name)
+}
+
+/** Whether there is room for one more custom layout. */
+export function canAddLayout(layouts: Layouts): boolean {
+  return layouts.custom.length < MAX_CUSTOM_LAYOUTS
 }
 
 /** The name a new layout gets unless named otherwise: "Custom layout N". */
@@ -141,20 +149,23 @@ export function deleteLayout(layouts: Layouts, id: string): Layouts {
 
 /**
  * Takes in the single desktop layout the previous release saves (ADR 0012): settings stored
- * before named layouts existed, or saved by a tab still running that release. It changes the
- * active desktop layout as little as possible and never loses another layout.
+ * before named layouts existed, or saved by a tab still running that release. That tab may show
+ * a layout that another tab has switched away from since, so the layout with the same arrangement
+ * gets its sizes, the active one first; an arrangement no layout has becomes a new custom layout,
+ * shown on the desktop (dropped when there is no room). No layout's arrangement is replaced.
  */
 export function adoptLegacyLayout(layouts: Layouts, layout: Layout): Layouts {
   const active = activeLayout(layouts, 'desktop')
-  if (sameLayout(active.layout, layout, true)) return layouts
-  if (!active.preset) return updateCustom(layouts, active.id, (c) => ({ ...c, layout }))
-  const preset = PRESETS.find((p) => sameLayout(p.layout, layout, false))
-  if (preset === undefined) return addCustom(layouts, layout, 'desktop')
-  return selectLayout(
-    { ...layouts, presetSizes: { ...layouts.presetSizes, [preset.id]: sizesOf(layout) } },
-    'desktop',
-    preset.id,
-  )
+  const all = allLayouts(layouts)
+  const match = [active, ...all].find((l) => sameLayout(l.layout, layout, false))
+  if (match === undefined)
+    return canAddLayout(layouts) ? addCustom(layouts, layout, 'desktop') : layouts
+  if (sameLayout(match.layout, layout, true)) return layouts
+  if (!match.preset) return updateCustom(layouts, match.id, (c) => ({ ...c, layout }))
+  return {
+    ...layouts,
+    presetSizes: { ...layouts.presetSizes, [match.id]: sizesOf(layout) },
+  }
 }
 
 function addCustom(layouts: Layouts, layout: Layout, screen: Screen): Layouts {

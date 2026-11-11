@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS, MeResponse, SettingsResponse } from '@agendina/contract'
 import {
   DEFAULT_LAYOUTS,
+  MAX_CUSTOM_LAYOUTS,
   OPEN_PLANNER,
   OPEN_PLANNER_ID,
   US_WEEK,
@@ -246,6 +247,18 @@ describe.each(testDatabases())('settings on $kind', ({ create }) => {
         // As JSON drops it: the previous release sends no `layouts`.
         return { ...DEFAULT_SETTINGS, layout: single, layouts: undefined }
       }
+      const twoDays: Layout = {
+        type: 'split',
+        id: 'days',
+        direction: 'column',
+        children: [
+          { size: 0.5, node: dayOnly },
+          {
+            size: 0.5,
+            node: { type: 'panel', id: 'd1', panel: { type: 'note', kind: 'day', offset: 1 } },
+          },
+        ],
+      }
 
       it('keeps the named layouts and resizes the active one', async () => {
         await putSettings({ ...DEFAULT_SETTINGS, layouts })
@@ -268,11 +281,58 @@ describe.each(testDatabases())('settings on $kind', ({ create }) => {
           layouts: { ...layouts, active: { ...layouts.active, desktop: OPEN_PLANNER_ID } },
         })
 
-        await putSettings(legacy(dayOnly))
+        await putSettings(legacy(twoDays))
 
         const saved = await getSettings()
         expect(names(saved.layouts)).toEqual([...names(layouts), 'Custom layout 3'])
-        expect(saved.layout).toEqual(dayOnly)
+        expect(saved.layout).toEqual(twoDays)
+      })
+
+      // E.g. the tab still shows Evenings, but another tab has switched to Mornings since.
+      it('resizes the layout it shows, leaving the active one as it is', async () => {
+        await putSettings({
+          ...DEFAULT_SETTINGS,
+          layouts: {
+            ...DEFAULT_LAYOUTS,
+            custom: [
+              { id: 'custom-1', name: 'Mornings', layout: dayOnly },
+              { id: 'custom-2', name: 'Evenings', layout: twoDays },
+            ],
+            active: { desktop: 'custom-1', phone: 'custom-1' },
+          },
+        })
+        const resized = setSplitSizes(twoDays, 'days', [0.7, 0.3])
+
+        await putSettings({ ...legacy(resized), weekRule: US_WEEK })
+
+        const saved = await getSettings()
+        expect(saved.weekRule).toEqual(US_WEEK)
+        expect(allLayouts(saved.layouts).map((l) => [l.name, l.layout])).toEqual([
+          ['Open planner', OPEN_PLANNER],
+          ['Mornings', dayOnly],
+          ['Evenings', resized],
+        ])
+        expect(activeLayout(saved.layouts, 'desktop').name).toBe('Mornings')
+      })
+
+      it('keeps every layout when there is no room for the one it sends', async () => {
+        const full: Layouts = {
+          ...DEFAULT_LAYOUTS,
+          custom: Array.from({ length: MAX_CUSTOM_LAYOUTS }, (_, i) => ({
+            id: `custom-${String(i + 1)}`,
+            name: `Custom layout ${String(i + 1)}`,
+            layout: dayOnly,
+          })),
+          active: { desktop: 'custom-1', phone: OPEN_PLANNER_ID },
+        }
+        await putSettings({ ...DEFAULT_SETTINGS, layouts: full })
+
+        const res = await putSettings({ ...legacy(twoDays), weekRule: US_WEEK })
+
+        expect(res.status).toBe(200)
+        const saved = await getSettings()
+        expect(saved.layouts).toEqual(full)
+        expect(saved.weekRule).toEqual(US_WEEK)
       })
 
       it('starts from the defaults when nothing was stored', async () => {
