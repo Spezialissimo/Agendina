@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { MergeChunk, NoteKey, NoteKind } from './notes.ts'
+import { MergeChunk, NoteKey, NoteKind, SaveNoteRequest } from './notes.ts'
 
 /** The pre-printed page that new day or week pages start from (ADR 0008). */
 export const Template = z.object({
@@ -33,6 +33,20 @@ export const TemplateRevisionResponse = z.object({
   content: z.string(),
 })
 export type TemplateRevisionResponse = z.infer<typeof TemplateRevisionResponse>
+
+export const SaveTemplateRequest = SaveNoteRequest.omit({ templateRevision: true }).extend({
+  /**
+   * The first page (day, or first day of the week) this revision applies to: a page nobody wrote
+   * yet starts from the latest revision applied from it or an earlier page. Without it, from the
+   * start.
+   */
+  appliesFrom: NoteKey.optional(),
+})
+export type SaveTemplateRequest = z.infer<typeof SaveTemplateRequest>
+
+/** The template revision a page nobody wrote yet starts from; null when none applies to it. */
+export const TemplateForPageResponse = z.object({ template: TemplateRevisionResponse.nullable() })
+export type TemplateForPageResponse = z.infer<typeof TemplateForPageResponse>
 
 export const TemplatedPagesQuery = z.object({ from: NoteKey })
 export type TemplatedPagesQuery = z.infer<typeof TemplatedPagesQuery>

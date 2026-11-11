@@ -1,7 +1,9 @@
 import {
+  NoteKey,
   NoteKind,
-  SaveNoteRequest,
+  SaveTemplateRequest,
   TemplatedPagesQuery,
+  type TemplateForPageResponse,
   type NotesResponse,
   type SaveTemplateResponse,
   type TemplateConflict,
@@ -11,7 +13,13 @@ import {
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { ApiError, parse, readJson, requireUser, type AppEnv } from '../http.ts'
-import { getTemplate, getTemplateRevision, listTemplatedPages, saveTemplate } from './repository.ts'
+import {
+  getTemplate,
+  getTemplateRevision,
+  listTemplatedPages,
+  saveTemplate,
+  templateForPage,
+} from './repository.ts'
 
 const TemplatePath = z.object({ kind: NoteKind })
 const RevisionPath = TemplatePath.extend({ revision: z.coerce.number().int().positive() })
@@ -30,10 +38,7 @@ export function templatesRoutes() {
   routes.put('/templates/:kind', async (c) => {
     const user = requireUser(c)
     const { kind } = parse(TemplatePath, c.req.param())
-    const { content, baseRevision } = await readJson(
-      c,
-      SaveNoteRequest.omit({ templateRevision: true }),
-    )
+    const { content, baseRevision, appliesFrom } = await readJson(c, SaveTemplateRequest)
     const result = await saveTemplate(
       c.get('db'),
       user.id,
@@ -41,6 +46,7 @@ export function templatesRoutes() {
       content,
       baseRevision,
       c.get('now')(),
+      appliesFrom,
     )
     if (result.status === 'conflict') {
       return c.json(
@@ -61,6 +67,13 @@ export function templatesRoutes() {
     const content = await getTemplateRevision(c.get('db'), user.id, kind, revision)
     if (content === undefined) throw new ApiError(404, 'not_found')
     return c.json({ revision, content } satisfies TemplateRevisionResponse)
+  })
+
+  routes.get('/templates/:kind/for/:key', async (c) => {
+    const user = requireUser(c)
+    const { kind, key } = parse(TemplatePath.extend({ key: NoteKey }), c.req.param())
+    const template = (await templateForPage(c.get('db'), user.id, kind, key)) ?? null
+    return c.json({ template } satisfies TemplateForPageResponse)
   })
 
   routes.get('/templates/:kind/pages', async (c) => {

@@ -68,6 +68,8 @@ export async function saveNote(
   now: Date,
   /** For pages: the template revision the text is now based on (see SaveNoteRequest). */
   templateRevision?: number,
+  /** For templates: the first page the new revision applies to (see SaveTemplateRequest). */
+  appliesFrom?: string,
 ): Promise<SaveResult> {
   try {
     return await db.transaction().execute(async (trx) => {
@@ -95,7 +97,7 @@ export async function saveNote(
           deleted_at: null,
         }
         await trx.insertInto('notes').values(row).execute()
-        await addRevision(trx, row.id, 1, content, now)
+        await addRevision(trx, row.id, 1, content, now, appliesFrom)
         return { status: 'saved', note: toNote(row), merged: false }
       }
 
@@ -121,7 +123,11 @@ export async function saveNote(
           : { template_id: template.id, template_revision: templateRevision ?? null }
       const sameTemplate =
         templateRevision === undefined || templateRevision === current.template_revision
-      if (next === current.content && sameTemplate) {
+      // The same template text applied from another page is a new revision all the same.
+      const sameStart =
+        appliesFrom === undefined ||
+        appliesFrom === (await revisionAppliesFrom(trx, current.id, current.revision))
+      if (next === current.content && sameTemplate && sameStart) {
         throw new NoWrite({ status: 'saved', note: toNote(current), merged })
       }
 
@@ -134,7 +140,7 @@ export async function saveNote(
         ...templated,
       }
       await trx.updateTable('notes').set(changes).where('id', '=', current.id).execute()
-      await addRevision(trx, current.id, changes.revision, next, now)
+      await addRevision(trx, current.id, changes.revision, next, now, appliesFrom)
       return { status: 'saved', note: toNote({ ...current, ...changes }), merged }
     })
   } catch (error) {
@@ -276,11 +282,32 @@ async function addRevision(
   revision: number,
   content: string,
   now: Date,
+  appliesFrom?: string,
 ) {
   await trx
     .insertInto('note_revisions')
-    .values({ note_id: noteId, revision, content, created_at: now.toISOString() })
+    .values({
+      note_id: noteId,
+      revision,
+      content,
+      created_at: now.toISOString(),
+      applies_from: appliesFrom ?? null,
+    })
     .execute()
+}
+
+async function revisionAppliesFrom(
+  trx: Transaction<DB>,
+  noteId: string,
+  revision: number,
+): Promise<string | null> {
+  const row = await trx
+    .selectFrom('note_revisions')
+    .select('applies_from')
+    .where('note_id', '=', noteId)
+    .where('revision', '=', revision)
+    .executeTakeFirst()
+  return row?.applies_from ?? null
 }
 
 export function toNote(row: NoteRow): Note {

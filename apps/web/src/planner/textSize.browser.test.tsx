@@ -16,23 +16,17 @@ function Pages({ size }: { size: 'small' | 'medium' | 'large' }) {
       <nav className="week-strip" aria-label="Week">
         <span>Week 44</span>
       </nav>
-      <section className="page" data-editable data-text-size={size} aria-label="Editable">
+      <section className="page" data-text-size={size} aria-label="Page">
         <header className="page-header">
           <h2>Monday</h2>
           <p className="page-subtitle">October 26</p>
         </header>
         <PageEditor
-          label="Editable page"
+          label="Page"
           value={'# Heading\n\nfirst line\nsecond line\nthird line'}
           onChange={() => undefined}
           weekRule={{ firstDay: 1, minimalDays: 4 }}
         />
-      </section>
-      <section className="page" data-text-size={size} aria-label="Neighbour">
-        <header className="page-header">
-          <h2>Tuesday</h2>
-        </header>
-        <div className="page-content">Read only</div>
       </section>
     </>
   )
@@ -52,11 +46,9 @@ describe('text size styles in a real browser', () => {
   ] as const)('scales the page text and titles at %s, and nothing else', async (size, scale) => {
     await render(<Pages size={size} />)
 
-    expect(px('.page[data-editable] .cm-content')).toBeCloseTo(16 * scale)
-    expect(px('.page[data-editable] h2')).toBeCloseTo(24 * scale)
-    expect(px('.page[data-editable] .page-subtitle')).toBeCloseTo(14 * scale)
-    expect(px('.page:not([data-editable]) .page-content')).toBeCloseTo(16 * scale)
-    expect(px('.page:not([data-editable]) h2')).toBeCloseTo(24 * scale)
+    expect(px('.page .cm-content')).toBeCloseTo(16 * scale)
+    expect(px('.page h2')).toBeCloseTo(24 * scale)
+    expect(px('.page .page-subtitle')).toBeCloseTo(14 * scale)
     // Outside the pages nothing changes.
     expect(px('.week-strip')).toBe(16)
   })
@@ -64,7 +56,7 @@ describe('text size styles in a real browser', () => {
   it('scales headings with the text', async () => {
     await render(<Pages size="large" />)
 
-    expect(px('.page[data-editable] .cm-h1')).toBeCloseTo(16 * 1.25 * 1.6)
+    expect(px('.page .cm-h1')).toBeCloseTo(16 * 1.25 * 1.6)
   })
 
   it('puts the cursor on the clicked line after the size changed', async () => {

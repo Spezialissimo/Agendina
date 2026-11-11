@@ -10,6 +10,7 @@ import {
   SaveTemplateResponse,
   SettingsResponse,
   TemplateConflict,
+  TemplateForPageResponse,
   TemplateResponse,
   TemplateRevisionResponse,
   UserResponse,
@@ -108,18 +109,31 @@ export class Api {
     return (await this.call('GET', `/api/templates/${kind}`, TemplateResponse)).template
   }
 
-  /** Saves the template on top of `baseRevision`, like `saveNote`. */
+  /**
+   * Saves the template on top of `baseRevision`, like `saveNote`. The new revision applies to
+   * pages nobody wrote yet from `appliesFrom` on (by default, from the start).
+   */
   async saveTemplate(
     kind: NoteKind,
     content: string,
     baseRevision: number,
+    appliesFrom?: DayKey,
   ): Promise<SaveTemplateResult> {
     return this.saveOrConflict(
       `/api/templates/${kind}`,
-      { content, baseRevision },
+      { content, baseRevision, appliesFrom },
       SaveTemplateResponse,
       TemplateConflict,
     )
+  }
+
+  /** The template revision page `key` starts from while nobody wrote it; null if none applies. */
+  async templateFor(
+    kind: NoteKind,
+    key: DayKey,
+  ): Promise<{ revision: number; content: string } | null> {
+    const path = `/api/templates/${kind}/for/${key}`
+    return (await this.call('GET', path, TemplateForPageResponse)).template
   }
 
   async templateRevision(kind: NoteKind, revision: number): Promise<string> {

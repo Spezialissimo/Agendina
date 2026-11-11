@@ -1,12 +1,14 @@
 import type { Kysely } from 'kysely'
 import { Migrator, type Migration } from 'kysely/migration'
 import * as initial from './migrations/0001-initial.ts'
+import * as templateAppliesFrom from './migrations/0002-template-applies-from.ts'
 import type { DB } from './schema.ts'
 
 // Migrations are listed in code (not read from a folder) so they survive bundling.
 // Never edit a released migration: add a new one.
 const MIGRATIONS: Record<string, Migration> = {
   '0001-initial': initial,
+  '0002-template-applies-from': templateAppliesFrom,
 }
 
 export async function migrateToLatest(db: Kysely<DB>): Promise<void> {

@@ -3,7 +3,7 @@ import { merge3, type MergeChunk } from '@agendina/core'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApi } from '../app/AppProviders.tsx'
-import { useTemplate } from '../templates/useTemplate.ts'
+import { useTemplateFor } from '../templates/useTemplate.ts'
 
 export type SaveStatus = 'loading' | 'saved' | 'dirty' | 'saving' | 'offline' | 'conflict'
 
@@ -38,7 +38,7 @@ export function useNoteDocument(kind: NoteKind, key: string) {
     queryKey,
     queryFn: () => api.getNote(kind, key),
   })
-  const template = useTemplate(kind)
+  const template = useTemplateFor(kind, key)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<SaveStatus>('loading')
   const [conflict, setConflict] = useState<{ current: Note; chunks: MergeChunk[] } | undefined>(

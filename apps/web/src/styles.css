@@ -351,6 +351,60 @@ button {
   color: var(--accent-ink);
 }
 
+/* The week picker: the month in rows, each row a button for its week. */
+.week-grid {
+  display: grid;
+}
+
+.week-grid-row {
+  display: grid;
+  grid-template-columns: repeat(8, 2.1rem);
+  align-items: center;
+  height: 2.1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+}
+
+.week-grid-head {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+button.week-grid-row:hover {
+  background: var(--chip);
+}
+
+.week-grid-number {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.week-grid-row [data-outside] {
+  color: var(--ink-soft);
+  opacity: 0.6;
+}
+
+.week-grid-row [data-today] {
+  font-weight: 700;
+}
+
+/* The chosen week stays the same under the pointer; its days take its colours. */
+button.week-grid-row[aria-current] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.week-grid-row[aria-current] span {
+  color: inherit;
+  opacity: 1;
+}
+
 /* Pages */
 
 .pages {
@@ -654,9 +708,10 @@ button {
   overflow: auto;
 }
 
-/* Read-only note pages; the calendar is not a note, so it is never dimmed. */
-.page:not([data-editable], .calendar-page) {
-  opacity: 0.6;
+/* The page of the selected day or week: its neighbours are written in too, so only its edge
+   tells it apart. */
+.page[aria-current] {
+  border-color: var(--ink-soft);
 }
 
 .page-header {
@@ -696,17 +751,67 @@ button {
   --text-scale: 1.25;
 }
 
-.template-notice {
-  margin: 0.75rem 0 0;
-  font-size: 0.8rem;
-  color: var(--ink-soft);
+/* Settings and the template editor sit in the middle of the screen; the palette stays high. */
+.palette-backdrop.dialog-backdrop {
+  align-items: center;
+  padding: 1rem 0;
+}
+
+/* Only the template's text scrolls: the actions stay at the bottom, and nothing clips the
+   calendar of the save button. */
+.template-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, 60rem);
+  max-height: calc(100vh - 2rem);
+  background: var(--page);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem 1.25rem 1.25rem;
 }
 
 .template-editor,
 .template-pages {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  margin-top: 1.25rem;
+  min-height: 0;
+}
+
+.template-pages,
+.template-dialog > .conflict {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.template-editor .editor {
+  flex: 1 1 auto;
+  min-height: 6rem;
+  overflow-y: auto;
+}
+
+/* Save, and the arrow that picks the page it applies from: one button in two parts. */
+.split-button {
+  position: relative;
+  display: flex;
+  gap: 1px;
+}
+
+.split-button > .primary:first-of-type {
+  border-radius: 8px 0 0 8px;
+}
+
+.split-button > .primary:last-of-type {
+  display: grid;
+  place-items: center;
+  padding: 0 0.5rem;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Floats over the editor, above the button at the bottom of the pop-up: it never resizes it. */
+.template-apply-from.month-calendar {
+  top: auto;
+  bottom: calc(100% + 0.5rem);
 }
 
 .template-editor h3,
@@ -732,25 +837,9 @@ button {
   font-size: calc(0.875rem * var(--text-scale));
 }
 
-.page-content {
-  margin-top: 1.25rem;
-  white-space: pre-wrap;
-  font-family: var(--font-serif);
-  font-size: calc(1rem * var(--text-scale));
-  line-height: 1.6;
-}
-
-.page-open {
-  position: absolute;
-  inset: 0;
-  background: none;
-  border: 0;
-  border-radius: var(--radius);
-}
-
 /* Focus mode (ADR 0013): while the user works in a page with the keyboard, everything else fades
-   and its buttons hide. Problems (alerts, offline, conflicts) and the template editor's own
-   actions stay fully visible. */
+   and its buttons hide. Problems (alerts, offline, conflicts) stay fully visible. Pop-ups (the
+   template editor, Settings) pause it. */
 
 .topbar,
 .page,
@@ -786,9 +875,7 @@ button {
   filter: grayscale(1);
 }
 
-.planner[data-focus-mode]
-  :is(.topbar, .page)
-  button:not(.template-editor button, .conflict button) {
+.planner[data-focus-mode] :is(.topbar, .page) button:not(.conflict button) {
   opacity: 0;
   pointer-events: none;
 }
@@ -874,8 +961,8 @@ button {
 
 .settings {
   width: min(92vw, 36rem);
-  /* Below the backdrop's top padding: a taller dialog scrolls instead of running off the screen. */
-  max-height: calc(85vh - 1rem);
+  /* A taller dialog scrolls instead of running off the screen. */
+  max-height: calc(100vh - 2rem);
   overflow-y: auto;
   background: var(--page);
   border-radius: var(--radius);

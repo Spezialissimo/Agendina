@@ -21,8 +21,19 @@ export async function saveTemplate(
   content: string,
   baseRevision: number,
   now: Date,
+  appliesFrom?: DayKey,
 ) {
-  const result = await saveNote(db, userId, 'template', kind, content, baseRevision, now)
+  const result = await saveNote(
+    db,
+    userId,
+    'template',
+    kind,
+    content,
+    baseRevision,
+    now,
+    undefined,
+    appliesFrom,
+  )
   if (result.status === 'conflict') {
     return { ...result, current: fromNote(kind, result.current) }
   }
@@ -45,6 +56,36 @@ export async function getTemplateRevision(
     .where('note_revisions.revision', '=', revision)
     .executeTakeFirst()
   return row?.content
+}
+
+/**
+ * The revision a `kind` page nobody wrote yet starts from: the latest one applied from `key` or an
+ * earlier page (null: from the start). Undefined when none applies to it.
+ */
+export async function templateForPage(
+  db: Database,
+  userId: string,
+  kind: NoteKind,
+  key: DayKey,
+): Promise<{ revision: number; content: string } | undefined> {
+  const row = await db
+    .selectFrom('note_revisions')
+    .innerJoin('notes', 'notes.id', 'note_revisions.note_id')
+    .select(['note_revisions.revision', 'note_revisions.content'])
+    .where('notes.user_id', '=', userId)
+    .where('notes.kind', '=', 'template')
+    .where('notes.key', '=', kind)
+    .where('notes.deleted_at', 'is', null)
+    .where((eb) =>
+      eb.or([
+        eb('note_revisions.applies_from', 'is', null),
+        eb('note_revisions.applies_from', '<=', key),
+      ]),
+    )
+    .orderBy('note_revisions.revision', 'desc')
+    .limit(1)
+    .executeTakeFirst()
+  return row
 }
 
 /** The pages created from the template, from `from` onwards: the ones a template edit updates. */

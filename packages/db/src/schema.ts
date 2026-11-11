@@ -60,6 +60,8 @@ interface NoteRevisionsTable {
   revision: number
   content: string
   created_at: string
+  /** Template revisions: the first page they apply to; null from the start (ADR 0008). */
+  applies_from: ColumnType<string | null, string | null | undefined, string | null>
 }
 
 interface UserSettingsTable {

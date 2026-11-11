@@ -267,7 +267,7 @@ describe('focus follows navigation', () => {
       await expectFocusIn('Week 45')
     })
 
-    it('never a read-only neighbour page', async () => {
+    it('the selected page, not a neighbour of the same kind', async () => {
       const layout: Layout = {
         type: 'split',
         id: 'pages',
@@ -289,7 +289,8 @@ describe('focus follows navigation', () => {
       }
       await api.saveSettings(settingsWithLayout(layout))
       const { user } = await open('/day/2026-10-28')
-      await editor('Wednesday, October 28, 2026')
+      // Writing in yesterday's page, a neighbour.
+      placeCursor(await editor('Tuesday, October 27, 2026'), 0)
 
       await user.keyboard(NEXT_DAY)
 
@@ -396,38 +397,6 @@ describe('focus follows navigation', () => {
       await click(user, within(strip()).getByRole('button', { name: 'Next week' }))
 
       await expectFocusIn('Wednesday, November 4, 2026')
-    })
-
-    it('the day page opened from a read-only neighbour', async () => {
-      const layout: Layout = {
-        type: 'split',
-        id: 'pages',
-        direction: 'row',
-        children: [
-          {
-            size: 1,
-            node: {
-              type: 'panel',
-              id: 'yesterday',
-              panel: { type: 'note', kind: 'day', offset: -1 },
-            },
-          },
-          {
-            size: 2,
-            node: { type: 'panel', id: 'today', panel: { type: 'note', kind: 'day', offset: 0 } },
-          },
-        ],
-      }
-      await api.saveSettings(settingsWithLayout(layout))
-      const { user } = await open('/day/2026-10-28')
-      const yesterday = await screen.findByRole('region', { name: 'Tuesday, October 27, 2026' })
-
-      await click(
-        user,
-        within(yesterday).getByRole('button', { name: 'Open Tuesday, October 27, 2026' }),
-      )
-
-      await expectFocusIn('Tuesday, October 27, 2026')
     })
 
     it('not when merely hovering the strip', async () => {
@@ -561,39 +530,6 @@ describe('focus follows navigation', () => {
       // A keyboard attached to the tablet still moves focus.
       await user.keyboard(NEXT_DAY)
       await expectFocusIn('Friday, October 30, 2026')
-    })
-  })
-
-  describe('template editing', () => {
-    const editDayTemplate = async (user: ReturnType<typeof renderApp>['user']) => {
-      await user.click(screen.getByRole('button', { name: 'Settings' }))
-      await user.click(screen.getByRole('button', { name: 'Edit day template' }))
-      return editor('Day template')
-    }
-
-    it('keeps typing in the template editor when you were editing the template', async () => {
-      const { user } = await open('/day/2026-10-28')
-      await editor('Wednesday, October 28, 2026')
-      placeCursor(await editDayTemplate(user), 0)
-
-      await user.keyboard(NEXT_DAY)
-
-      await editor('Week 44')
-      const thursday = await screen.findByRole('region', { name: 'Thursday, October 29, 2026' })
-      const template = await expectFocusIn('Day template')
-      expect(thursday).toContainElement(template)
-    })
-
-    it('leaves the template editor on the other side open, focusing the week page', async () => {
-      const { user } = await open('/day/2026-10-28')
-      await editor('Wednesday, October 28, 2026')
-      await editDayTemplate(user)
-      placeCursor(await editor('Week 44'), 0)
-
-      await user.keyboard(NEXT_WEEK)
-
-      await expectFocusIn('Week 45')
-      expect(screen.getByRole('textbox', { name: 'Day template' })).toBeInTheDocument()
     })
   })
 

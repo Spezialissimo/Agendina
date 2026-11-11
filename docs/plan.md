@@ -96,14 +96,15 @@ Phases are done in this order. Each one is detailed below.
 - **Phase 8 — Several named layouts**
 - **Phase 9 — Week strip panel and collapsible panels**
 - **Phase 10 — Mobile view and PWA**, then remove focus mode
-- **Phase 11 — Layout presets**
-- **Phase 12 — Offline sync with client-side merge**
-- **Phase 13 — Shortcut editor UI**
-- **Phase 14 — Table-aware merge**
-- **Phase 15 — E2E encryption**
-- **Phase 16 — License decision**
-- **Phase 17 — Freemium entitlements and hosted deployment**
-- **Phase 18 — Capacitor app** (only if the PWA turns out not to be enough)
+- **Phase 11 — Settings page overhaul**
+- **Phase 12 — Layout presets**
+- **Phase 13 — Offline sync with client-side merge**
+- **Phase 14 — Shortcut editor UI**
+- **Phase 15 — Table-aware merge**
+- **Phase 16 — E2E encryption**
+- **Phase 17 — License decision**
+- **Phase 18 — Freemium entitlements and hosted deployment**
+- **Phase 19 — Capacitor app** (only if the PWA turns out not to be enough)
 
 ### Phase 7 — Layout editor
 Layouts are already data (ADR 0005): a JSON tree stored in the user's settings and validated by
@@ -126,7 +127,7 @@ open (ADR 0005).
 
 ### Phase 8 — Several named layouts
 Settings hold one layout tree today, with the splitter sizes inside it. This phase lets users
-keep several, which the phone (Phase 10) and the presets (Phase 11) both need.
+keep several, which the phone (Phase 10) and the presets (Phase 12) both need.
 
 Acceptance criteria (decided 2026-11-10):
 - Settings keep several layouts, each with a name and its own splitter sizes, so switching never
@@ -149,9 +150,13 @@ as the only preset. Next: a release later, drop the single `layout` setting.
 
 Right after it, a small PR: **neighbour pages become editable**. The days and weeks before and
 after the selected one (offset ≠ 0) are no longer read-only, and clicking one no longer selects
-its day: it is written in where it is, like the selected page. To decide in that PR: what
-"Edit template" and "focus follows navigation" do with several editable pages of one kind, and
-updating ADR 0005 ("Offset 0 is editable; other panels are read-only").
+its day: it is written in where it is, like the selected page.
+
+Done (branch `feat/editable-neighbours`, ADR 0005 and 0008): every note page is written in;
+the selected one (offset 0) keeps a darker edge and is where navigation puts the cursor. The
+template editor became a pop-up: a first template starts empty, and "Save and apply from …"
+applies it from the selected page or from a day or week picked in the calendar of its arrow.
+Next: a shortcut to move the cursor between panels.
 
 ### Phase 9 — Week strip panel and collapsible panels
 Panels the mobile view needs, useful on desktop too.
@@ -176,7 +181,13 @@ Acceptance criteria (to be refined before writing tests):
 
 Right after it: remove focus mode (ADR 0013).
 
-### Phase 11 — Layout presets
+### Phase 11 — Settings page overhaul
+Settings has grown one section at a time (weeks, focus, layouts, templates, export) in a single
+pop-up. Rework it as a whole once the mobile view (Phase 10) shows what it needs there.
+
+Acceptance criteria: to be decided with the user before writing tests.
+
+### Phase 12 — Layout presets
 Today only Open planner is offered. Keep it small: a few desktop presets, built on the layout
 editor and the named layouts (Phase 8).
 
@@ -189,16 +200,16 @@ Acceptance criteria (to be refined with the user before writing tests):
 - The layout editor can reset to any preset, not only Open planner.
 - Switching presets never loses note content.
 
-### Phases 12–18
-- **Phase 12 — Offline sync with client-side merge**: needs an ADR first; must say how merging
+### Phases 13–19
+- **Phase 13 — Offline sync with client-side merge**: needs an ADR first; must say how merging
   would work under E2E encryption (the server cannot merge what it cannot read). Before
   starting: review merge correctness (property tests in `core`), as merges become far more
   frequent.
-- **Phase 13 — Shortcut editor UI**: per-user overrides already exist in settings (ADR 0007).
-- **Phase 14 — Table-aware merge**: per-cell merge for tables, also for template propagation.
-- **Phase 15 — E2E encryption**. Before starting: check that no server feature reads note
+- **Phase 14 — Shortcut editor UI**: per-user overrides already exist in settings (ADR 0007).
+- **Phase 15 — Table-aware merge**: per-cell merge for tables, also for template propagation.
+- **Phase 16 — E2E encryption**. Before starting: check that no server feature reads note
   content.
-- **Phase 16 — License decision** (likely AGPL), before any public launch.
-- **Phase 17 — Freemium entitlements and hosted deployment**. Before starting: a security review
+- **Phase 17 — License decision** (likely AGPL), before any public launch.
+- **Phase 18 — Freemium entitlements and hosted deployment**. Before starting: a security review
   of auth, sessions and export.
-- **Phase 18 — Capacitor app**: only if the PWA turns out not to be enough.
+- **Phase 19 — Capacitor app**: only if the PWA turns out not to be enough.

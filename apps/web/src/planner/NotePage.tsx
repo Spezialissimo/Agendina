@@ -1,11 +1,9 @@
 import { addDays, compareDays, type DayKey, type NoteView } from '@agendina/core'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-import { useNavigate } from 'react-router'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { usePlannerContext } from './PlannerContext.tsx'
-import { useFocusRequest, usePageFocus } from './pageFocus.ts'
-import type { TemplateEdit } from './templateEdit.ts'
+import { useFocusRequest } from './pageFocus.ts'
 import { nextTextSize, TEXT_SIZE_LABEL, useTextSize, writeTextSize } from './textSize.ts'
 import { pageLabel, pageSubtitle, pageTitle } from './weeks.ts'
 import { ConflictResolver } from '../editor/ConflictResolver.tsx'
@@ -20,8 +18,6 @@ import {
   type PageSelection,
 } from '../editor/pagePositions.ts'
 import { useNoteDocument, type SaveStatus } from '../editor/useNoteDocument.ts'
-import { TemplateEditor } from '../templates/TemplateEditor.tsx'
-import { useTemplate } from '../templates/useTemplate.ts'
 
 /**
  * The key of the note shown for `view`. A week page is keyed by the week's first day, but pages
@@ -43,24 +39,13 @@ function usePageKey(view: Pick<NoteView, 'kind' | 'key'>): DayKey | undefined {
   return keys.includes(view.key) ? view.key : (keys[0] ?? view.key)
 }
 
-/** One page of the planner: a day or a week. Read-only neighbours open their day when clicked. */
+/** One page of the planner: a day or a week, written in where it is. */
 export function NotePage({ view }: { view: NoteView }) {
-  const api = useApi()
   const locale = useLocale()
-  const navigate = useNavigate()
-  const { weekRule, templateEdits, closeTemplate } = usePlannerContext()
-  const editingTemplate = templateEdits[view.kind]
+  const { weekRule } = usePlannerContext()
   const pageKey = usePageKey(view)
-  const note = useQuery({
-    queryKey: ['note', view.kind, pageKey],
-    queryFn: () => api.getNote(view.kind, pageKey ?? view.key),
-    enabled: pageKey !== undefined,
-  })
-  const template = useTemplate(view.kind)
   const focusRequest = useFocusRequest(view)
-  const { focusAfterNavigation } = usePageFocus()
   const textSize = useTextSize(view.kind)
-  const [notice, setNotice] = useState<{ key: string; text: string } | undefined>(undefined)
 
   const title = pageTitle(view.kind, view.key, locale, weekRule)
   const subtitle = pageSubtitle(view.kind, view.key, locale)
@@ -71,112 +56,35 @@ export function NotePage({ view }: { view: NoteView }) {
     <section
       className="page"
       aria-label={label}
-      data-editable={view.editable || undefined}
+      aria-current={view.selected || undefined}
       data-page-kind={view.kind}
       data-text-size={textSize}
     >
       <header className="page-header">
         <h2>{title}</h2>
         <p className="page-subtitle">{subtitle}</p>
-        {view.editable && (
-          <button
-            type="button"
-            className="link page-text-size"
-            // The name starts with the visible "Aa" (WCAG 2.5.3, label in name).
-            aria-label={`Aa, text size: ${TEXT_SIZE_LABEL[textSize]}`}
-            title={`Text size: ${TEXT_SIZE_LABEL[textSize]}`}
-            onClick={() => {
-              writeTextSize(view.kind, nextTextSize(textSize))
-            }}
-          >
-            Aa
-          </button>
-        )}
-      </header>
-      {notice !== undefined && notice.key === pageKey && (
-        <p className="template-notice" aria-live="polite">
-          {notice.text}
-        </p>
-      )}
-      {pageKey === undefined ? null : view.editable && editingTemplate !== undefined ? (
-        <TemplateEditing
-          edit={editingTemplate}
-          autoFocus={view.key === editingTemplate.key}
-          focusRequest={focusRequest}
-          onClose={(text) => {
-            closeTemplate(editingTemplate)
-            if (text !== undefined) setNotice({ key: pageKey, text })
+        <button
+          type="button"
+          className="link page-text-size"
+          // The name starts with the visible "Aa" (WCAG 2.5.3, label in name).
+          aria-label={`Aa, text size: ${TEXT_SIZE_LABEL[textSize]}`}
+          title={`Text size: ${TEXT_SIZE_LABEL[textSize]}`}
+          onClick={() => {
+            writeTextSize(view.kind, nextTextSize(textSize))
           }}
-        />
-      ) : view.editable ? (
+        >
+          Aa
+        </button>
+      </header>
+      {pageKey !== undefined && (
         <EditablePage
           key={`${view.kind}/${pageKey}`}
           view={{ ...view, key: pageKey }}
           label={label}
           focusRequest={focusRequest}
         />
-      ) : (
-        <div className="page-content">
-          {note.data === null ? (template.data?.content ?? '') : (note.data?.content ?? '')}
-        </div>
-      )}
-      {view.focusOnClick !== undefined && (
-        <button
-          type="button"
-          className="page-open"
-          aria-label={`Open ${view.kind === 'day' ? label : `${label} (${subtitle})`}`}
-          onClick={() => {
-            if (view.focusOnClick === undefined) return
-            focusAfterNavigation(view.focusOnClick, 'day')
-            void navigate(`/day/${view.focusOnClick}`)
-          }}
-        />
       )}
     </section>
-  )
-}
-
-/**
- * The template editor for `edit`, shown on the page of its kind that is on screen. It works on
- * the page the edit started from, which may be another one by now: a first template is copied
- * from that page and linked to it.
- */
-function TemplateEditing({
-  edit,
-  autoFocus,
-  focusRequest,
-  onClose,
-}: {
-  edit: TemplateEdit
-  autoFocus: boolean
-  focusRequest: { id: number; done: () => void } | undefined
-  onClose: (notice?: string) => void
-}) {
-  const api = useApi()
-  const { setTemplateDraft } = usePlannerContext()
-  const pageKey = usePageKey(edit)
-  const page = useQuery({
-    queryKey: ['note', edit.kind, pageKey],
-    queryFn: () => api.getNote(edit.kind, pageKey ?? edit.key),
-    enabled: pageKey !== undefined,
-  })
-  const template = useTemplate(edit.kind)
-  if (pageKey === undefined || page.data === undefined || template.data === undefined) return null
-  return (
-    <TemplateEditor
-      key={`${edit.kind}/${edit.key}`}
-      kind={edit.kind}
-      pageKey={pageKey}
-      template={template.data}
-      pageText={page.data?.content ?? ''}
-      draft={edit.draft}
-      autoFocus={autoFocus}
-      onDraftChange={(text) => {
-        setTemplateDraft(edit, text)
-      }}
-      focusRequest={focusRequest}
-      onClose={onClose}
-    />
   )
 }
 

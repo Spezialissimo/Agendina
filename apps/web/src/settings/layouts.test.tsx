@@ -285,24 +285,6 @@ describe('named layouts', () => {
       expect(separator()).toHaveAttribute('aria-valuenow', '65')
     })
 
-    it('closes a template edit whose page the chosen layout does not show', async () => {
-      const { user } = await start()
-      await dayOnlyLayout(user)
-      await openSettings(user)
-      await user.click(list().getByRole('radio', { name: 'Open planner' }))
-      await user.click(dialog().getByRole('button', { name: 'Edit week template' }))
-      expect(await screen.findByRole('textbox', { name: 'Week template' })).toBeInTheDocument()
-
-      await openSettings(user)
-      await user.click(list().getByRole('radio', { name: 'Custom layout 1' }))
-      await user.click(list().getByRole('radio', { name: 'Open planner' }))
-      await closeSettings(user)
-
-      // The week page is back as a page to write in, not as the template edit left behind.
-      expect(await screen.findByRole('textbox', { name: 'Week 44' })).toBeInTheDocument()
-      expect(screen.queryByRole('textbox', { name: 'Week template' })).not.toBeInTheDocument()
-    })
-
     it('shows the chosen layout after a reload', async () => {
       const first = await start()
       await dayOnlyLayout(first.user)

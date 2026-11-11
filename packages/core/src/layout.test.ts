@@ -4,7 +4,7 @@ import { ISO_WEEK, US_WEEK, isDayKey } from './calendar.ts'
 import {
   MIN_PANE_SIZE,
   OPEN_PLANNER,
-  editableNote,
+  selectedNote,
   resolveLayout,
   setSplitSizes,
   type Layout,
@@ -25,7 +25,7 @@ const row = (id: string, ...children: [Layout, number][]): Layout => ({
 })
 
 describe('OPEN_PLANNER', () => {
-  it('shows the focused week on the left and the focused day on the right, both editable', () => {
+  it('shows the focused week on the left and the focused day on the right, both selected', () => {
     expect(resolveLayout(OPEN_PLANNER, '2026-10-24', ISO_WEEK)).toEqual({
       type: 'split',
       id: 'pages',
@@ -36,7 +36,7 @@ describe('OPEN_PLANNER', () => {
           node: {
             type: 'panel',
             id: 'week',
-            view: { type: 'note', kind: 'week', key: '2026-10-19', editable: true },
+            view: { type: 'note', kind: 'week', key: '2026-10-19', selected: true },
           },
         },
         {
@@ -44,7 +44,7 @@ describe('OPEN_PLANNER', () => {
           node: {
             type: 'panel',
             id: 'day',
-            view: { type: 'note', kind: 'day', key: '2026-10-24', editable: true },
+            view: { type: 'note', kind: 'day', key: '2026-10-24', selected: true },
           },
         },
       ],
@@ -53,19 +53,19 @@ describe('OPEN_PLANNER', () => {
 })
 
 describe('resolveLayout', () => {
-  it('makes neighbour days read-only, and clicking them focuses that day', () => {
+  it('shows neighbour days as pages of their own, not selected', () => {
     const layout = row('r', [note('yesterday', 'day', -1), 1], [note('tomorrow', 'day', 1), 1])
 
     expect(resolveLayout(layout, '2026-10-19', ISO_WEEK)).toMatchObject({
       children: [
         {
           node: {
-            view: { kind: 'day', key: '2026-10-18', editable: false, focusOnClick: '2026-10-18' },
+            view: { kind: 'day', key: '2026-10-18', selected: false },
           },
         },
         {
           node: {
-            view: { kind: 'day', key: '2026-10-20', editable: false, focusOnClick: '2026-10-20' },
+            view: { kind: 'day', key: '2026-10-20', selected: false },
           },
         },
       ],
@@ -88,8 +88,16 @@ describe('resolveLayout', () => {
       ],
     })
     // A calendar is not a page to write in.
-    expect(editableNote(resolved, 'day')).toMatchObject({ key: '2026-10-24' })
-    expect(editableNote(resolved, 'week')).toBeUndefined()
+    expect(selectedNote(resolved, 'day')).toMatchObject({ key: '2026-10-24' })
+    expect(selectedNote(resolved, 'week')).toBeUndefined()
+  })
+
+  it('finds the selected page of a kind among its neighbours', () => {
+    const layout = row('r', [note('yesterday', 'day', -1), 1], [note('today', 'day', 0), 1])
+
+    expect(selectedNote(resolveLayout(layout, '2026-10-24', ISO_WEEK), 'day')).toMatchObject({
+      key: '2026-10-24',
+    })
   })
 
   it('keys week notes by the first day of the week, following the week rule', () => {
@@ -103,13 +111,11 @@ describe('resolveLayout', () => {
     })
   })
 
-  it('moves the focus by whole weeks when a neighbour week is clicked', () => {
+  it('shows the week a whole number of weeks away for a neighbour week', () => {
     const layout = row('r', [note('next', 'week', 1), 1])
 
     expect(resolveLayout(layout, '2026-12-30', ISO_WEEK)).toMatchObject({
-      children: [
-        { node: { view: { key: '2027-01-04', editable: false, focusOnClick: '2027-01-06' } } },
-      ],
+      children: [{ node: { view: { key: '2027-01-04', selected: false } } }],
     })
   })
 
@@ -141,7 +147,7 @@ describe('resolveLayout', () => {
                 node: {
                   type: 'panel',
                   id: 'a',
-                  view: { type: 'note', kind: 'day', key: '2026-10-24', editable: true },
+                  view: { type: 'note', kind: 'day', key: '2026-10-24', selected: true },
                 },
               },
             ],
@@ -151,7 +157,7 @@ describe('resolveLayout', () => {
     })
   })
 
-  it('always produces valid note keys, and only offset 0 is editable', () => {
+  it('always produces valid note keys, and only offset 0 is selected', () => {
     const anyDay = fc
       .date({
         min: new Date(Date.UTC(1950, 0, 1)),
@@ -172,7 +178,7 @@ describe('resolveLayout', () => {
             first?.type === 'panel' && first.view.type === 'note' ? first.view : undefined
 
           expect(view !== undefined && isDayKey(view.key)).toBe(true)
-          expect(view?.editable).toBe(offset === 0)
+          expect(view?.selected).toBe(offset === 0)
         },
       ),
     )
@@ -245,22 +251,22 @@ describe('setSplitSizes', () => {
   })
 })
 
-describe('editableNote', () => {
+describe('selectedNote', () => {
   const rule = ISO_WEEK
 
-  it('finds the page of a kind that can be written in', () => {
+  it('finds the selected page of a kind', () => {
     const layout = resolveLayout(OPEN_PLANNER, '2026-10-28', rule)
-    expect(editableNote(layout, 'week')).toMatchObject({ kind: 'week', key: '2026-10-26' })
-    expect(editableNote(layout, 'day')).toMatchObject({ kind: 'day', key: '2026-10-28' })
+    expect(selectedNote(layout, 'week')).toMatchObject({ kind: 'week', key: '2026-10-26' })
+    expect(selectedNote(layout, 'day')).toMatchObject({ kind: 'day', key: '2026-10-28' })
   })
 
-  it('ignores read-only neighbours and kinds the layout does not show', () => {
+  it('ignores neighbours and kinds the layout does not show', () => {
     const layout = resolveLayout(
       row('r', [note('prev', 'day', -1), 1], [note('w', 'week', 1), 1]),
       '2026-10-28',
       rule,
     )
-    expect(editableNote(layout, 'day')).toBeUndefined()
-    expect(editableNote(layout, 'week')).toBeUndefined()
+    expect(selectedNote(layout, 'day')).toBeUndefined()
+    expect(selectedNote(layout, 'week')).toBeUndefined()
   })
 })

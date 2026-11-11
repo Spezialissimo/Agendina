@@ -17,9 +17,9 @@ right, both editable, with a draggable splitter whose size is remembered.
 
 Layouts are data: a JSON tree of row/column splits whose panels are relative to the focused
 day, e.g. `note(day, 0)` (the focused day), `note(day, -1)` (the day before), `note(week, 0)` (the
-week containing the focused day), `note(week, 1)` (the next week). Offset 0 is editable; other
-panels are read-only and clicking one moves the focus there. Split sizes are fractions, at least
-`MIN_PANE_SIZE` each, addressed by split id when the user drags a splitter. The week strip is
+week containing the focused day), `note(week, 1)` (the next week). Offset 0 is the selected
+page; the others are its neighbours, written in too since 2026-11 (see below). Split sizes are
+fractions, at least `MIN_PANE_SIZE` each, addressed by split id when the user drags a splitter. The week strip is
 fixed chrome above the tree, not a panel. Implemented in `packages/core/src/layout.ts`.
 
 Refinement (Phase 1): the focus is just a day. The day/week "granularity swap" of the first
@@ -96,6 +96,14 @@ active layout per type of screen (desktop, phone), so every desktop shows the sa
   layout (dropped at the limit); no layout's arrangement is ever replaced. The server validates
   the merged result before storing it. Drop `layout` a release later, once no tab can still run
   the old code.
+
+Refinement (editable neighbours, 2026-11): neighbours are no longer read-only. Every note page
+is written in where it is, and clicking one no longer selects its day. Offset 0 is still the
+selected page (`NoteView.selected`, `selectedNote`): a layout needs one (`layoutProblems` is
+unchanged), it is marked (`aria-current`, a darker edge), a navigation puts the cursor in it (the
+one of the kind the user was writing in) and never in a neighbour, and a template change is
+applied from it by default (ADR 0008). A shortcut to move the cursor between panels is still to
+come.
 
 Still to come: more presets, the date selector as a panel, collapsible panels, one visible
 panel on mobile.

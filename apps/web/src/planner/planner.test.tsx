@@ -3,7 +3,7 @@ import { US_WEEK, type Layout } from '@agendina/core'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
-import { editorText } from '../test/editor.ts'
+import { editorText, typeInto } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
 import { settingsWithLayout } from '../test/settings.ts'
 import { PASSWORD, startTestServer, type TestServer } from '../test/server.ts'
@@ -62,8 +62,8 @@ describe('planner', () => {
       expect(days[0]).toHaveAccessibleName(/^Sun 25/)
     })
 
-    it('shows neighbour pages read-only, and clicking one opens that day', async () => {
-      const layout: Layout = {
+    describe('neighbour pages', () => {
+      const yesterdayAndToday: Layout = {
         type: 'split',
         id: 'pages',
         direction: 'row',
@@ -80,20 +80,48 @@ describe('planner', () => {
             size: 2,
             node: { type: 'panel', id: 'today', panel: { type: 'note', kind: 'day', offset: 0 } },
           },
+          {
+            size: 1,
+            node: {
+              type: 'panel',
+              id: 'next-week',
+              panel: { type: 'note', kind: 'week', offset: 1 },
+            },
+          },
         ],
       }
-      await api.saveSettings(settingsWithLayout(layout))
-      const { user, router } = renderApp(server, '/day/2026-10-26')
 
-      const yesterday = await screen.findByRole('region', { name: 'Sunday, October 25, 2026' })
-      await user.click(
-        within(yesterday).getByRole('button', { name: 'Open Sunday, October 25, 2026' }),
-      )
+      it('are written in where they are, without selecting their day', async () => {
+        await api.saveNote('day', '2026-10-25', 'Sunday walk', 0)
+        await api.saveSettings(settingsWithLayout(yesterdayAndToday))
+        const { router } = renderApp(server, '/day/2026-10-26')
 
-      expect(router.state.location.pathname).toBe('/day/2026-10-25')
-      expect(
-        await screen.findByRole('region', { name: 'Saturday, October 24, 2026' }),
-      ).toBeInTheDocument()
+        const sunday = await screen.findByRole('textbox', { name: 'Sunday, October 25, 2026' })
+        expect(editorText(sunday)).toBe('Sunday walk')
+        typeInto(sunday, ', then lunch')
+        typeInto(await screen.findByRole('textbox', { name: 'Week 45' }), 'Plan the trip')
+
+        await waitFor(async () => {
+          expect(await api.getNote('day', '2026-10-25')).toMatchObject({
+            content: 'Sunday walk, then lunch',
+          })
+          expect(await api.getNote('week', '2026-11-02')).toMatchObject({
+            content: 'Plan the trip',
+          })
+        })
+        expect(router.state.location.pathname).toBe('/day/2026-10-26')
+        expect(screen.queryByRole('button', { name: /^Open / })).toBeNull()
+      })
+
+      it('are told apart from the selected page', async () => {
+        await api.saveSettings(settingsWithLayout(yesterdayAndToday))
+        renderApp(server, '/day/2026-10-26')
+
+        await screen.findByRole('textbox', { name: 'Sunday, October 25, 2026' })
+        expect(page('Monday, October 26, 2026')).toHaveAttribute('aria-current', 'true')
+        expect(page('Sunday, October 25, 2026')).not.toHaveAttribute('aria-current')
+        expect(page('Week 45')).not.toHaveAttribute('aria-current')
+      })
     })
   })
 

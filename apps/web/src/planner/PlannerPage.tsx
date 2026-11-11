@@ -6,12 +6,11 @@ import {
   canAddLayout,
   isDayKey,
   nextLayoutName,
-  editableNote,
-  panelsOf,
   resolveKeymap,
   resizeLayout,
   resolveLayout,
   saveEditedLayout,
+  weekStart,
   type DayKey,
   type Layout,
 } from '@agendina/core'
@@ -29,29 +28,15 @@ import { addColumn, addRow } from '../editor/tables.ts'
 import { SettingsDialog } from '../settings/SettingsDialog.tsx'
 import { LayoutEditor } from './LayoutEditor.tsx'
 import { LayoutView } from './LayoutView.tsx'
+import { TemplateDialog } from '../templates/TemplateDialog.tsx'
 import { useFocusMode } from './useFocusMode.ts'
-import { closeEdit, startEdit, type TemplateEdit } from './templateEdit.ts'
-import { PlannerContext, type TemplateEdits } from './PlannerContext.tsx'
+import { PlannerContext } from './PlannerContext.tsx'
 import { PageFocus, PageFocusContext, focusTarget, type PageFocusApi } from './pageFocus.ts'
 import { WeekStrip } from './WeekStrip.tsx'
 import { useCurrentDay } from './useCurrentDay.ts'
 import { useLiveUpdates } from './useLiveUpdates.ts'
 import { useSettings } from './useSettings.ts'
 import { nextTextSize, readTextSize, writeTextSize, type PageKind } from './textSize.ts'
-
-function showsEditable(layout: Layout, kind: NoteKind): boolean {
-  return panelsOf(layout).some(
-    ({ panel }) => panel.type === 'note' && panel.kind === kind && panel.offset === 0,
-  )
-}
-
-/** The template edits whose page `layout` shows; `edits` itself when that is all of them. */
-function shownEdits(edits: TemplateEdits, layout: Layout): TemplateEdits {
-  const kinds = Object.keys(edits) as NoteKind[]
-  const shown = kinds.filter((kind) => showsEditable(layout, kind))
-  if (shown.length === kinds.length) return edits
-  return Object.fromEntries(shown.map((kind) => [kind, edits[kind]]))
-}
 
 /** The page being typed in (or last typed in), else the day page. Read when a command runs. */
 function targetPageKind(): PageKind {
@@ -76,8 +61,10 @@ function Planner({ focus }: { focus: DayKey }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // Stays open across navigation: the editor shows on the page of its kind that is being edited.
-  const [templateEdits, setTemplateEdits] = useState<TemplateEdits>({})
+  // The template pop-up: `from` is the selected page of its kind when it opened.
+  const [templateEdit, setTemplateEdit] = useState<{ kind: NoteKind; from: DayKey } | undefined>(
+    undefined,
+  )
   // The layout being edited (`editing` is its id, undefined for a new one), until it is saved
   // or cancelled. Meanwhile the planner shows only the layout editor: no pages, no navigation,
   // no shortcuts.
@@ -106,13 +93,6 @@ function Planner({ focus }: { focus: DayKey }) {
   // A preset is edited as a new copy, for which there must be room.
   const canEditLayout =
     layouts !== undefined && active !== undefined && (!active.preset || canAddLayout(layouts))
-  // An edit no page shows any more would come back, stale, with that page. Whatever changed the
-  // layout (the editor, Settings, another device), so adjusted while rendering the new one.
-  const [editsLayout, setEditsLayout] = useState(layout)
-  if (layout !== editsLayout) {
-    setEditsLayout(layout)
-    if (layout !== undefined) setTemplateEdits((edits) => shownEdits(edits, layout))
-  }
   /** Opens the layout editor on layout `id`, or on a new layout made from the one on show. */
   const startLayoutEdit = useCallback(
     (id: string | undefined) => {
@@ -126,22 +106,14 @@ function Planner({ focus }: { focus: DayKey }) {
     },
     [layouts, active],
   )
-  const pageOf = useCallback(
-    (kind: NoteKind, day: DayKey) =>
-      layout === undefined || weekRule === undefined
-        ? undefined
-        : editableNote(resolveLayout(layout, day, weekRule), kind),
-    [layout, weekRule],
-  )
   const editTemplate = useCallback(
     (kind: NoteKind) => {
-      const page = pageOf(kind, currentDay())
-      if (page === undefined) return
-      setTemplateEdits((edits) => ({ ...edits, [kind]: startEdit(edits[kind], kind, page.key) }))
+      if (weekRule === undefined) return
+      const day = currentDay()
+      setTemplateEdit({ kind, from: kind === 'day' ? day : weekStart(day, weekRule) })
     },
-    [pageOf, currentDay],
+    [weekRule, currentDay],
   )
-  const templateKinds = (['day', 'week'] as const).filter((kind) => pageOf(kind, focus))
 
   const [pageFocus] = useState(() => new PageFocus())
   useEffect(() => pageFocus.connect(document), [pageFocus])
@@ -181,28 +153,8 @@ function Planner({ focus }: { focus: DayKey }) {
   }, [api, queryClient, flush])
 
   const plannerContext = useMemo<ContextType<typeof PlannerContext>>(
-    () =>
-      weekRule === undefined
-        ? undefined
-        : {
-            weekRule,
-            templateEdits,
-            closeTemplate: (edit: TemplateEdit) => {
-              setTemplateEdits((edits) => ({
-                ...edits,
-                [edit.kind]: closeEdit(edits[edit.kind], edit),
-              }))
-            },
-            setTemplateDraft: (edit: TemplateEdit, draft: string) => {
-              setTemplateEdits((edits) => {
-                const current = edits[edit.kind]
-                return current?.key === edit.key
-                  ? { ...edits, [edit.kind]: { ...current, draft } }
-                  : edits
-              })
-            },
-          },
-    [weekRule, templateEdits],
+    () => (weekRule === undefined ? undefined : { weekRule }),
+    [weekRule],
   )
 
   const run = useCallback(
@@ -277,7 +229,7 @@ function Planner({ focus }: { focus: DayKey }) {
     ],
   )
 
-  const busy = paletteOpen || settingsOpen || editingLayout
+  const busy = paletteOpen || settingsOpen || editingLayout || templateEdit !== undefined
   useShortcuts(keymap, run, !busy)
   const { enabled: focusModeOn, idleMs } = settings?.focusMode ?? DEFAULT_FOCUS_MODE
   const focusMode = useFocusMode(focusModeOn && !busy, focus, idleMs)
@@ -367,7 +319,6 @@ function Planner({ focus }: { focus: DayKey }) {
           <SettingsDialog
             settings={settings}
             onChange={update}
-            templateKinds={templateKinds}
             onEditTemplate={(kind) => {
               setSettingsOpen(false)
               run(kind === 'day' ? 'template.editDay' : 'template.editWeek')
@@ -385,14 +336,22 @@ function Planner({ focus }: { focus: DayKey }) {
             }}
           />
         )}
+        {templateEdit !== undefined && plannerContext !== undefined && (
+          <PlannerContext value={plannerContext}>
+            <TemplateDialog
+              key={templateEdit.kind}
+              kind={templateEdit.kind}
+              from={templateEdit.from}
+              onClose={() => {
+                setTemplateEdit(undefined)
+              }}
+            />
+          </PlannerContext>
+        )}
         {paletteOpen && (
           <CommandPalette
             keymap={keymap}
-            isAvailable={(id) =>
-              (id !== 'template.editDay' || templateKinds.includes('day')) &&
-              (id !== 'template.editWeek' || templateKinds.includes('week')) &&
-              (id !== 'layout.edit' || canEditLayout)
-            }
+            isAvailable={(id) => id !== 'layout.edit' || canEditLayout}
             onRun={run}
             onClose={() => {
               setPaletteOpen(false)
