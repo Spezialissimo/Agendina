@@ -96,4 +96,4 @@ routes')`, not `it('calls readWebFile twice')`.
 - Paper-journal first: no habit trackers or widgets unless the plan says so.
 - Notes are stored verbatim as markdown; never rewrite user text on save.
 - Keep E2E encryption possible: no server feature may depend on reading note content.
-- Default shortcuts use cmd, never opt.
+- Default shortcuts use cmd, never opt (exception: the page moves, ⌃⇧H/J/K/L, ADR 0007).

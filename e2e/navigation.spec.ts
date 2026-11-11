@@ -40,6 +40,17 @@ test('focus follows navigation', async ({ page }, testInfo) => {
     await savedOnServer(page, `week/${monday}`, 'Plan ahead')
   })
 
+  await test.step('⌃⇧L and ⌃⇧H move the cursor between the pages side by side', async () => {
+    await page.keyboard.press('Control+Shift+KeyL')
+    await expect(dayPage(page, thursday)).toBeFocused()
+    await page.keyboard.type('!')
+    await savedOnServer(page, `day/${thursday}`, 'Call mum!')
+    await page.keyboard.press('Control+Shift+KeyH')
+    await expect(page.getByRole('textbox', { name: weekName })).toBeFocused()
+    await page.keyboard.type('.')
+    await savedOnServer(page, `week/${monday}`, 'Plan ahead.')
+  })
+
   await test.step('a day clicked in the week strip continues where you left off', async () => {
     await revealButtons(page)
     const strip = page.getByRole('navigation', { name: 'Week' })

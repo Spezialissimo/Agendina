@@ -27,12 +27,19 @@ UI live in the web app.
 Default bindings (Phase 3), chosen to avoid macOS text editing (⌘⇧←/→ selects to line edges,
 ⌥←/→ moves by word), Mission Control (⌃←/→), VoiceOver (⌃⌥) and browser menus:
 
-| Command              | Binding                                        | Mac                          |
-| -------------------- | ---------------------------------------------- | ---------------------------- |
-| Previous / next day  | `Mod+Shift+Comma` / `Mod+Shift+Period`         | ⇧⌘, / ⇧⌘. (the `<` `>` keys) |
-| Previous / next week | `Mod+Alt+Shift+Comma` / `Mod+Alt+Shift+Period` | ⌥⇧⌘, / ⌥⇧⌘.                  |
-| Today                | `Mod+Alt+KeyT`                                 | ⌥⌘T                          |
-| Command palette      | `Mod+KeyK`                                     | ⌘K                           |
+| Command                           | Binding                                        | Mac                          |
+| --------------------------------- | ---------------------------------------------- | ---------------------------- |
+| Previous / next day               | `Mod+Shift+Comma` / `Mod+Shift+Period`         | ⇧⌘, / ⇧⌘. (the `<` `>` keys) |
+| Previous / next week              | `Mod+Alt+Shift+Comma` / `Mod+Alt+Shift+Period` | ⌥⇧⌘, / ⌥⇧⌘.                  |
+| Today                             | `Mod+Alt+KeyT`                                 | ⌥⌘T                          |
+| Command palette                   | `Mod+KeyK`                                     | ⌘K                           |
+| Page left / below / above / right | `Ctrl+Shift+KeyH` / `KeyJ` / `KeyK` / `KeyL`   | ⌃⇧H / J / K / L (vim)        |
+
+The page moves (added 2026-11-11) are the one exception to "defaults use cmd": they are Ctrl+Shift
+on every platform, by the user's choice, so on a Mac they leave ⌘ to the browser and the editor.
+Off a Mac they replace CodeMirror's Ctrl+Shift+K "delete line" (a Mac keeps it on ⇧⌘K). There,
+Ctrl+Shift+J opens Chrome's developer tools and Ctrl+Shift+K Firefox's console before a page can
+take them, so they are checked by hand too and remain rebindable.
 
 Automated browser tests prove the page receives these keys; they cannot prove that no browser or
 OS menu claims one first on a given machine, so defaults are also checked by hand on a Mac.

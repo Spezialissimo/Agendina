@@ -58,6 +58,7 @@ export function NotePage({ view }: { view: NoteView }) {
       aria-label={label}
       aria-current={view.selected || undefined}
       data-page-kind={view.kind}
+      data-page-key={view.key}
       data-text-size={textSize}
     >
       <header className="page-header">
