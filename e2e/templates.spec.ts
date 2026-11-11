@@ -73,11 +73,30 @@ test('a week template, edited from Settings', async ({ page }, testInfo) => {
 
     // The calendar of the save button floats over the pop-up, which keeps its size.
     const dialog = page.getByRole('dialog', { name: 'Week template' })
-    const closed = await dialog.boundingBox()
     const choose = page.getByRole('button', { name: 'Choose the first week' })
+    /** The pop-up's box once it stopped changing: the editor lays its text out again on blur. */
+    const settledBox = async () => {
+      let last = await dialog.boundingBox()
+      await expect
+        .poll(
+          async () => {
+            const box = await dialog.boundingBox()
+            const same = JSON.stringify(box) === JSON.stringify(last)
+            last = box
+            return same
+          },
+          { intervals: [200] },
+        )
+        .toBe(true)
+      return last
+    }
+    // Measured once the editor has lost focus: its table then shows as a grid, a little taller.
+    await choose.focus()
+    await expect(checkbox(page, 'Bench, Done')).toBeVisible()
+    const closed = await settledBox()
     await choose.click()
     await expect(page.getByRole('group', { name: 'Apply from week' })).toBeVisible()
-    expect(await dialog.boundingBox()).toEqual(closed)
+    expect(await settledBox()).toEqual(closed)
     await choose.click()
     await expect(page.getByRole('group', { name: 'Apply from week' })).toBeHidden()
 
