@@ -103,8 +103,8 @@ export function contentLabel(content: PanelContent): string {
 function contentHint(content: PanelContent): string {
   if (content.kind === 'calendar') return 'A month to pick a day from.'
   return content.offset === 0
-    ? `The ${content.kind} you write in.`
-    : `Read-only. Clicking it opens that ${content.kind}.`
+    ? `The ${content.kind} you select.`
+    : `Written in where it is, next to the ${content.kind} you select.`
 }
 
 /** A change is offered only if the layout still works after it. */
@@ -404,7 +404,7 @@ function Panel({ node, layout, checks, onChange }: { node: PanelNode } & NodePro
       className="layout-panel"
       role="group"
       aria-label={`${label} panel`}
-      data-editable={(current.kind !== 'calendar' && current.offset === 0) || undefined}
+      data-selected={(current.kind !== 'calendar' && current.offset === 0) || undefined}
       data-panel-id={node.id}
       // The whole page is picked up, from anywhere on it but its controls.
       onPointerDown={(event) => {

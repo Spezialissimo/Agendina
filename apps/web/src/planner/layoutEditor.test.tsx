@@ -400,7 +400,7 @@ describe('layout editor', () => {
     const at = (clientX: number, clientY: number) => ({ clientX, clientY, button: 0 })
     /** Presses on the week page (not on a control) and carries it to a point of the screen. */
     const carryWeekTo = (x: number, y: number) => {
-      fireEvent.pointerDown(panel('Selected week').getByText('The week you write in.'), at(50, 50))
+      fireEvent.pointerDown(panel('Selected week').getByText('The week you select.'), at(50, 50))
       fireEvent.pointerMove(window, at(60, 60))
       fireEvent.pointerMove(window, at(x, y))
     }
@@ -488,7 +488,7 @@ describe('layout editor', () => {
     it('does not pick a page up on a mere click, nor by its controls', async () => {
       await editLayout()
 
-      fireEvent.pointerDown(panel('Selected week').getByText('The week you write in.'), at(50, 50))
+      fireEvent.pointerDown(panel('Selected week').getByText('The week you select.'), at(50, 50))
       fireEvent.pointerMove(window, at(52, 51))
       expect(isEmptyPlace('Selected week')).toBe(false)
       drop(52, 51)
@@ -519,40 +519,17 @@ describe('layout editor', () => {
       await new Promise((resolve) => setTimeout(resolve, 600))
       expect(await savedLayout()).toEqual(OPEN_PLANNER)
     })
-
-    it('closes a template edit whose page the saved layout no longer shows', async () => {
-      const { user } = renderApp(server, '/day/2026-10-26')
-      await user.click(await screen.findByRole('button', { name: 'Settings' }))
-      await user.click(screen.getByRole('button', { name: 'Edit week template' }))
-      expect(await screen.findByRole('textbox', { name: 'Week template' })).toBeInTheDocument()
-
-      const editAgain = async () => {
-        await user.click(screen.getByRole('button', { name: 'Settings' }))
-        await user.click(editActiveLayout(screen.getByRole('dialog', { name: 'Settings' })))
-        await screen.findByRole('region', { name: 'Layout' })
-      }
-      await editAgain()
-      await user.click(panel('Selected week').getByRole('button', { name: 'Delete page' }))
-      await save(user)
-      await user.click(screen.getByRole('button', { name: 'Settings' }))
-      await user.click(screen.getByRole('radio', { name: 'Open planner' }))
-      await user.click(screen.getByRole('button', { name: 'Close' }))
-
-      // The week page is back as a page to write in, not as the template edit left behind.
-      expect(await screen.findByRole('textbox', { name: 'Week 44' })).toBeInTheDocument()
-      expect(screen.queryByRole('textbox', { name: 'Week template' })).not.toBeInTheDocument()
-    })
   })
 
   describe('layouts that would not work', () => {
-    it('cannot remove the only page that can be written in', async () => {
+    it('cannot remove the only selected page', async () => {
       const { user } = await editLayout()
       await user.click(panel('Selected week').getByRole('button', { name: 'Delete page' }))
 
       expect(panel('Selected day').getByRole('button', { name: 'Delete page' })).toBeDisabled()
     })
 
-    it('cannot remove the page to write in when the others are read-only', async () => {
+    it('cannot remove the selected page when the others are neighbours', async () => {
       const { user } = await editLayout()
       await user.selectOptions(
         panel('Selected week').getByRole('combobox', { name: 'Shows' }),

@@ -35,7 +35,7 @@ Layout stays as in ADR 0005; this is about the theme only.
   back. "Real" movement means the pointer moved in the window: browsers fire `mousemove` under a still
   pointer when the page scrolls under it (CodeMirror scrolling to the caret while you type), and
   that must not end focus mode. Errors, offline/conflict states and the conflict resolver are
-  never dimmed; the template editor's Save and Cancel stay visible. Focus placed by a navigation
+  never dimmed; the template pop-up pauses focus mode, like Settings. Focus placed by a navigation
   (a shortcut or a click that opens another day or week puts the cursor in the new page) starts
   neither trigger: the hand may still be on the mouse, about to click the week arrow again, and
   focus mode's first click only brings the buttons back. Typing or clicking in that page does.

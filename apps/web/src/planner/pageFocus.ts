@@ -12,20 +12,23 @@ export interface FocusRequest {
   day: DayKey
 }
 
-/** The editable page of the kind asked for in `layout`, or else the first editable page. */
+/**
+ * The selected page of the kind asked for in `layout`, or else the first selected page. Never a
+ * neighbour: a navigation is about the day it selects.
+ */
 export function focusTarget(
   layout: ResolvedLayout,
   side: NoteKind,
 ): Pick<NoteView, 'kind' | 'key'> | undefined {
-  const editable = editableViews(layout)
-  return editable.find((v) => v.kind === side) ?? editable[0]
+  const selected = selectedViews(layout)
+  return selected.find((v) => v.kind === side) ?? selected[0]
 }
 
-function editableViews(layout: ResolvedLayout): NoteView[] {
+function selectedViews(layout: ResolvedLayout): NoteView[] {
   if (layout.type === 'panel') {
-    return layout.view.type === 'note' && layout.view.editable ? [layout.view] : []
+    return layout.view.type === 'note' && layout.view.selected ? [layout.view] : []
   }
-  return layout.children.flatMap((c) => editableViews(c.node))
+  return layout.children.flatMap((c) => selectedViews(c.node))
 }
 
 /** A touch-only device: its primary pointer is coarse, and it has no fine one (mouse, trackpad). */
@@ -140,12 +143,7 @@ export function usePageFocus(): PageFocusApi {
 export function useFocusRequest(view: NoteView): { id: number; done: () => void } | undefined {
   const { store } = usePageFocus()
   const request = useSyncExternalStore(store.subscribe, store.get)
-  if (
-    request === undefined ||
-    !view.editable ||
-    request.kind !== view.kind ||
-    request.key !== view.key
-  )
+  if (request === undefined || request.kind !== view.kind || request.key !== view.key)
     return undefined
   const { id } = request
   return {

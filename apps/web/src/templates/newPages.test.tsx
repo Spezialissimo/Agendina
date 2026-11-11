@@ -95,7 +95,7 @@ describe('new pages start from the template', () => {
     expect(editorText(textbox)).toBe('## Morning\nRan 5km\n\n## Evening\nRead')
   })
 
-  it('shows the template on read-only neighbour pages too', async () => {
+  it('shows the template on neighbour pages too', async () => {
     const layout: Layout = {
       type: 'split',
       id: 'pages',
@@ -119,8 +119,6 @@ describe('new pages start from the template', () => {
     await api.saveTemplate('day', '## Today', 0)
     renderApp(server, '/day/2026-10-26')
 
-    const yesterday = await screen.findByRole('region', { name: 'Sunday, October 25, 2026' })
-
-    expect(await within(yesterday).findByText('## Today')).toBeInTheDocument()
+    expect(editorText(await editor('Sunday, October 25, 2026'))).toBe('## Today')
   })
 })

@@ -104,6 +104,18 @@ test('layout: edited on the pages, kept after a reload', async ({ page }, testIn
     expect(above?.y).toBeLessThan(below?.y ?? 0)
   })
 
+  await test.step('the next day is written in where it is, the selected day stays', async () => {
+    await page.getByRole('textbox', { name: 'Wednesday, April 7, 2027' }).click()
+    await page.keyboard.type('Pick up the keys')
+
+    await savedOnServer(page, 'day/2027-04-07', 'Pick up the keys')
+    await expect(page).toHaveURL(/\/day\/2027-04-06$/)
+    await expect(page.getByRole('region', { name: 'Tuesday, April 6, 2027' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
+  })
+
   await test.step('the next day makes room for a calendar, to pick a day from', async () => {
     await editLayout()
     await panel('Day after').getByRole('combobox', { name: 'Shows' }).selectOption('Calendar')

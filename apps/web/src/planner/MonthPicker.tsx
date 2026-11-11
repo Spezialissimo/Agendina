@@ -1,8 +1,8 @@
-import { dayKey, monthGrid, type DayKey, type WeekRule } from '@agendina/core'
+import { dayKey, monthGrid, weekNumber, type DayKey, type WeekRule } from '@agendina/core'
 import { useEffect, useEffectEvent, useRef, useState, type RefObject } from 'react'
 import { useLocale, useToday } from '../app/AppProviders.tsx'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from '../app/icons.tsx'
-import { format } from './weeks.ts'
+import { format, formatRange, weekTitle } from './weeks.ts'
 
 interface Props {
   focus: DayKey
@@ -124,38 +124,10 @@ export function MonthGrid({
   const today = useToday()
   const weeks = monthGrid(month.year, month.month, rule)
   const monthKey = dayKey(month.year, month.month, 1).slice(0, 7)
-  const title = useMonthTitle(month)
-
-  const shift = (delta: number) => {
-    const index = month.year * 12 + (month.month - 1) + delta
-    setMonth({ year: Math.floor(index / 12), month: (index % 12) + 1 })
-  }
 
   return (
     <>
-      <div className="month-header">
-        <button
-          type="button"
-          className="icon"
-          aria-label="Previous month"
-          onClick={() => {
-            shift(-1)
-          }}
-        >
-          <ChevronLeftIcon />
-        </button>
-        <span>{title}</span>
-        <button
-          type="button"
-          className="icon"
-          aria-label="Next month"
-          onClick={() => {
-            shift(1)
-          }}
-        >
-          <ChevronRightIcon />
-        </button>
-      </div>
+      <MonthHeader month={month} setMonth={setMonth} />
       <table>
         <thead>
           <tr>
@@ -193,6 +165,103 @@ export function MonthGrid({
           ))}
         </tbody>
       </table>
+    </>
+  )
+}
+
+/** The month's name between arrows to the months around it. */
+function MonthHeader({ month, setMonth }: { month: Month; setMonth: (month: Month) => void }) {
+  const title = useMonthTitle(month)
+  const shift = (delta: number) => {
+    const index = month.year * 12 + (month.month - 1) + delta
+    setMonth({ year: Math.floor(index / 12), month: (index % 12) + 1 })
+  }
+  return (
+    <div className="month-header">
+      <button
+        type="button"
+        className="icon"
+        aria-label="Previous month"
+        onClick={() => {
+          shift(-1)
+        }}
+      >
+        <ChevronLeftIcon />
+      </button>
+      <span>{title}</span>
+      <button
+        type="button"
+        className="icon"
+        aria-label="Next month"
+        onClick={() => {
+          shift(1)
+        }}
+      >
+        <ChevronRightIcon />
+      </button>
+    </div>
+  )
+}
+
+/**
+ * A month to pick a week from: each row is one week, a button with its number. `week` is the
+ * chosen week's first day; `onPick` gets the first day of the week clicked.
+ */
+export function WeekGrid({
+  week: chosen,
+  rule,
+  month,
+  setMonth,
+  onPick,
+}: {
+  week: DayKey
+  rule: WeekRule
+  month: Month
+  setMonth: (month: Month) => void
+  onPick: (week: DayKey) => void
+}) {
+  const locale = useLocale()
+  const today = useToday()
+  const weeks = monthGrid(month.year, month.month, rule)
+  const monthKey = dayKey(month.year, month.month, 1).slice(0, 7)
+  return (
+    <>
+      <MonthHeader month={month} setMonth={setMonth} />
+      <div className="week-grid">
+        <div className="week-grid-row week-grid-head" aria-hidden="true">
+          <span>W</span>
+          {weeks[0]?.map((day) => (
+            <span key={day}>{format(day, locale, { weekday: 'narrow' })}</span>
+          ))}
+        </div>
+        {weeks.map((days) => {
+          const first = days[0] as DayKey
+          const last = days[6] as DayKey
+          return (
+            <button
+              key={first}
+              type="button"
+              className="week-grid-row"
+              aria-label={`${weekTitle(first, rule)}, ${formatRange(first, last, locale)}`}
+              aria-current={first === chosen || undefined}
+              onClick={() => {
+                onPick(first)
+              }}
+            >
+              <span className="week-grid-number">{weekNumber(first, rule).week}</span>
+              {days.map((day) => (
+                <span
+                  key={day}
+                  data-outside={!day.startsWith(monthKey) || undefined}
+                  data-today={day === today || undefined}
+                >
+                  {Number(day.slice(8))}
+                </span>
+              ))}
+            </button>
+          )
+        })}
+      </div>
     </>
   )
 }

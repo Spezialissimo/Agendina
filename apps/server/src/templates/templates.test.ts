@@ -4,6 +4,7 @@ import {
   NotesResponse,
   SaveTemplateResponse,
   TemplateConflict,
+  TemplateForPageResponse,
   TemplateResponse,
   TemplateRevisionResponse,
 } from '@agendina/contract'
@@ -61,6 +62,7 @@ describe.each(testDatabases())('templates on $kind', ({ create }) => {
     ).toBe(401)
     expect((await t.server.request('/api/templates/week/revisions/1')).status).toBe(401)
     expect((await t.server.request('/api/templates/week/pages?from=2026-10-26')).status).toBe(401)
+    expect((await t.server.request('/api/templates/week/for/2026-10-26')).status).toBe(401)
   })
 
   describe('writing a template', () => {
@@ -152,6 +154,65 @@ describe.each(testDatabases())('templates on $kind', ({ create }) => {
       ['pages without a start day', '/api/templates/week/pages'],
     ])('rejects %s', async (_, path) => {
       expect((await get(path)).status).toBe(400)
+    })
+  })
+
+  describe('the template a page nobody wrote yet starts from', () => {
+    const putFrom = (content: string, baseRevision: number, appliesFrom?: string) =>
+      t.server.request('/api/templates/week', {
+        method: 'PUT',
+        cookie: t.cookie,
+        body: { content, baseRevision, appliesFrom },
+      })
+    const saveFrom = async (content: string, baseRevision: number, appliesFrom?: string) => {
+      const res = await putFrom(content, baseRevision, appliesFrom)
+      expect(res.status).toBe(200)
+    }
+    const forPage = async (key: string) =>
+      TemplateForPageResponse.parse(await (await get(`/api/templates/week/for/${key}`)).json())
+        .template
+
+    it('is the latest revision applied from that page or an earlier one', async () => {
+      await saveFrom('v1', 0) // From the start: written before revisions had a first page.
+      await saveFrom('v2', 1, '2026-11-16')
+
+      expect(await forPage('2026-11-09')).toEqual({ revision: 1, content: 'v1' })
+      expect(await forPage('2026-11-16')).toEqual({ revision: 2, content: 'v2' })
+      expect(await forPage('2027-03-01')).toEqual({ revision: 2, content: 'v2' })
+    })
+
+    it('is none before the first template applies', async () => {
+      await saveFrom('v1', 0, '2026-11-16')
+
+      expect(await forPage('2026-11-09')).toBeNull()
+      expect(await forPage('2026-11-16')).toEqual({ revision: 1, content: 'v1' })
+    })
+
+    it('follows a later revision applied from an earlier page', async () => {
+      await saveFrom('v1', 0, '2026-11-16')
+      await saveFrom('v2', 1, '2026-11-02')
+
+      expect(await forPage('2026-10-26')).toBeNull()
+      expect(await forPage('2026-11-09')).toEqual({ revision: 2, content: 'v2' })
+      expect(await forPage('2026-11-23')).toEqual({ revision: 2, content: 'v2' })
+    })
+
+    it('records the same text applied from another page as a new revision', async () => {
+      await saveFrom('v1', 0, '2026-11-16')
+
+      await saveFrom('v1', 1, '2026-11-02')
+
+      expect(await forPage('2026-11-09')).toEqual({ revision: 2, content: 'v1' })
+      expect(await template('week')).toMatchObject({ revision: 2 })
+    })
+
+    it('is none without a template', async () => {
+      expect(await forPage('2026-11-09')).toBeNull()
+    })
+
+    it('rejects what is not a day', async () => {
+      expect((await get('/api/templates/week/for/someday')).status).toBe(400)
+      expect((await putFrom('v1', 0, 'someday')).status).toBe(400)
     })
   })
 

@@ -264,7 +264,7 @@ describe('focus mode', () => {
     expect(planner()).not.toHaveAttribute('data-focus-mode')
   })
 
-  it('starts in the template editor too', async () => {
+  it('pauses while the template pop-up is open, like Settings', async () => {
     const { user, planner } = await open()
     await user.click(screen.getByRole('button', { name: 'Settings' }))
     await user.click(screen.getByRole('button', { name: 'Edit day template' }))
@@ -272,10 +272,9 @@ describe('focus mode', () => {
     placeCursor(template, 0)
 
     fireEvent.keyDown(template, { key: 'a' })
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
 
-    await waitFor(() => {
-      expect(planner()).toHaveAttribute('data-focus-mode')
-    })
+    expect(planner()).not.toHaveAttribute('data-focus-mode')
   })
 
   describe('when the mouse rests', () => {

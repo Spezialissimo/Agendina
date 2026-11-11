@@ -60,3 +60,11 @@ export function ChevronRightIcon() {
     </Icon>
   )
 }
+
+export function ChevronDownIcon() {
+  return (
+    <Icon>
+      <path d="m6 9 6 6 6-6" />
+    </Icon>
+  )
+}

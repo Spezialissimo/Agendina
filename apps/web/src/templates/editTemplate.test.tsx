@@ -20,6 +20,10 @@ const V1 = lines(
 )
 const V2 = `${V1}\n| Bench | [ ] | [ ] |`
 
+const NEXT_DAY = '{Meta>}{Shift>}[Period]{/Shift}{/Meta}'
+
+type User = ReturnType<typeof renderApp>['user']
+
 describe('editing a template', () => {
   let server: TestServer
   let api: Api
@@ -36,64 +40,83 @@ describe('editing a template', () => {
 
   const weekPage = () => screen.findByRole('region', { name: 'Week 44' })
   const editor = (name: string) => screen.findByRole('textbox', { name })
-  const writePage = (key: string, content: string, templateRevision?: number) =>
-    api.saveNote('week', key, content, 0, { templateRevision })
+  const popup = (name: string) => screen.findByRole('dialog', { name })
+  const writePage = (kind: 'day' | 'week', key: string, content: string, revision?: number) =>
+    api.saveNote(kind, key, content, 0, { templateRevision: revision })
 
-  async function openTemplate(user: ReturnType<typeof renderApp>['user']) {
+  async function openTemplate(user: User, kind: 'day' | 'week' = 'week') {
     await user.click(await screen.findByRole('button', { name: 'Settings' }))
-    await user.click(screen.getByRole('button', { name: 'Edit week template' }))
-    return editor('Week template')
+    await user.click(screen.getByRole('button', { name: `Edit ${kind} template` }))
+    return editor(kind === 'day' ? 'Day template' : 'Week template')
   }
 
-  it('opens the template from the page, and Cancel leaves everything as it was', async () => {
+  it('opens in a pop-up, and Cancel leaves everything as it was', async () => {
     await api.saveTemplate('week', V1, 0)
     const { user } = renderApp(server, '/day/2026-10-26')
 
     const template = await openTemplate(user)
+    const dialog = await popup('Week template')
+    expect(dialog).toContainElement(template)
     expect(editorText(template)).toBe(V1)
     replaceText(template, 'something else')
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
 
+    expect(screen.queryByRole('dialog', { name: 'Week template' })).toBeNull()
     expect(editorText(await editor('Week 44'))).toBe(V1)
     expect(await api.template('week')).toMatchObject({ revision: 1, content: V1 })
   })
 
-  it('starts the first template from the page it is edited on, and links that page to it', async () => {
-    await writePage('2026-10-26', lines('## Objectives', '- [x] Ship it', '| Squat | [x] |'))
+  it('closes with Escape without saving', async () => {
+    await api.saveTemplate('week', V1, 0)
+    const { user } = renderApp(server, '/day/2026-10-26')
+    replaceText(await openTemplate(user), 'something else')
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog', { name: 'Week template' })).toBeNull()
+    expect(await api.template('week')).toMatchObject({ revision: 1, content: V1 })
+  })
+
+  it('starts the first template empty, and leaves the pages already written alone', async () => {
+    await writePage('week', '2026-10-26', lines('## Objectives', '- [x] Ship it'))
     const { user, router } = renderApp(server, '/day/2026-10-26')
 
     const template = await openTemplate(user)
-    expect(editorText(template)).toBe(lines('## Objectives', '- [x] Ship it', '| Squat | [x] |'))
+    expect(editorText(template)).toBe('')
     replaceText(template, lines('## Objectives', '| Squat | [ ] |'))
-    await user.click(screen.getByRole('button', { name: 'Save template' }))
+    await user.click(screen.getByRole('button', { name: 'Save and apply from week 44' }))
 
-    expect(await editor('Week 44')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Week template' })).toBeNull()
+    })
     expect(await api.template('week')).toMatchObject({
       revision: 1,
       content: lines('## Objectives', '| Squat | [ ] |'),
     })
     expect(await api.getNote('week', '2026-10-26')).toMatchObject({
-      content: lines('## Objectives', '- [x] Ship it', '| Squat | [x] |'),
-      templateRevision: 1,
+      content: lines('## Objectives', '- [x] Ship it'),
+      templateRevision: null,
     })
     await act(() => router.navigate('/day/2026-11-02'))
     expect(editorText(await editor('Week 45'))).toBe(lines('## Objectives', '| Squat | [ ] |'))
   })
 
-  it('updates this page and the later pages made from the template, keeping what was written', async () => {
+  it('updates the selected page and the later pages made from the template, keeping what was written', async () => {
     await api.saveTemplate('week', V1, 0)
-    await writePage('2026-10-19', V1, 1)
-    await writePage('2026-10-26', V1.replace('| Squat | [ ] |', '| Squat | [x] |'), 1)
-    await writePage('2026-11-02', V1, 1)
-    await writePage('2026-11-09', 'my own page')
+    await writePage('week', '2026-10-19', V1, 1)
+    await writePage('week', '2026-10-26', V1.replace('| Squat | [ ] |', '| Squat | [x] |'), 1)
+    await writePage('week', '2026-11-02', V1, 1)
+    await writePage('week', '2026-11-09', 'my own page')
     const { user } = renderApp(server, '/day/2026-10-26')
 
     replaceText(await openTemplate(user), V2)
-    await user.click(screen.getByRole('button', { name: 'Save template' }))
+    await user.click(screen.getByRole('button', { name: 'Save and apply from week 44' }))
 
-    expect(
-      await within(await weekPage()).findByText('Template saved, 2 pages updated.'),
-    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Week template' })).toBeNull()
+    })
+    // The pages show the change itself; no message is left on them.
+    expect(within(await weekPage()).queryByText(/Template saved/)).toBeNull()
     await waitFor(async () => {
       expect(editorText(await editor('Week 44'))).toBe(
         V2.replace('| Squat | [ ] |', '| Squat | [x] |'),
@@ -114,12 +137,12 @@ describe('editing a template', () => {
     expect((await api.getNote('week', '2026-11-09'))?.content).toBe('my own page')
   })
 
-  it('shows the new template on this page when it was not written yet', async () => {
+  it('shows the new template on the selected page when it was not written yet', async () => {
     await api.saveTemplate('week', V1, 0)
     const { user } = renderApp(server, '/day/2026-10-26')
 
     replaceText(await openTemplate(user), V2)
-    await user.click(screen.getByRole('button', { name: 'Save template' }))
+    await user.click(screen.getByRole('button', { name: 'Save and apply from week 44' }))
 
     await waitFor(async () => {
       expect(editorText(await editor('Week 44'))).toBe(V2)
@@ -127,18 +150,133 @@ describe('editing a template', () => {
     expect(await api.getNote('week', '2026-10-26')).toBeNull()
   })
 
+  describe('applying from another page', () => {
+    it('applies from the day picked in the calendar, wherever it is', async () => {
+      await api.saveTemplate('day', 'v1', 0)
+      await writePage('day', '2026-10-27', 'v1', 1)
+      await writePage('day', '2026-10-28', 'v1', 1)
+      await writePage('day', '2026-11-30', 'v1', 1)
+      const { user } = renderApp(server, '/day/2026-10-27')
+      replaceText(await openTemplate(user, 'day'), 'v2')
+      const dialog = await popup('Day template')
+      expect(
+        within(dialog).getByRole('button', { name: 'Save and apply from Oct 27, 2026' }),
+      ).toBeInTheDocument()
+
+      await user.click(within(dialog).getByRole('button', { name: 'Choose the first day' }))
+      await user.click(within(dialog).getByRole('button', { name: 'October 28, 2026' }))
+      await user.click(
+        within(dialog).getByRole('button', { name: 'Save and apply from Oct 28, 2026' }),
+      )
+
+      await waitFor(async () => {
+        expect(await api.getNote('day', '2026-10-28')).toMatchObject({
+          content: 'v2',
+          templateRevision: 2,
+        })
+      })
+      expect(await api.getNote('day', '2026-11-30')).toMatchObject({ content: 'v2' })
+      expect(await api.getNote('day', '2026-10-27')).toMatchObject({
+        content: 'v1',
+        templateRevision: 1,
+      })
+    })
+
+    it('picks a whole week, a row of the month, for the week template', async () => {
+      await api.saveTemplate('week', 'v1', 0)
+      await writePage('week', '2026-10-26', 'v1', 1)
+      await writePage('week', '2026-11-02', 'v1', 1)
+      const { user } = renderApp(server, '/day/2026-10-27')
+      replaceText(await openTemplate(user), 'v2')
+      const dialog = await popup('Week template')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Choose the first week' }))
+      const weeks = within(dialog).getByRole('group', { name: 'Apply from week' })
+      expect(within(weeks).getByRole('button', { name: /^Week 44,/ })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+      expect(within(weeks).queryByRole('button', { name: 'October 28, 2026' })).toBeNull()
+      await user.click(within(weeks).getByRole('button', { name: 'Next month' }))
+      await user.click(within(weeks).getByRole('button', { name: /^Week 45, Nov 2/ }))
+      await user.click(within(dialog).getByRole('button', { name: 'Save and apply from week 45' }))
+
+      await waitFor(async () => {
+        expect(await api.getNote('week', '2026-11-02')).toMatchObject({ content: 'v2' })
+      })
+      expect(await api.getNote('week', '2026-10-26')).toMatchObject({ content: 'v1' })
+    })
+
+    it('leaves the pages before it as they were, empty ones too', async () => {
+      await api.saveTemplate('week', 'v1', 0)
+      await writePage('week', '2026-10-19', 'v1, ticked', 1)
+      const { user, router } = renderApp(server, '/day/2026-10-27')
+      replaceText(await openTemplate(user), 'v2')
+      const dialog = await popup('Week template')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Choose the first week' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Next month' }))
+      await user.click(within(dialog).getByRole('button', { name: /^Week 46,/ }))
+      await user.click(within(dialog).getByRole('button', { name: 'Save and apply from week 46' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Week template' })).toBeNull()
+      })
+
+      // Week 44, empty, is on screen: it keeps showing the template it had.
+      expect(editorText(await editor('Week 44'))).toBe('v1')
+      await act(() => router.navigate('/day/2026-11-03'))
+      expect(editorText(await editor('Week 45'))).toBe('v1')
+      await act(() => router.navigate('/day/2026-11-10'))
+      expect(editorText(await editor('Week 46'))).toBe('v2')
+      expect(await api.getNote('week', '2026-10-19')).toMatchObject({ content: 'v1, ticked' })
+    })
+
+    it('leaves the empty pages before the first template empty', async () => {
+      const { user, router } = renderApp(server, '/day/2026-10-27')
+      replaceText(await openTemplate(user), 'v1')
+      const dialog = await popup('Week template')
+      await user.click(within(dialog).getByRole('button', { name: 'Choose the first week' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Next month' }))
+      await user.click(within(dialog).getByRole('button', { name: /^Week 46,/ }))
+      await user.click(within(dialog).getByRole('button', { name: 'Save and apply from week 46' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'Week template' })).toBeNull()
+      })
+
+      expect(editorText(await editor('Week 44'))).toBe('')
+      await act(() => router.navigate('/day/2026-11-10'))
+      expect(editorText(await editor('Week 46'))).toBe('v1')
+    })
+
+    it('reaches a week page written before the week start changed', async () => {
+      // Written when weeks started on Monday; with Sunday weeks it shows in the week of Oct 25.
+      await api.saveTemplate('week', 'v1', 0)
+      await writePage('week', '2026-10-26', 'v1', 1)
+      await api.saveSettings({ ...DEFAULT_SETTINGS, weekRule: US_WEEK })
+      const { user } = renderApp(server, '/day/2026-10-27')
+
+      replaceText(await openTemplate(user), 'v2')
+      await user.click(screen.getByRole('button', { name: 'Save and apply from week 44' }))
+
+      await waitFor(async () => {
+        expect(await api.getNote('week', '2026-10-26')).toMatchObject({ content: 'v2' })
+      })
+    })
+  })
+
   it('lists the pages whose own changes clash with the template change, to decide each one', async () => {
     const squat = '| Squat | [ ] | [ ] |'
     await api.saveTemplate('week', V1, 0)
-    await writePage('2026-10-26', V1.replace(squat, '| Squat | [x] | [ ] |'), 1)
-    await writePage('2026-11-02', V1.replace(squat, '| Squat | [ ] | [x] |'), 1)
-    await writePage('2026-11-09', V1, 1)
+    await writePage('week', '2026-10-26', V1.replace(squat, '| Squat | [x] | [ ] |'), 1)
+    await writePage('week', '2026-11-02', V1.replace(squat, '| Squat | [ ] | [x] |'), 1)
+    await writePage('week', '2026-11-09', V1, 1)
     const { user } = renderApp(server, '/day/2026-10-26')
 
     replaceText(await openTemplate(user), V1.replace(squat, '| Front squat | [ ] | [ ] |'))
-    await user.click(screen.getByRole('button', { name: 'Save template' }))
+    await user.click(screen.getByRole('button', { name: 'Save and apply from week 44' }))
 
-    const list = await screen.findByRole('region', { name: '2 pages need a decision' })
+    const dialog = await popup('Week template')
+    const list = await within(dialog).findByRole('region', { name: '2 pages need a decision' })
     const week44 = within(list).getByRole('group', { name: /Week 44/ })
     await user.click(within(week44).getByRole('radio', { name: /Keep the template’s version/ }))
     await user.click(within(week44).getByRole('button', { name: 'Save' }))
@@ -146,7 +284,7 @@ describe('editing a template', () => {
     await user.click(within(week45).getByRole('button', { name: 'Leave this page as it is' }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('region', { name: /decision/ })).toBeNull()
+      expect(screen.queryByRole('dialog', { name: 'Week template' })).toBeNull()
     })
     expect(await api.getNote('week', '2026-10-26')).toMatchObject({
       content: V1.replace(squat, '| Front squat | [ ] | [ ] |'),
@@ -174,7 +312,7 @@ describe('editing a template', () => {
     await api.saveTemplate('week', V1.replace('## Objectives', '## Goals'), 1) // the phone
 
     replaceText(template, V1.replace('## Objectives', '## Aims'))
-    await user.click(screen.getByRole('button', { name: 'Save template' }))
+    await user.click(screen.getByRole('button', { name: 'Save and apply from week 44' }))
     const conflict = await screen.findByRole('group', { name: 'The template changed elsewhere' })
     await user.click(within(conflict).getByRole('button', { name: 'Save' }))
 
@@ -184,6 +322,15 @@ describe('editing a template', () => {
         content: V1.replace('## Objectives', '## Aims\n## Goals'),
       })
     })
+  })
+
+  it('keeps the planner where it is while open: shortcuts do not move to another day', async () => {
+    const { user, router } = renderApp(server, '/day/2026-10-27')
+    await openTemplate(user, 'day')
+
+    await user.keyboard(NEXT_DAY)
+
+    expect(router.state.location.pathname).toBe('/day/2026-10-27')
   })
 
   describe('where it is offered', () => {
@@ -226,139 +373,11 @@ describe('editing a template', () => {
       expect(await editor(name)).toBeInTheDocument()
     })
 
-    it('is no longer on the pages', async () => {
+    it('is not on the pages', async () => {
       renderApp(server, '/day/2026-10-27')
       await screen.findByRole('textbox', { name: 'Week 44' })
 
       expect(screen.queryByRole('button', { name: /template/ })).not.toBeInTheDocument()
-    })
-
-    it('stays open with its unsaved text when going to another day of the same week', async () => {
-      const { user, router } = renderApp(server, '/day/2026-10-27')
-      await user.click(await screen.findByRole('button', { name: 'Settings' }))
-      await user.click(screen.getByRole('button', { name: 'Edit week template' }))
-      replaceText(await editor('Week template'), 'unsaved draft')
-
-      await act(() => router.navigate('/day/2026-10-28'))
-
-      expect(editorText(await editor('Week template'))).toBe('unsaved draft')
-    })
-
-    it.each([
-      ['day', '2026-10-27', '2026-10-28', 'Day template'],
-      ['week', '2026-10-27', '2026-11-03', 'Week template'],
-    ])(
-      'stays open with its unsaved text when going to another %s',
-      async (kind, from, away, name) => {
-        const { user, router } = renderApp(server, `/day/${from}`)
-        await user.click(await screen.findByRole('button', { name: 'Settings' }))
-        await user.click(screen.getByRole('button', { name: `Edit ${kind} template` }))
-        replaceText(await editor(name), 'draft')
-
-        await act(() => router.navigate(`/day/${away}`))
-
-        expect(editorText(await editor(name))).toBe('draft')
-      },
-    )
-
-    it('is not closed by a save that finishes after another page opened its own', async () => {
-      let release = (): void => undefined
-      const gate = new Promise<void>((resolve) => {
-        release = resolve
-      })
-      const held = {
-        ...server,
-        fetch: (async (input, init) => {
-          const saving = input.includes('/api/templates/') && init?.method === 'PUT'
-          if (saving) await gate
-          return server.fetch(input, init)
-        }) as typeof server.fetch,
-      }
-      const { user, router } = renderApp(held, '/day/2026-10-27')
-      await user.click(await screen.findByRole('button', { name: 'Settings' }))
-      await user.click(screen.getByRole('button', { name: 'Edit week template' }))
-      replaceText(await editor('Week template'), 'first')
-      await user.click(screen.getByRole('button', { name: 'Save template' }))
-      await act(() => router.navigate('/day/2026-11-03'))
-      await user.keyboard('{Meta>}k{/Meta}')
-      await user.type(
-        screen.getByRole('combobox', { name: 'Search commands' }),
-        'edit week template{Enter}',
-      )
-      await editor('Week template')
-
-      release()
-      await waitFor(async () => {
-        expect((await api.template('week'))?.content).toBe('first')
-      })
-      await act(() => new Promise((resolve) => setTimeout(resolve, 300)))
-
-      expect(screen.getByRole('textbox', { name: 'Week template' })).toBeInTheDocument()
-    })
-
-    const openFromSettings = async (
-      user: ReturnType<typeof renderApp>['user'],
-      kind: 'day' | 'week',
-    ) => {
-      await user.click(await screen.findByRole('button', { name: 'Settings' }))
-      await user.click(screen.getByRole('button', { name: `Edit ${kind} template` }))
-    }
-
-    it('keeps its unsaved text when it is opened again from another day', async () => {
-      const { user, router } = renderApp(server, '/day/2026-10-27')
-      await openFromSettings(user, 'day')
-      replaceText(await editor('Day template'), 'unsaved draft')
-      await act(() => router.navigate('/day/2026-10-28'))
-
-      await openFromSettings(user, 'day')
-
-      expect(editorText(await editor('Day template'))).toBe('unsaved draft')
-    })
-
-    it('keeps the unsaved day template when the week template is opened too', async () => {
-      const { user } = renderApp(server, '/day/2026-10-27')
-      await openFromSettings(user, 'day')
-      replaceText(await editor('Day template'), 'unsaved draft')
-
-      await openFromSettings(user, 'week')
-
-      expect(await editor('Week template')).toBeInTheDocument()
-      expect(editorText(await editor('Day template'))).toBe('unsaved draft')
-    })
-
-    it('starts the first template from the page it was opened on, wherever you go next', async () => {
-      await api.saveNote('day', '2026-10-27', 'tuesday text', 0)
-      await api.saveNote('day', '2026-10-28', 'wednesday text', 0)
-      const { user, router } = renderApp(server, '/day/2026-10-27')
-      await openFromSettings(user, 'day')
-      expect(editorText(await editor('Day template'))).toBe('tuesday text')
-
-      await act(() => router.navigate('/day/2026-10-28'))
-
-      expect(editorText(await editor('Day template'))).toBe('tuesday text')
-      await user.click(screen.getByRole('button', { name: 'Save template' }))
-      await waitFor(async () => {
-        expect(await api.template('day')).toMatchObject({ content: 'tuesday text' })
-        expect(await api.getNote('day', '2026-10-27')).toMatchObject({ templateRevision: 1 })
-      })
-      expect(await api.getNote('day', '2026-10-28')).toMatchObject({ templateRevision: null })
-    })
-
-    it('links a week page written before the week start changed to its first template', async () => {
-      // Written when weeks started on Monday; with Sunday weeks it shows in the week of Oct 25.
-      await api.saveNote('week', '2026-10-26', 'old week page', 0)
-      await api.saveSettings({ ...DEFAULT_SETTINGS, weekRule: US_WEEK })
-      const { user } = renderApp(server, '/day/2026-10-27')
-      await openFromSettings(user, 'week')
-      const template = await editor('Week template')
-      expect(editorText(template)).toBe('old week page')
-      expect(template).toHaveFocus()
-
-      await user.click(screen.getByRole('button', { name: 'Save template' }))
-
-      await waitFor(async () => {
-        expect(await api.getNote('week', '2026-10-26')).toMatchObject({ templateRevision: 1 })
-      })
     })
 
     it('puts the cursor in the template editor, from Settings and from the palette', async () => {
@@ -377,7 +396,7 @@ describe('editing a template', () => {
       expect(await editor('Week template')).toHaveFocus()
     })
 
-    it('is not offered for a page the layout does not show', async () => {
+    it('is offered for both kinds even when the layout shows no page of one', async () => {
       const dayOnly = {
         type: 'panel',
         id: 'day',
@@ -387,14 +406,12 @@ describe('editing a template', () => {
       const { user } = renderApp(server, '/day/2026-10-27')
       await user.click(await screen.findByRole('button', { name: 'Settings' }))
       const dialog = screen.getByRole('dialog', { name: 'Settings' })
-      expect(within(dialog).getByRole('button', { name: 'Edit day template' })).toBeVisible()
-      expect(within(dialog).queryByRole('button', { name: 'Edit week template' })).toBeNull()
-      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
 
-      await user.keyboard('{Meta>}k{/Meta}')
-      await user.type(screen.getByRole('combobox', { name: 'Search commands' }), 'template')
+      await user.click(within(dialog).getByRole('button', { name: 'Edit week template' }))
 
-      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Edit day template'])
+      expect(
+        await screen.findByRole('button', { name: 'Save and apply from week 44' }),
+      ).toBeInTheDocument()
     })
   })
 })

@@ -39,9 +39,8 @@ export interface NoteView {
   kind: 'day' | 'week'
   /** The note's key: the day, or the first day of the week. */
   key: DayKey
-  editable: boolean
-  /** For read-only neighbours: the day to focus when the panel is clicked. */
-  focusOnClick?: DayKey
+  /** Offset 0: the page of the selected day. Every note page is written in where it is. */
+  selected: boolean
 }
 
 export interface CalendarView {
@@ -127,14 +126,14 @@ export function setSplitSizes(layout: Layout, splitId: string, sizes: number[]):
   return update(layout)
 }
 
-/** The page of `kind` that can be written in, if the layout shows one. */
-export function editableNote(layout: ResolvedLayout, kind: NoteView['kind']): NoteView | undefined {
+/** The selected page of `kind` (offset 0), if the layout shows one. */
+export function selectedNote(layout: ResolvedLayout, kind: NoteView['kind']): NoteView | undefined {
   if (layout.type === 'panel') {
     const { view } = layout
-    return view.type === 'note' && view.kind === kind && view.editable ? view : undefined
+    return view.type === 'note' && view.kind === kind && view.selected ? view : undefined
   }
   for (const child of layout.children) {
-    const found = editableNote(child.node, kind)
+    const found = selectedNote(child.node, kind)
     if (found !== undefined) return found
   }
   return undefined
@@ -144,8 +143,7 @@ function resolveNote(panel: NotePanel, focus: DayKey, rule: WeekRule): NoteView 
   const days = panel.kind === 'day' ? panel.offset : panel.offset * 7
   const target = addDays(focus, days)
   const key = panel.kind === 'day' ? target : weekStart(target, rule)
-  if (panel.offset === 0) return { type: 'note', kind: panel.kind, key, editable: true }
-  return { type: 'note', kind: panel.kind, key, editable: false, focusOnClick: target }
+  return { type: 'note', kind: panel.kind, key, selected: panel.offset === 0 }
 }
 
 /** Normalizes sizes to fractions of 1, raising any pane below the minimum to the minimum. */

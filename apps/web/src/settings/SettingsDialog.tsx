@@ -20,8 +20,6 @@ import { LayoutPreview } from './LayoutPreview.tsx'
 interface Props {
   settings: UserSettings
   onChange: (settings: UserSettings) => void
-  /** The page kinds whose template can be edited from the pages on show. */
-  templateKinds: readonly NoteKind[]
   onEditTemplate: (kind: NoteKind) => void
   /** Edits a layout, and shows it; a preset is duplicated first. */
   onEditLayout: (id: string) => void
@@ -47,7 +45,6 @@ const NUMBERING: { minimalDays: WeekRule['minimalDays']; label: string }[] = [
 export function SettingsDialog({
   settings,
   onChange,
-  templateKinds,
   onEditTemplate,
   onEditLayout,
   onNewLayout,
@@ -84,7 +81,7 @@ export function SettingsDialog({
   }
 
   return (
-    <div className="palette-backdrop" onPointerDown={onClose}>
+    <div className="palette-backdrop dialog-backdrop" onPointerDown={onClose}>
       <div
         className="settings"
         role="dialog"
@@ -176,25 +173,23 @@ export function SettingsDialog({
           onEditLayout={onEditLayout}
           onNewLayout={onNewLayout}
         />
-        {templateKinds.length > 0 && (
-          <fieldset>
-            <legend>Templates</legend>
-            <p>New pages start from their template. Edit it on the page you are looking at.</p>
-            <div className="settings-actions">
-              {templateKinds.map((kind) => (
-                <button
-                  key={kind}
-                  type="button"
-                  onClick={() => {
-                    onEditTemplate(kind)
-                  }}
-                >
-                  Edit {kind} template
-                </button>
-              ))}
-            </div>
-          </fieldset>
-        )}
+        <fieldset>
+          <legend>Templates</legend>
+          <p>New pages start from their template.</p>
+          <div className="settings-actions">
+            {(['day', 'week'] as const).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => {
+                  onEditTemplate(kind)
+                }}
+              >
+                Edit {kind} template
+              </button>
+            ))}
+          </div>
+        </fieldset>
         <fieldset>
           <legend>Your pages</legend>
           <p>
