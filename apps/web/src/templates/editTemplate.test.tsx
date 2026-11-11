@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
 import { editorText, replaceText } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
+import { settingsWithLayout } from '../test/settings.ts'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
 const lines = (...ls: string[]) => ls.join('\n')
@@ -382,7 +383,7 @@ describe('editing a template', () => {
         id: 'day',
         panel: { type: 'note', kind: 'day', offset: 0 },
       } as const
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout: dayOnly })
+      await api.saveSettings(settingsWithLayout(dayOnly))
       const { user } = renderApp(server, '/day/2026-10-27')
       await user.click(await screen.findByRole('button', { name: 'Settings' }))
       const dialog = screen.getByRole('dialog', { name: 'Settings' })

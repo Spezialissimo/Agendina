@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Api } from '../api/client.ts'
 import { editorText } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
+import { settingsWithLayout } from '../test/settings.ts'
 import { PASSWORD, startTestServer, type TestServer } from '../test/server.ts'
 
 describe('planner', () => {
@@ -81,7 +82,7 @@ describe('planner', () => {
           },
         ],
       }
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
+      await api.saveSettings(settingsWithLayout(layout))
       const { user, router } = renderApp(server, '/day/2026-10-26')
 
       const yesterday = await screen.findByRole('region', { name: 'Sunday, October 25, 2026' })

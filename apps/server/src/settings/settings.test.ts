@@ -1,9 +1,21 @@
 import { DEFAULT_SETTINGS, MeResponse, SettingsResponse } from '@agendina/contract'
-import { OPEN_PLANNER, US_WEEK, type Layout } from '@agendina/core'
+import {
+  DEFAULT_LAYOUTS,
+  MAX_CUSTOM_LAYOUTS,
+  OPEN_PLANNER,
+  OPEN_PLANNER_ID,
+  US_WEEK,
+  activeLayout,
+  adoptLegacyLayout,
+  allLayouts,
+  setSplitSizes,
+  type Layout,
+  type Layouts,
+} from '@agendina/core'
 import { testDatabases } from '@agendina/db/testing'
 import { describe, expect, it } from 'vitest'
 import { FEATURES } from '../entitlements.ts'
-import { useSignedInServer } from '../testing.ts'
+import { PASSWORD, sessionCookie, useSignedInServer } from '../testing.ts'
 
 const layout: Layout = {
   type: 'split',
@@ -49,6 +61,8 @@ describe.each(testDatabases())('settings on $kind', ({ create }) => {
       weekRule: US_WEEK,
       keymap: { 'focus.nextDay': ['Mod+Shift+ArrowRight', 'Mod+KeyJ'], 'palette.open': [] },
       layout,
+      // Left out of the request: Open planner, with the sizes of the layout sent.
+      layouts: adoptLegacyLayout(DEFAULT_LAYOUTS, layout),
       // Left out of the request: the default.
       focusMode: DEFAULT_SETTINGS.focusMode,
     })
@@ -172,6 +186,179 @@ describe.each(testDatabases())('settings on $kind', ({ create }) => {
     await putSettings({ ...DEFAULT_SETTINGS, weekRule: US_WEEK })
 
     expect(await getSettings(other)).toEqual(DEFAULT_SETTINGS)
+  })
+
+  describe('named layouts', () => {
+    const dayOnly: Layout = {
+      type: 'panel',
+      id: 'd',
+      panel: { type: 'note', kind: 'day', offset: 0 },
+    }
+    const layouts: Layouts = {
+      custom: [
+        { id: 'custom-1', name: 'Mornings', layout: dayOnly },
+        { id: 'custom-2', name: 'Custom layout 2', layout },
+      ],
+      presetSizes: { [OPEN_PLANNER_ID]: { pages: [0.6, 0.4] } },
+      active: { desktop: 'custom-2', phone: 'custom-1' },
+    }
+    const names = (saved: Layouts) => allLayouts(saved).map((l) => l.name)
+
+    it('saves several layouts and the active one per screen', async () => {
+      expect((await putSettings({ ...DEFAULT_SETTINGS, layouts })).status).toBe(200)
+
+      const saved = await getSettings()
+      expect(saved.layouts).toEqual(layouts)
+      // What the previous release reads while a deploy rolls out (ADR 0012).
+      expect(saved.layout).toEqual(layout)
+    })
+
+    it('shows the same active layout to every device', async () => {
+      await putSettings({ ...DEFAULT_SETTINGS, layouts })
+      const login = await t.server.request('/api/auth/login', {
+        method: 'POST',
+        body: { email: 'admin@example.com', password: PASSWORD },
+      })
+      const device = sessionCookie(login)
+
+      expect(activeLayout((await getSettings(device)).layouts, 'desktop').name).toBe(
+        'Custom layout 2',
+      )
+    })
+
+    it('reads a layout stored before named layouts existed as a custom layout', async () => {
+      await putSettings(DEFAULT_SETTINGS)
+      await t.handle.db
+        .updateTable('user_settings')
+        .set({
+          value: JSON.stringify({ ...DEFAULT_SETTINGS, layouts: undefined, layout: dayOnly }),
+        })
+        .execute()
+
+      const saved = await getSettings()
+      expect(names(saved.layouts)).toEqual(['Open planner', 'Custom layout 1'])
+      expect(activeLayout(saved.layouts, 'desktop').layout).toEqual(dayOnly)
+      expect(saved.layout).toEqual(dayOnly)
+    })
+
+    // A tab opened before the deploy keeps running the previous release and saving its settings.
+    describe('saved by the previous release, without named layouts', () => {
+      const legacy = (single: Layout) => {
+        // As JSON drops it: the previous release sends no `layouts`.
+        return { ...DEFAULT_SETTINGS, layout: single, layouts: undefined }
+      }
+      const twoDays: Layout = {
+        type: 'split',
+        id: 'days',
+        direction: 'column',
+        children: [
+          { size: 0.5, node: dayOnly },
+          {
+            size: 0.5,
+            node: { type: 'panel', id: 'd1', panel: { type: 'note', kind: 'day', offset: 1 } },
+          },
+        ],
+      }
+
+      it('keeps the named layouts and resizes the active one', async () => {
+        await putSettings({ ...DEFAULT_SETTINGS, layouts })
+        const resized = setSplitSizes(layout, 'pages', [0.5, 0.5])
+
+        expect((await putSettings(legacy(resized))).status).toBe(200)
+
+        const saved = await getSettings()
+        expect(names(saved.layouts)).toEqual(names(layouts))
+        expect(activeLayout(saved.layouts, 'desktop')).toMatchObject({
+          id: 'custom-2',
+          layout: resized,
+        })
+        expect(activeLayout(saved.layouts, 'phone').id).toBe('custom-1')
+      })
+
+      it('adds an edited Open planner as a new custom layout', async () => {
+        await putSettings({
+          ...DEFAULT_SETTINGS,
+          layouts: { ...layouts, active: { ...layouts.active, desktop: OPEN_PLANNER_ID } },
+        })
+
+        await putSettings(legacy(twoDays))
+
+        const saved = await getSettings()
+        expect(names(saved.layouts)).toEqual([...names(layouts), 'Custom layout 3'])
+        expect(saved.layout).toEqual(twoDays)
+      })
+
+      // E.g. the tab still shows Evenings, but another tab has switched to Mornings since.
+      it('resizes the layout it shows, leaving the active one as it is', async () => {
+        await putSettings({
+          ...DEFAULT_SETTINGS,
+          layouts: {
+            ...DEFAULT_LAYOUTS,
+            custom: [
+              { id: 'custom-1', name: 'Mornings', layout: dayOnly },
+              { id: 'custom-2', name: 'Evenings', layout: twoDays },
+            ],
+            active: { desktop: 'custom-1', phone: 'custom-1' },
+          },
+        })
+        const resized = setSplitSizes(twoDays, 'days', [0.7, 0.3])
+
+        await putSettings({ ...legacy(resized), weekRule: US_WEEK })
+
+        const saved = await getSettings()
+        expect(saved.weekRule).toEqual(US_WEEK)
+        expect(allLayouts(saved.layouts).map((l) => [l.name, l.layout])).toEqual([
+          ['Open planner', OPEN_PLANNER],
+          ['Mornings', dayOnly],
+          ['Evenings', resized],
+        ])
+        expect(activeLayout(saved.layouts, 'desktop').name).toBe('Mornings')
+      })
+
+      it('keeps every layout when there is no room for the one it sends', async () => {
+        const full: Layouts = {
+          ...DEFAULT_LAYOUTS,
+          custom: Array.from({ length: MAX_CUSTOM_LAYOUTS }, (_, i) => ({
+            id: `custom-${String(i + 1)}`,
+            name: `Custom layout ${String(i + 1)}`,
+            layout: dayOnly,
+          })),
+          active: { desktop: 'custom-1', phone: OPEN_PLANNER_ID },
+        }
+        await putSettings({ ...DEFAULT_SETTINGS, layouts: full })
+
+        const res = await putSettings({ ...legacy(twoDays), weekRule: US_WEEK })
+
+        expect(res.status).toBe(200)
+        const saved = await getSettings()
+        expect(saved.layouts).toEqual(full)
+        expect(saved.weekRule).toEqual(US_WEEK)
+      })
+
+      it('starts from the defaults when nothing was stored', async () => {
+        await putSettings(legacy(setSplitSizes(OPEN_PLANNER, 'pages', [0.3, 0.7])))
+
+        expect((await getSettings()).layouts).toEqual({
+          ...DEFAULT_LAYOUTS,
+          presetSizes: { [OPEN_PLANNER_ID]: { pages: [0.3, 0.7] } },
+        })
+      })
+    })
+
+    it.each<[string, Layouts]>([
+      [
+        'an active layout that does not exist',
+        { ...layouts, active: { desktop: 'custom-9', phone: 'custom-1' } },
+      ],
+      ['a blank name', { ...layouts, custom: [{ id: 'custom-1', name: '', layout: dayOnly }] }],
+    ])('rejects %s and keeps the previous layouts', async (_, invalid) => {
+      await putSettings({ ...DEFAULT_SETTINGS, layouts })
+
+      const res = await putSettings({ ...DEFAULT_SETTINGS, layouts: invalid })
+
+      expect(res.status).toBe(400)
+      expect((await getSettings()).layouts).toEqual(layouts)
+    })
   })
 
   it('requires a signed-in user', async () => {

@@ -1,10 +1,21 @@
-import type { AuthState, NoteKind, UserSettings } from '@agendina/contract'
-import { addDays, type WeekRule, type Weekday } from '@agendina/core'
+import { withLayouts, type AuthState, type NoteKind, type UserSettings } from '@agendina/contract'
+import {
+  MAX_CUSTOM_LAYOUTS,
+  activeLayout,
+  addDays,
+  allLayouts,
+  canAddLayout,
+  deleteLayout,
+  selectLayout,
+  type WeekRule,
+  type Weekday,
+} from '@agendina/core'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, type KeyboardEvent } from 'react'
+import { useId, useState, type KeyboardEvent } from 'react'
 import { useApi, useLocale } from '../app/AppProviders.tsx'
 import { AUTH_QUERY, useAuthState } from '../auth/AuthGate.tsx'
 import { format } from '../planner/weeks.ts'
+import { LayoutPreview } from './LayoutPreview.tsx'
 
 interface Props {
   settings: UserSettings
@@ -12,7 +23,10 @@ interface Props {
   /** The page kinds whose template can be edited from the pages on show. */
   templateKinds: readonly NoteKind[]
   onEditTemplate: (kind: NoteKind) => void
-  onEditLayout: () => void
+  /** Edits a layout, and shows it; a preset is duplicated first. */
+  onEditLayout: (id: string) => void
+  /** Makes a new layout, starting from the one on show. */
+  onNewLayout: () => void
   onClose: () => void
 }
 
@@ -36,6 +50,7 @@ export function SettingsDialog({
   templateKinds,
   onEditTemplate,
   onEditLayout,
+  onNewLayout,
   onClose,
 }: Props) {
   const locale = useLocale()
@@ -155,15 +170,12 @@ export function SettingsDialog({
             </select>
           </label>
         </fieldset>
-        <fieldset>
-          <legend>Layout</legend>
-          <p>Choose which pages are on the screen and how they are arranged.</p>
-          <div className="settings-actions">
-            <button type="button" onClick={onEditLayout}>
-              Edit layout
-            </button>
-          </div>
-        </fieldset>
+        <LayoutSettings
+          settings={settings}
+          onChange={onChange}
+          onEditLayout={onEditLayout}
+          onNewLayout={onNewLayout}
+        />
         {templateKinds.length > 0 && (
           <fieldset>
             <legend>Templates</legend>
@@ -195,6 +207,127 @@ export function SettingsDialog({
         <SignupSetting />
       </div>
     </div>
+  )
+}
+
+/**
+ * The named layouts as cards with a miniature of each: clicking one shows it, its buttons edit
+ * and delete it; the layout editor renames it (ADR 0005). A preset is duplicated to be edited.
+ */
+function LayoutSettings({
+  settings,
+  onChange,
+  onEditLayout,
+  onNewLayout,
+}: Pick<Props, 'settings' | 'onChange' | 'onEditLayout' | 'onNewLayout'>) {
+  const group = useId()
+  const [deleting, setDeleting] = useState<string | undefined>(undefined)
+  const { layouts } = settings
+  const activeId = activeLayout(layouts, 'desktop').id
+  const canAdd = canAddLayout(layouts)
+  const setLayouts = (next: typeof layouts) => {
+    if (next !== layouts) onChange(withLayouts({ ...settings, layouts: next }))
+  }
+
+  return (
+    <fieldset>
+      <legend>Layout</legend>
+      <p>Choose which pages are on the screen and how they are arranged.</p>
+      <div role="radiogroup" aria-label="Layouts" className="layout-cards">
+        {allLayouts(layouts).map((layout) => (
+          <div
+            key={layout.id}
+            className="layout-card"
+            data-active={layout.id === activeId || undefined}
+            data-confirming={deleting === layout.id || undefined}
+          >
+            <div className="layout-card-title">
+              <span className="layout-card-name">{layout.name}</span>
+              {layout.preset && <span className="layout-card-tag">Preset</span>}
+            </div>
+            <div className="layout-card-body">
+              <label className="layout-card-choice">
+                <input
+                  type="radio"
+                  name={group}
+                  aria-label={layout.name}
+                  checked={layout.id === activeId}
+                  onChange={() => {
+                    setLayouts(selectLayout(layouts, 'desktop', layout.id))
+                  }}
+                />
+                <LayoutPreview layout={layout.layout} />
+              </label>
+              <div className="layout-card-actions">
+                {deleting === layout.id ? (
+                  <>
+                    <span>Delete {layout.name}?</span>
+                    <button
+                      type="button"
+                      className="danger"
+                      onClick={() => {
+                        setDeleting(undefined)
+                        setLayouts(deleteLayout(layouts, layout.id))
+                      }}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      type="button"
+                      autoFocus
+                      onClick={() => {
+                        setDeleting(undefined)
+                      }}
+                    >
+                      Keep
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      aria-label={`${layout.preset ? 'Duplicate and edit' : 'Edit'} ${layout.name}`}
+                      disabled={layout.preset && !canAdd}
+                      onClick={() => {
+                        onEditLayout(layout.id)
+                      }}
+                    >
+                      {layout.preset ? 'Duplicate and edit' : 'Edit'}
+                    </button>
+                    {!layout.preset && (
+                      <button
+                        type="button"
+                        className="danger"
+                        aria-label={`Delete ${layout.name}`}
+                        onClick={() => {
+                          setDeleting(layout.id)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="layout-card layout-card-new"
+          disabled={!canAdd}
+          onClick={onNewLayout}
+        >
+          <span aria-hidden="true">+</span> New layout
+        </button>
+      </div>
+      {!canAdd && (
+        <p>
+          You have {MAX_CUSTOM_LAYOUTS} layouts of your own, the most there can be. Delete a layout
+          to make another.
+        </p>
+      )}
+    </fieldset>
   )
 }
 

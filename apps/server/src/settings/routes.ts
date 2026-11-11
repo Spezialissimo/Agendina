@@ -1,7 +1,13 @@
-import { DEFAULT_SETTINGS, UserSettings, type SettingsResponse } from '@agendina/contract'
+import {
+  DEFAULT_SETTINGS,
+  SettingsUpdate,
+  UserSettings,
+  type SettingsResponse,
+} from '@agendina/contract'
+import { adoptLegacyLayout } from '@agendina/core'
 import type { Database } from '@agendina/db'
 import { Hono } from 'hono'
-import { readJson, requireUser, type AppEnv } from '../http.ts'
+import { parse, readJson, requireUser, type AppEnv } from '../http.ts'
 
 export function settingsRoutes() {
   const routes = new Hono<AppEnv>()
@@ -13,11 +19,15 @@ export function settingsRoutes() {
 
   routes.put('/settings', async (c) => {
     const user = requireUser(c)
-    const settings = await readJson(c, UserSettings)
+    const update = await readJson(c, SettingsUpdate)
+    const db = c.get('db')
+    const layouts =
+      update.layouts ?? adoptLegacyLayout((await loadSettings(db, user.id)).layouts, update.layout)
+    // Validated again: the layouts may have been merged with the stored ones.
+    const settings = parse(UserSettings, { ...update, layouts })
     const value = JSON.stringify(settings)
     const updatedAt = c.get('now')().toISOString()
-    await c
-      .get('db')
+    await db
       .insertInto('user_settings')
       .values({ user_id: user.id, value, updated_at: updatedAt })
       .onConflict((oc) => oc.column('user_id').doUpdateSet({ value, updated_at: updatedAt }))

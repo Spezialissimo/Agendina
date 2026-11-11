@@ -1,10 +1,11 @@
-import { DEFAULT_SETTINGS } from '@agendina/contract'
+import { withLayouts } from '@agendina/contract'
 import type { Layout } from '@agendina/core'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Api, type FetchFn } from '../api/client.ts'
 import { placeCursor, selectionOf } from '../test/editor.ts'
 import { renderApp } from '../test/render.tsx'
+import { settingsWithLayout } from '../test/settings.ts'
 import { startTestServer, type TestServer } from '../test/server.ts'
 
 // Keys by physical code, as in commands.test.tsx.
@@ -183,6 +184,38 @@ describe('focus follows navigation', () => {
       await expectFocusIn('Week 45')
     })
 
+    it('the day page, when the layout chosen since has no week page', async () => {
+      await api.saveSettings(
+        settingsWithLayout({
+          type: 'panel',
+          id: 'd',
+          panel: { type: 'note', kind: 'day', offset: 0 },
+        }),
+      )
+      const saved = await api.settings()
+      await api.saveSettings(
+        withLayouts({
+          ...saved,
+          layouts: {
+            ...saved.layouts,
+            active: { ...saved.layouts.active, desktop: 'open-planner' },
+          },
+        }),
+      )
+      const { user } = await open('/day/2026-10-28')
+      placeCursor(await editor('Week 44'), 0)
+
+      // The mouse moves first, which ends focus mode (see 'by mouse').
+      fireEvent.mouseMove(document, { clientX: 0, clientY: 100 })
+      fireEvent.mouseMove(document, { clientX: 50, clientY: 100 })
+      await user.click(screen.getByRole('button', { name: 'Settings' }))
+      await user.click(screen.getByRole('radio', { name: 'Custom layout 1' }))
+      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.keyboard(NEXT_DAY)
+
+      await expectFocusIn('Thursday, October 29, 2026')
+    })
+
     it('stays in the week page, untouched, when a day shortcut stays in the same week', async () => {
       await api.saveNote('week', '2026-10-26', 'Plan the week', 0)
       const { user } = await open('/day/2026-10-28')
@@ -254,7 +287,7 @@ describe('focus follows navigation', () => {
           },
         ],
       }
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
+      await api.saveSettings(settingsWithLayout(layout))
       const { user } = await open('/day/2026-10-28')
       await editor('Wednesday, October 28, 2026')
 
@@ -271,7 +304,7 @@ describe('focus follows navigation', () => {
         id: 'week',
         panel: { type: 'note', kind: 'week', offset: 0 },
       }
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
+      await api.saveSettings(settingsWithLayout(layout))
       const { user } = await open('/day/2026-10-28')
       await editor('Week 44')
 
@@ -385,7 +418,7 @@ describe('focus follows navigation', () => {
           },
         ],
       }
-      await api.saveSettings({ ...DEFAULT_SETTINGS, layout })
+      await api.saveSettings(settingsWithLayout(layout))
       const { user } = await open('/day/2026-10-28')
       const yesterday = await screen.findByRole('region', { name: 'Tuesday, October 27, 2026' })
 
