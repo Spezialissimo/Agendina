@@ -1,5 +1,5 @@
 import {
-  MIN_PANE_SIZE,
+  minimumSize,
   setSplitSizes,
   type Layout,
   type NotePanel,
@@ -8,18 +8,23 @@ import {
   type SplitNode,
 } from './layout.ts'
 
-/** As many as fit in one split with every page at least `MIN_PANE_SIZE` wide. */
+/**
+ * The most pages a layout shows: as many as fit in one split with every page at least
+ * `MIN_PANE_SIZE` wide. The week strip, which needs far less, is not counted.
+ */
 export const MAX_PANELS = 6
 
 export type LayoutProblem = 'no-editable-page' | 'duplicate-page' | 'too-many-panels'
 
-/** What a panel shows: a page (its kind and distance from the focused day) or the calendar. */
-export type PanelContent = Pick<NotePanel, 'kind' | 'offset'> | { kind: 'calendar' }
+/**
+ * What a panel shows: a page (its kind and distance from the focused day), the calendar or the
+ * week strip.
+ */
+export type PanelContent =
+  Pick<NotePanel, 'kind' | 'offset'> | { kind: 'calendar' } | { kind: 'weekStrip' }
 
 export function panelContent(panel: Panel): PanelContent {
-  return panel.type === 'calendar'
-    ? { kind: 'calendar' }
-    : { kind: panel.kind, offset: panel.offset }
+  return panel.type === 'note' ? { kind: panel.kind, offset: panel.offset } : { kind: panel.type }
 }
 
 /** The panels of a layout, in reading order. */
@@ -36,8 +41,13 @@ export function layoutProblems(layout: Layout): LayoutProblem[] {
   const problems: LayoutProblem[] = []
   if (!shown.some((key) => key.endsWith(':0'))) problems.push('no-editable-page')
   if (new Set(shown).size !== shown.length) problems.push('duplicate-page')
-  if (shown.length > MAX_PANELS) problems.push('too-many-panels')
+  if (pageCount(layout) > MAX_PANELS) problems.push('too-many-panels')
   return problems
+}
+
+/** The pages and the calendar a layout shows: its panels but the week strip. */
+export function pageCount(layout: Layout): number {
+  return panelsOf(layout).filter(({ panel }) => panel.type !== 'weekStrip').length
 }
 
 /** Returns a copy of `layout` where the split `splitId` lays its pages out in `direction`. */
@@ -62,9 +72,9 @@ export function setPanelContent(layout: Layout, panelId: string, content: PanelC
   return replacePanel(layout, panelId, (panel) => ({
     ...panel,
     panel:
-      content.kind === 'calendar'
-        ? { type: 'calendar' }
-        : { type: 'note', kind: content.kind, offset: content.offset },
+      'offset' in content
+        ? { type: 'note', kind: content.kind, offset: content.offset }
+        : { type: content.kind },
   }))
 }
 
@@ -270,7 +280,7 @@ function replaceSplit(layout: Layout, splitId: string, replacement: SplitNode): 
 
 /** Names what a panel shows: two panels with the same key show the same page. */
 export function contentKey(content: PanelContent): string {
-  return content.kind === 'calendar' ? 'calendar' : `${content.kind}:${String(content.offset)}`
+  return 'offset' in content ? `${content.kind}:${String(content.offset)}` : content.kind
 }
 
 function replacePanel(
@@ -314,11 +324,11 @@ function pair(
 /** Raises the pages of `split` that became too small; sizes that are fine stay as they are. */
 function withMinimumSizes(split: SplitNode): SplitNode {
   const sizes = split.children.map((c) => c.size)
-  if (sizes.every((size) => size >= MIN_PANE_SIZE)) return split
+  if (split.children.every(({ node, size }) => size >= minimumSize(node))) return split
   return setSplitSizes(split, split.id, sizes) as SplitNode
 }
 
-/** The page a new panel shows: never the calendar, which is chosen on purpose. */
+/** The page a new panel shows: never the calendar or the week strip, chosen on purpose. */
 function freeContent(layout: Layout): Pick<NotePanel, 'kind' | 'offset'> {
   const shown = new Set(panelsOf(layout).map(({ panel }) => contentKey(panelContent(panel))))
   const free = (content: PanelContent) => !shown.has(contentKey(content))

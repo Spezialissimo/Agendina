@@ -12,3 +12,9 @@ export function usePlannerContext() {
   if (context === undefined) throw new Error('Missing <PlannerContext>')
   return context
 }
+
+/** Whether the month pop-up of the week strip is open: the "Choose a day" command opens it. */
+export const MonthPopupContext = createContext<{
+  open: boolean
+  setOpen: (open: boolean) => void
+}>({ open: false, setOpen: () => undefined })

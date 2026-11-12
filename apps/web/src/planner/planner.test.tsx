@@ -8,6 +8,10 @@ import { renderApp } from '../test/render.tsx'
 import { settingsWithLayout } from '../test/settings.ts'
 import { PASSWORD, startTestServer, type TestServer } from '../test/server.ts'
 
+/** The split of the week and day pages in Open planner, below its week strip. */
+const pagesOf = (layout: Layout) =>
+  layout.type === 'split' ? layout.children.find((c) => c.node.type === 'split')?.node : undefined
+
 describe('planner', () => {
   let server: TestServer
   let api: Api
@@ -24,6 +28,13 @@ describe('planner', () => {
 
   const weekStrip = () => screen.getByRole('navigation', { name: 'Week' })
   const page = (name: string) => screen.getByRole('region', { name })
+  /** In Open planner, the splitter between the week and the day (the other is below the strip). */
+  const pagesSeparator = async () => {
+    const all = await screen.findAllByRole('separator', { name: 'Resize pages' })
+    const found = all.find((s) => s.getAttribute('aria-orientation') === 'vertical')
+    if (found === undefined) throw new Error('No splitter between the pages')
+    return found
+  }
 
   describe('pages', () => {
     it('shows the week page and the focused day page with what was written', async () => {
@@ -265,7 +276,7 @@ describe('planner', () => {
 
     it('saves a setting changed just before', async () => {
       const { user } = renderApp(server, '/day/2026-10-26')
-      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      const separator = await pagesSeparator()
       separator.focus()
       await user.keyboard('{ArrowRight}')
 
@@ -273,7 +284,7 @@ describe('planner', () => {
       await screen.findByRole('button', { name: 'Sign in' })
 
       await api.login({ email: 'me@example.com', password: PASSWORD })
-      expect((await api.settings()).layout).toMatchObject({
+      expect(pagesOf((await api.settings()).layout)).toMatchObject({
         children: [{ size: 0.5 }, { size: 0.5 }],
       })
     })
@@ -282,7 +293,7 @@ describe('planner', () => {
   describe('resizing', () => {
     it('keeps a size that could not be saved, says so, and saves it once back online', async () => {
       const { user } = renderApp(server, '/day/2026-10-26')
-      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      const separator = await pagesSeparator()
       server.setOffline(true)
 
       separator.focus()
@@ -293,7 +304,7 @@ describe('planner', () => {
       server.setOffline(false)
       window.dispatchEvent(new Event('online'))
       await waitFor(async () => {
-        expect((await api.settings()).layout).toMatchObject({
+        expect(pagesOf((await api.settings()).layout)).toMatchObject({
           children: [{ size: 0.5 }, { size: 0.5 }],
         })
       })
@@ -305,7 +316,7 @@ describe('planner', () => {
 
     it('drops a drag the browser cancelled, e.g. to scroll on touch', async () => {
       renderApp(server, '/day/2026-10-26')
-      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      const separator = await pagesSeparator()
       const container = separator.parentElement as HTMLElement
       container.getBoundingClientRect = () =>
         ({ left: 0, top: 0, width: 1000, height: 600 }) as DOMRect
@@ -322,7 +333,7 @@ describe('planner', () => {
 
     it('resizes the pages from the keyboard and remembers the sizes', async () => {
       const { user } = renderApp(server, '/day/2026-10-26')
-      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      const separator = await pagesSeparator()
       expect(separator).toHaveAttribute('aria-valuenow', '45')
 
       separator.focus()
@@ -331,13 +342,13 @@ describe('planner', () => {
       expect(separator).toHaveAttribute('aria-valuenow', '55')
       await waitFor(async () => {
         const saved = await api.settings()
-        expect(saved.layout).toMatchObject({ children: [{ size: 0.55 }, { size: 0.45 }] })
+        expect(pagesOf(saved.layout)).toMatchObject({ children: [{ size: 0.55 }, { size: 0.45 }] })
       })
     })
 
     it('resizes the pages by dragging', async () => {
       renderApp(server, '/day/2026-10-26')
-      const separator = await screen.findByRole('separator', { name: 'Resize pages' })
+      const separator = await pagesSeparator()
       const container = separator.parentElement as HTMLElement
       container.getBoundingClientRect = () =>
         ({ left: 0, top: 0, width: 1000, height: 600 }) as DOMRect
@@ -348,7 +359,7 @@ describe('planner', () => {
 
       expect(separator).toHaveAttribute('aria-valuenow', '30')
       await waitFor(async () => {
-        expect((await api.settings()).layout).toMatchObject({
+        expect(pagesOf((await api.settings()).layout)).toMatchObject({
           children: [{ size: 0.3 }, { size: 0.7 }],
         })
       })

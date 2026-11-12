@@ -10,6 +10,7 @@ const NotePanelSchema = z.object({
 const PanelSchema = z.discriminatedUnion('type', [
   NotePanelSchema,
   z.strictObject({ type: z.literal('calendar') }),
+  z.strictObject({ type: z.literal('weekStrip') }),
 ])
 
 const LayoutNode: z.ZodType<Layout> = z.lazy(() =>

@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { CalendarPage } from './CalendarPage.tsx'
 import { NotePage } from './NotePage.tsx'
+import { WeekStrip } from './WeekStrip.tsx'
 
 const KEYBOARD_STEP = 0.05
 
@@ -16,21 +17,26 @@ interface Props {
   layout: ResolvedLayout
   /** Called with a split's new relative sizes when the user finishes resizing it. */
   onResize: (splitId: string, sizes: number[]) => void
+  /** The direction of the split around this node, if any. */
+  parent?: 'row' | 'column'
 }
 
-export function LayoutView({ layout, onResize }: Props) {
+export function LayoutView({ layout, onResize, parent }: Props) {
   if (layout.type === 'panel') {
-    return layout.view.type === 'calendar' ? (
-      <CalendarPage view={layout.view} />
-    ) : (
-      <NotePage view={layout.view} />
-    )
+    const { view } = layout
+    if (view.type === 'calendar') return <CalendarPage view={view} />
+    if (view.type === 'weekStrip') {
+      return <WeekStrip view={view} orientation={parent === 'row' ? 'vertical' : 'horizontal'} />
+    }
+    return <NotePage view={view} />
   }
   return (
     <SplitView
       split={layout}
       onResize={onResize}
-      renderChild={(child) => <LayoutView layout={child} onResize={onResize} />}
+      renderChild={(child) => (
+        <LayoutView layout={child} onResize={onResize} parent={layout.direction} />
+      )}
     />
   )
 }
@@ -56,8 +62,30 @@ export function SplitView<Node extends { id: string }>({
     setState({ key, sizes: next })
   }
   const container = useRef<HTMLDivElement>(null)
-  const drag = useRef<{ index: number; start: number; sizes: number[] } | undefined>(undefined)
+  /**
+   * A drag in progress: it moves the sizes on the screen (`from`) by the pointer's distance as a
+   * share of `extent`, measured once when it starts; cancelled, it goes back to `before`.
+   */
+  const drag = useRef<
+    { index: number; start: number; extent: number; from: number[]; before: number[] } | undefined
+  >(undefined)
   const row = split.direction === 'row'
+
+  const lengthOf = (element: Element | null | undefined) => {
+    const rect = element?.getBoundingClientRect()
+    return (row ? rect?.width : rect?.height) ?? 0
+  }
+  const children = () => [...(container.current?.querySelectorAll(':scope > .split-child') ?? [])]
+  /**
+   * The sizes as on the screen, which a resize starts from: a panel kept bigger than its share
+   * by its content (the week strip) would otherwise not move for the first part of a drag.
+   */
+  const onScreen = (): number[] => {
+    const lengths = children().map(lengthOf)
+    const total = lengths.reduce((a, b) => a + b, 0)
+    if (lengths.length !== sizes.length || lengths.some((l) => l === 0)) return sizes
+    return lengths.map((l) => round(l / total))
+  }
 
   const move = (index: number, from: number[], delta: number): number[] => {
     const next = [...from]
@@ -75,7 +103,7 @@ export function SplitView<Node extends { id: string }>({
 
   const cancelDrag = () => {
     if (drag.current === undefined) return
-    setSizes(drag.current.sizes)
+    setSizes(drag.current.before)
     drag.current = undefined
   }
 
@@ -84,13 +112,15 @@ export function SplitView<Node extends { id: string }>({
     const shrink = row ? 'ArrowLeft' : 'ArrowUp'
     if (event.key !== grow && event.key !== shrink) return
     event.preventDefault()
-    commit(move(index, sizes, event.key === grow ? KEYBOARD_STEP : -KEYBOARD_STEP))
+    commit(move(index, onScreen(), event.key === grow ? KEYBOARD_STEP : -KEYBOARD_STEP))
   }
 
   const position = (event: PointerEvent) => (row ? event.clientX : event.clientY)
+  /** The length the panels take, which a fraction is of. */
   const extent = () => {
-    const rect = container.current?.getBoundingClientRect()
-    return (row ? rect?.width : rect?.height) ?? 1
+    const panels = children().reduce((sum, child) => sum + lengthOf(child), 0)
+    const length = panels > 0 ? panels : lengthOf(container.current)
+    return length > 0 ? length : 1
   }
 
   return (
@@ -110,18 +140,24 @@ export function SplitView<Node extends { id: string }>({
               onKeyDown={onKeyDown(index - 1)}
               onPointerDown={(event) => {
                 event.currentTarget.setPointerCapture(event.pointerId)
-                drag.current = { index: index - 1, start: position(event), sizes }
+                drag.current = {
+                  index: index - 1,
+                  start: position(event),
+                  extent: extent(),
+                  from: onScreen(),
+                  before: sizes,
+                }
               }}
               onPointerMove={(event) => {
                 if (drag.current === undefined) return
-                const { index: i, start, sizes: from } = drag.current
-                setSizes(move(i, from, (position(event) - start) / extent()))
+                const { index: i, start, extent: length, from } = drag.current
+                setSizes(move(i, from, (position(event) - start) / length))
               }}
               onPointerUp={(event) => {
                 if (drag.current === undefined) return
-                const { index: i, start, sizes: from } = drag.current
+                const { index: i, start, extent: length, from } = drag.current
                 drag.current = undefined
-                commit(move(i, from, (position(event) - start) / extent()))
+                commit(move(i, from, (position(event) - start) / length))
               }}
               // The browser took the gesture over (e.g. to scroll on touch): no pointerup comes.
               onPointerCancel={cancelDrag}

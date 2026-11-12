@@ -14,7 +14,7 @@ function PreviewNode({ node }: { node: Layout }) {
   if (node.type === 'panel') {
     const content = panelContent(node.panel)
     const label =
-      content.kind !== 'calendar' && content.offset === 0
+      'offset' in content && content.offset === 0
         ? content.kind === 'day'
           ? 'Day'
           : 'Week'

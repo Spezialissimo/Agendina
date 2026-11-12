@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { ISO_WEEK, US_WEEK, isDayKey } from './calendar.ts'
 import {
   MIN_PANE_SIZE,
+  MIN_STRIP_SIZE,
   OPEN_PLANNER,
   selectedNote,
   resolveLayout,
@@ -24,9 +25,25 @@ const row = (id: string, ...children: [Layout, number][]): Layout => ({
   children: children.map(([node, size]) => ({ node, size })),
 })
 
+/** Open planner before the week strip became a panel: the week page, then the day page. */
+const WEEK_AND_DAY = row('pages', [note('week', 'week', 0), 0.45], [note('day', 'day', 0), 0.55])
+
+const strip = (id: string): Layout => ({ type: 'panel', id, panel: { type: 'weekStrip' } })
+
 describe('OPEN_PLANNER', () => {
-  it('shows the focused week on the left and the focused day on the right, both selected', () => {
-    expect(resolveLayout(OPEN_PLANNER, '2026-10-24', ISO_WEEK)).toEqual({
+  it('shows the week strip above the focused week on the left and the focused day on the right, both selected', () => {
+    const resolved = resolveLayout(OPEN_PLANNER, '2026-10-24', ISO_WEEK)
+    expect(resolved).toMatchObject({
+      type: 'split',
+      direction: 'column',
+      // A low strip at first: its content keeps it as tall as it needs.
+      children: [
+        { size: 0.1, node: { type: 'panel', view: { type: 'weekStrip', focus: '2026-10-24' } } },
+        { size: 0.9 },
+      ],
+    })
+    const pages = resolved.type === 'split' ? resolved.children[1]?.node : undefined
+    expect(pages).toEqual({
       type: 'split',
       id: 'pages',
       direction: 'row',
@@ -70,6 +87,29 @@ describe('resolveLayout', () => {
         },
       ],
     })
+  })
+
+  it('gives the week strip the focused day, to show its week', () => {
+    const layout: Layout = {
+      type: 'split',
+      id: 'c',
+      direction: 'column',
+      children: [
+        { node: strip('s'), size: 1 },
+        { node: note('d', 'day', 0), size: 1 },
+      ],
+    }
+
+    const resolved = resolveLayout(layout, '2026-10-24', ISO_WEEK)
+
+    expect(resolved).toMatchObject({
+      children: [
+        { node: { type: 'panel', id: 's', view: { type: 'weekStrip', focus: '2026-10-24' } } },
+        {},
+      ],
+    })
+    // The strip is not a page to write in.
+    expect(selectedNote(resolved, 'week')).toBeUndefined()
   })
 
   it('gives a calendar the focused day, to show its month', () => {
@@ -187,13 +227,13 @@ describe('resolveLayout', () => {
 
 describe('setSplitSizes', () => {
   it('stores the new sizes as fractions of the split', () => {
-    const updated = setSplitSizes(OPEN_PLANNER, 'pages', [3, 1])
+    const updated = setSplitSizes(WEEK_AND_DAY, 'pages', [3, 1])
 
     expect(updated).toMatchObject({ children: [{ size: 0.75 }, { size: 0.25 }] })
   })
 
   it('never lets a pane shrink below the minimum size', () => {
-    const updated = setSplitSizes(OPEN_PLANNER, 'pages', [0.99, 0.01])
+    const updated = setSplitSizes(WEEK_AND_DAY, 'pages', [0.99, 0.01])
 
     expect(updated).toMatchObject({
       children: [{ size: 1 - MIN_PANE_SIZE }, { size: MIN_PANE_SIZE }],
@@ -245,9 +285,49 @@ describe('setSplitSizes', () => {
     expect(original).toEqual(snapshot)
   })
 
+  it('lets a week strip be smaller than a page, as its content keeps it readable', () => {
+    const layout: Layout = {
+      type: 'split',
+      id: 'c',
+      direction: 'column',
+      children: [
+        { node: strip('s'), size: 0.1 },
+        { node: note('d', 'day', 0), size: 0.9 },
+      ],
+    }
+
+    expect(setSplitSizes(layout, 'c', [0.001, 0.999])).toMatchObject({
+      children: [{ size: MIN_STRIP_SIZE }, { size: 1 - MIN_STRIP_SIZE }],
+    })
+    // The page beside it keeps the minimum of a page.
+    expect(setSplitSizes(layout, 'c', [0.99, 0.01])).toMatchObject({
+      children: [{ size: 1 - MIN_PANE_SIZE }, { size: MIN_PANE_SIZE }],
+    })
+  })
+
+  it('resizes a week strip like a page, lying across or standing beside pages', () => {
+    const across: Layout = {
+      type: 'split',
+      id: 'c',
+      direction: 'column',
+      children: [
+        { node: strip('s'), size: 0.1 },
+        { node: note('d', 'day', 0), size: 0.9 },
+      ],
+    }
+    const beside = row('r', [strip('s'), 1], [note('d', 'day', 0), 3])
+
+    expect(setSplitSizes(across, 'c', [1, 3])).toMatchObject({
+      children: [{ size: 0.25 }, { size: 0.75 }],
+    })
+    expect(setSplitSizes(beside, 'r', [1, 1])).toMatchObject({
+      children: [{ size: 0.5 }, { size: 0.5 }],
+    })
+  })
+
   it('rejects an unknown split or the wrong number of sizes', () => {
-    expect(() => setSplitSizes(OPEN_PLANNER, 'nope', [1, 1])).toThrow(/split "nope"/)
-    expect(() => setSplitSizes(OPEN_PLANNER, 'pages', [1, 1, 1])).toThrow(/2 sizes/)
+    expect(() => setSplitSizes(WEEK_AND_DAY, 'nope', [1, 1])).toThrow(/split "nope"/)
+    expect(() => setSplitSizes(WEEK_AND_DAY, 'pages', [1, 1, 1])).toThrow(/2 sizes/)
   })
 })
 
@@ -255,7 +335,7 @@ describe('selectedNote', () => {
   const rule = ISO_WEEK
 
   it('finds the selected page of a kind', () => {
-    const layout = resolveLayout(OPEN_PLANNER, '2026-10-28', rule)
+    const layout = resolveLayout(WEEK_AND_DAY, '2026-10-28', rule)
     expect(selectedNote(layout, 'week')).toMatchObject({ kind: 'week', key: '2026-10-26' })
     expect(selectedNote(layout, 'day')).toMatchObject({ kind: 'day', key: '2026-10-28' })
   })

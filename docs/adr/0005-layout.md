@@ -19,8 +19,8 @@ Layouts are data: a JSON tree of row/column splits whose panels are relative to 
 day, e.g. `note(day, 0)` (the focused day), `note(day, -1)` (the day before), `note(week, 0)` (the
 week containing the focused day), `note(week, 1)` (the next week). Offset 0 is the selected
 page; the others are its neighbours, written in too since 2026-11 (see below). Split sizes are
-fractions, at least `MIN_PANE_SIZE` each, addressed by split id when the user drags a splitter. The week strip is
-fixed chrome above the tree, not a panel. Implemented in `packages/core/src/layout.ts`.
+fractions, at least `MIN_PANE_SIZE` each, addressed by split id when the user drags a splitter. The week strip was
+fixed chrome above the tree at first; it is a panel since 2026-11 (see below). Implemented in `packages/core/src/layout.ts`.
 
 Refinement (Phase 1): the focus is just a day. The day/week "granularity swap" of the first
 mockup is not needed for the Open planner; it can return as a preset later. Later: more presets (weekly spread, the original
@@ -105,8 +105,25 @@ one of the kind the user was writing in) and never in a neighbour, and a templat
 applied from it by default (ADR 0008). A shortcut to move the cursor between panels is still to
 come.
 
-Still to come: more presets, the date selector as a panel, collapsible panels, one visible
-panel on mobile.
+Refinement (week strip panel, 2026-11): the week strip is no longer fixed chrome above the
+tree but a third panel type, `{ type: 'weekStrip' }`, shown at most once and not a page to write
+in. The top bar keeps only the brand, Settings and Sign out; a layout without the strip shows
+none, and the "Choose a day" command (the strip's month pop-up) is then not offered.
+
+- It is resized like a page, but never smaller than its content: its share may go down to
+  `MIN_STRIP_SIZE` rather than `MIN_PANE_SIZE` (`minimumSize`), as its content keeps it
+  readable, and a resize starts from the sizes on the screen, so a strip its content keeps
+  bigger than its share follows the pointer at once. Stacked with other panels it lies across;
+  beside them it stands, its days one under the other. In the layout editor its placeholder is
+  one low row when it lies across.
+- The calendar panel's month fills its panel, in both directions.
+- Open planner gains it on top (a share of 0.1): a column split `planner` around the strip and
+  the `pages` split, which keeps its id, so the splitter sizes saved for it still apply. Custom layouts saved
+  before get no strip: no migration, as the only user so far chose (they add it back in the
+  editor, under Navigation). A previous release cannot read a layout with the strip and falls
+  back to its default layout while it still serves during a deploy, as for the calendar.
+
+Still to come: more presets, collapsible panels, one visible panel on mobile.
 
 ## Consequences
 

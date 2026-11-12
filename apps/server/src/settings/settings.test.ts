@@ -340,7 +340,8 @@ describe.each(testDatabases())('settings on $kind', ({ create }) => {
 
         expect((await getSettings()).layouts).toEqual({
           ...DEFAULT_LAYOUTS,
-          presetSizes: { [OPEN_PLANNER_ID]: { pages: [0.3, 0.7] } },
+          // Every split of the preset, also the one around the week strip and the pages.
+          presetSizes: { [OPEN_PLANNER_ID]: { planner: [0.1, 0.9], pages: [0.3, 0.7] } },
         })
       })
     })

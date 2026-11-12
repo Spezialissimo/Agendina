@@ -215,8 +215,60 @@ button {
 .week-strip {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  margin: 0 auto;
+  flex: 1;
+}
+
+/* Beside other panels, the strip stands: its days one under the other. */
+.week-strip[data-orientation='vertical'] {
+  flex-direction: column;
+}
+
+.week-strip[data-orientation='vertical'] .week-days {
+  flex-direction: column;
+}
+
+/* The month pops up on the side of the strip with room for it (`placePopup`), measured at its
+   own width rather than squeezed to the button's. */
+.month-picker > .month-calendar {
+  width: max-content;
+}
+
+.month-picker > .month-calendar[data-side] {
+  inset: auto;
+}
+
+.month-picker > .month-calendar[data-side='below'] {
+  top: calc(100% + 0.5rem);
+}
+
+.month-picker > .month-calendar[data-side='above'] {
+  bottom: calc(100% + 0.5rem);
+}
+
+.month-picker > .month-calendar[data-side='right'] {
+  left: calc(100% + 0.5rem);
+}
+
+.month-picker > .month-calendar[data-side='left'] {
+  right: calc(100% + 0.5rem);
+}
+
+.month-picker > .month-calendar:is([data-side='below'], [data-side='above'])[data-align='end'] {
+  right: 0;
+}
+
+.month-picker > .month-calendar:is([data-side='below'], [data-side='above'])[data-align='start'] {
+  left: 0;
+}
+
+.month-picker > .month-calendar:is([data-side='right'], [data-side='left'])[data-align='start'] {
+  top: 0;
+}
+
+.month-picker > .month-calendar:is([data-side='right'], [data-side='left'])[data-align='end'] {
+  bottom: 0;
 }
 
 .week-label {
@@ -430,6 +482,22 @@ button.week-grid-row[aria-current] {
   min-height: 0;
 }
 
+/* The week strip is resized like a page, but never below its content, nor is any group it is in. */
+.split-row > .split-child:has(.week-strip, .layout-panel[data-week-strip]) {
+  min-width: max-content;
+}
+
+.split-column > .split-child:has(.week-strip, .layout-panel[data-week-strip]) {
+  min-height: max-content;
+}
+
+/* In such a group, the pages beside the strip need no room of their own: the splitters share
+   out the space, so the group is only as big as the strip needs. */
+.split-child:has(.week-strip, .layout-panel[data-week-strip])
+  .split-child:not(:has(.week-strip, .layout-panel[data-week-strip])) {
+  contain: size;
+}
+
 .separator {
   flex: 0 0 1rem;
   position: relative;
@@ -444,14 +512,15 @@ button.week-grid-row[aria-current] {
 .separator::after {
   content: '';
   position: absolute;
-  inset: 30% calc(50% - 1px);
+  /* As long as the panels: the whole separator can be dragged. */
+  inset: 0 calc(50% - 1px);
   border-radius: 2px;
   background: transparent;
   transition: background 0.15s;
 }
 
 .split-column > .separator::after {
-  inset: calc(50% - 1px) 30%;
+  inset: calc(50% - 1px) 0;
 }
 
 .separator:hover::after,
@@ -670,6 +739,17 @@ button.week-grid-row[aria-current] {
   padding: 1rem 1.25rem;
 }
 
+/* The week strip lying across: as low as it can be, its controls in one row. */
+.split-column
+  > .split-child
+  > .layout-panel[data-week-strip]
+  :is(.layout-panel-main, .layout-panel-center) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
 .layout-panel-title {
   margin: 0;
   font-family: var(--font-serif);
@@ -680,19 +760,39 @@ button.week-grid-row[aria-current] {
   opacity: 0.5;
 }
 
-/* The calendar panel: the month of the pop-up, in the flow of the page and a little larger. */
+/* The calendar panel: the month of the pop-up, filling the panel. */
+.calendar-page {
+  container-type: size;
+}
+
 .calendar-page .month-calendar {
   position: static;
-  align-self: center;
-  width: min(100%, 22rem);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 0;
   border: 0;
   background: none;
   box-shadow: none;
+  font-size: clamp(0.875rem, 3.5cqmin, 1.5rem);
 }
 
 .calendar-page .month-calendar table {
+  flex: 1;
   width: 100%;
+  height: 100%;
+  table-layout: fixed;
+}
+
+.calendar-page .month-calendar th {
+  font-size: 0.75em;
+}
+
+.calendar-page .month-calendar td button {
+  width: 100%;
+  height: 100%;
+  min-height: 2.1rem;
+  font-size: inherit;
 }
 
 .page {
@@ -842,9 +942,11 @@ button.week-grid-row[aria-current] {
    template editor, Settings) pause it. */
 
 .topbar,
+.week-strip,
 .page,
 .save-status,
 .topbar button,
+.week-strip button,
 .page button {
   transition:
     opacity 0.5s,
@@ -853,15 +955,18 @@ button.week-grid-row[aria-current] {
 
 @media (prefers-reduced-motion: reduce) {
   .topbar,
+  .week-strip,
   .page,
   .save-status,
   .topbar button,
+  .week-strip button,
   .page button {
     transition: none;
   }
 }
 
 .planner[data-focus-mode] .topbar,
+.planner[data-focus-mode] .week-strip,
 .planner[data-focus-mode]
   .page:not(:focus-within):not(
     :has(
@@ -875,7 +980,7 @@ button.week-grid-row[aria-current] {
   filter: grayscale(1);
 }
 
-.planner[data-focus-mode] :is(.topbar, .page) button:not(.conflict button) {
+.planner[data-focus-mode] :is(.topbar, .week-strip, .page) button:not(.conflict button) {
   opacity: 0;
   pointer-events: none;
 }

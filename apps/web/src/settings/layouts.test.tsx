@@ -42,7 +42,14 @@ describe('named layouts', () => {
   const panelNames = () =>
     screen.queryAllByRole('group', { name: /panel$/ }).map((p) => p.getAttribute('aria-label'))
   const weekPage = () => screen.queryByRole('region', { name: 'Week 44' })
-  const separator = () => screen.getByRole('separator', { name: 'Resize pages' })
+  /** The splitter between the week and the day (in Open planner, the other is below the strip). */
+  const separator = () => {
+    const found = screen
+      .getAllByRole('separator', { name: 'Resize pages' })
+      .find((s) => s.getAttribute('aria-orientation') === 'vertical')
+    if (found === undefined) throw new Error('No splitter between the pages')
+    return found
+  }
 
   const savedLayouts = async () => (await api.settings()).layouts
   const savedNames = async () => allLayouts(await savedLayouts()).map((l) => l.name)
@@ -67,12 +74,14 @@ describe('named layouts', () => {
   }
   const saveEditor = async (user: User) => {
     await user.click(screen.getByRole('button', { name: 'Save layout' }))
-    await screen.findByRole('navigation', { name: 'Week' })
+    // The pages are back (a saved layout may have no week strip to wait for).
+    await screen.findAllByRole('textbox')
   }
   /** Turns Open planner into a layout with the day page only, as a new custom layout. */
   const dayOnlyLayout = async (user: User) => {
     await openEditor(user, 'Duplicate and edit Open planner')
     await user.click(panel('Selected week').getByRole('button', { name: 'Delete page' }))
+    await user.click(panel('Week strip').getByRole('button', { name: 'Delete page' }))
     await saveEditor(user)
   }
 
