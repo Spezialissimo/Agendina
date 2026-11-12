@@ -11,3 +11,6 @@ test-results/
 .DS_Store
 .vitest/
 .superpowers/
+# Claude Code: per-machine settings and the worktrees its subagents work in
+.claude/settings.local.json
+.claude/worktrees/
